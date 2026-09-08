@@ -6,7 +6,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from backend.domain import ClientConfig, Evidence, evaluate_pratica, evaluate_section
+from backend.domain import ClientCatalogItem, ClientConfig, Evidence, HumanOverride, evaluate_pratica, evaluate_section
 from backend.domain.verification_engine import JUDGMENT_ONLY_SECTIONS
 
 
@@ -16,6 +16,10 @@ def cfg(applicable_items: list[str]) -> ClientConfig:
 
 def ev(item_id: str, found: bool) -> Evidence:
     return Evidence(pratica_id="p1", item_id=item_id, found=found, method="filename")
+
+
+def override(scope: str, target: str, note: str = "") -> HumanOverride:
+    return HumanOverride(pratica_id="p1", scope=scope, target=target, decision="✗", note=note)
 
 
 def test_all_connected_items_found_gives_ok_for_non_judgment_section():
@@ -93,3 +97,46 @@ def test_anomalies_are_always_empty_in_fase1():
         evidences=[ev("F.1", True)], client_config=cfg(["F.1"]),
     )
     assert result.anomalies == []
+
+
+def test_ferrero_section_d_override_wins_regardless_of_evidence():
+    note = "Dai documenti ricevuti non sono risultate criticità quindi si è deciso di non effettuare questa analisi per questo trimestre"
+    result = evaluate_section(
+        section="D", pratica_id="p1", client="Ferrero", period="Q2 2026",
+        evidences=[ev("B.4", False)], client_config=cfg(["B.4"]),
+        overrides=[override("section", "D", note)],
+    )
+    assert result.status == "✗"
+    assert result.reasoning == note
+    assert result.missing_items == []
+
+
+def test_item_override_counts_as_satisfied_when_other_items_are_found():
+    result = evaluate_section(
+        section="E", pratica_id="p1", client="Demo", period="Q2 2026",
+        evidences=[ev("F.1", True), ev("F.2", True)],
+        client_config=cfg(["F.1", "F.2", "F.3"]),
+        overrides=[override("item", "F.3", "Riconciliazione non richiesta nel trimestre")],
+    )
+    assert result.status == "✓"
+    assert result.missing_items == []
+
+
+def test_judgment_section_override_is_not_blocked_by_no_auto_approval_rule():
+    result = evaluate_section(
+        section="D", pratica_id="p1", client="Demo", period="Q2 2026",
+        evidences=[ev("B.4", True)], client_config=cfg(["B.4"]),
+        overrides=[override("section", "D", "Test campionario saltato dall'operatore")],
+    )
+    assert result.status == "✗"
+
+
+def test_missing_extra_item_participates_in_section_result():
+    config = cfg(["F.1"])
+    config.extra_items = [ClientCatalogItem(id="BANK.EXTRA", label="Estratto conto aggiuntivo", section="E")]
+    result = evaluate_section(
+        section="E", pratica_id="p1", client="Demo", period="Q2 2026",
+        evidences=[ev("F.1", True)], client_config=config,
+    )
+    assert result.status == "wip"
+    assert result.missing_items == ["BANK.EXTRA"]

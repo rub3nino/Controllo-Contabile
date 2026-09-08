@@ -26,7 +26,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from backend.domain.models import Evidence, Finding, VerificationResult
+from backend.domain.models import Evidence, Finding, HumanOverride, VerificationResult
 
 
 class EvidenceStore:
@@ -70,6 +70,14 @@ class EvidenceStore:
                     data TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS idx_finding_client_status ON finding(client, status);
+
+                CREATE TABLE IF NOT EXISTS human_override (
+                    id TEXT PRIMARY KEY,
+                    pratica_id TEXT NOT NULL,
+                    data TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_override_pratica
+                    ON human_override(pratica_id);
                 """
             )
 
@@ -95,6 +103,29 @@ class EvidenceStore:
                 "SELECT data FROM evidence WHERE pratica_id = ?", (pratica_id,)
             ).fetchall()
         return [Evidence.model_validate_json(r["data"]) for r in rows]
+
+    # ---------- HumanOverride ----------
+
+    def save_human_override(self, override: HumanOverride) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO human_override (id, pratica_id, data) VALUES (?, ?, ?)",
+                (override.id, override.pratica_id, override.model_dump_json()),
+            )
+
+    def save_human_overrides(self, overrides: list[HumanOverride]) -> None:
+        with self._connect() as conn:
+            conn.executemany(
+                "INSERT OR REPLACE INTO human_override (id, pratica_id, data) VALUES (?, ?, ?)",
+                [(o.id, o.pratica_id, o.model_dump_json()) for o in overrides],
+            )
+
+    def human_overrides_for_pratica(self, pratica_id: str) -> list[HumanOverride]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT data FROM human_override WHERE pratica_id = ?", (pratica_id,)
+            ).fetchall()
+        return [HumanOverride.model_validate_json(r["data"]) for r in rows]
 
     # ---------- VerificationResult (append-only) ----------
 

@@ -39,6 +39,7 @@ __all__ = [
     "VerificationResult",
     "FindingRef",
     "Finding",
+    "HumanOverride",
     "ClientCatalogItem",
     "ClientBankAccount",
     "ClientConfig",
@@ -312,6 +313,32 @@ class Finding(BaseModel):
     )
 
     created_at: str = Field(default_factory=_now)
+
+
+class HumanOverride(BaseModel):
+    """Decisione umana valida per una singola pratica.
+
+    Modella separatamente ciò che ``TEMPLATE_RULES.md`` §4 distingue:
+    ``✗`` significa che l'operatore ha scelto di saltare il controllo in
+    questo trimestre; ``N/A`` significa che il controllo non si applica.
+    Quest'ultimo è ammesso qui solo come eccezione ad hoc della pratica,
+    mentre la non applicabilità strutturale del cliente resta in
+    ``ClientConfig.applicable_items``. Una decisione può riguardare una
+    singola voce di catalogo oppure un'intera sezione A-I.
+    """
+
+    id: str = Field(default_factory=_new_id)
+    pratica_id: str
+    scope: Literal["item", "section"] = Field(
+        description="Ambito della decisione: singola voce di catalogo o intera sezione."
+    )
+    target: str = Field(
+        description="item_id (es. 'E.5') se scope='item', lettera A-I se scope='section'."
+    )
+    decision: Literal["✗", "N/A"]
+    note: str = Field(default="", description="Motivazione libera della decisione umana.")
+    decided_by: str | None = Field(default=None, description="Nome o iniziali di chi ha deciso, se disponibili.")
+    decided_at: str | None = Field(default=None, description="Timestamp ISO della decisione, se disponibile.")
 
 
 class ClientCatalogItem(BaseModel):

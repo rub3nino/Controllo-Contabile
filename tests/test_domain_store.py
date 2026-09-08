@@ -8,7 +8,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from backend.domain import Evidence, EvidenceStore, Finding, FindingRef, VerificationResult
+from backend.domain import Evidence, EvidenceStore, Finding, FindingRef, HumanOverride, VerificationResult
 
 
 def make_store(tmp_path: Path) -> EvidenceStore:
@@ -38,6 +38,23 @@ def test_evidence_for_pratica_is_scoped(tmp_path: Path):
     assert len(store.evidence_for_pratica("p1")) == 1
     assert len(store.evidence_for_pratica("p2")) == 1
     assert store.evidence_for_pratica("p3") == []
+
+
+def test_human_override_roundtrip_is_scoped_by_pratica(tmp_path: Path):
+    store = make_store(tmp_path)
+    item_override = HumanOverride(
+        pratica_id="p1", scope="item", target="E.5", decision="✗",
+        note="Intrastat non richiesto questo trimestre", decided_by="RR",
+    )
+    section_override = HumanOverride(
+        pratica_id="p2", scope="section", target="D", decision="N/A",
+    )
+    store.save_human_overrides([item_override, section_override])
+
+    loaded = store.human_overrides_for_pratica("p1")
+    assert loaded == [item_override]
+    assert store.human_overrides_for_pratica("p2") == [section_override]
+    assert store.human_overrides_for_pratica("missing") == []
 
 
 def test_verification_result_is_append_only_and_latest_wins(tmp_path: Path):

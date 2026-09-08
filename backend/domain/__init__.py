@@ -22,6 +22,7 @@ from backend.domain.models import (
     ExtractedField,
     Finding,
     FindingRef,
+    HumanOverride,
     Section,
     VerificationResult,
 )
@@ -38,6 +39,7 @@ __all__ = [
     "ExtractedField",
     "Finding",
     "FindingRef",
+    "HumanOverride",
     "Section",
     "VerificationResult",
     "carry_forward_open_findings",

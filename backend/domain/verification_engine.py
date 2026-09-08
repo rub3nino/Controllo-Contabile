@@ -7,24 +7,14 @@ di Fase 0 (`backend/domain/models.py`) invece delle celle INDICE!F10:F18.
 Semplificazioni deliberate di questa fase (segnalate anche nel riepilogo
 consegnato a Ruben, non solo qui):
 
-1. **Nessun concetto di "controllo saltato per scelta umana".** Il `✗`
-   della regola originale ("tutti gli item collegati sono ✗ o N/A") richiede
-   di sapere che un umano ha deciso di saltare un controllo. I contratti di
-   Fase 0 non hanno ancora un campo per questo (né su `Evidence` né su
-   `ClientConfig`): l'esclusione di un item da `ClientConfig.applicable_items`
-   modella "N/A per il cliente", non "saltato questo trimestre". Per questo
-   il ramo `✗` qui sotto è raggiungibile solo tramite `_connected_item_is_skipped`,
-   che oggi ritorna sempre `False` per costruzione — è tipizzato e testato,
-   ma di fatto sempre spento, finché quel concetto non viene aggiunto ai
-   modelli (decisione da prendere con Ruben, non qui).
-2. **Nessuna verifica dei "campi meccanici compilati"** (TEMPLATE_RULES.md
+1. **Nessuna verifica dei "campi meccanici compilati"** (TEMPLATE_RULES.md
    §4.1: es. per E serve almeno un saldo e/c, per C almeno gli F24 del
    trimestre, per G almeno una riga di bilancino). Il `✓` qui sotto richiede
    solo che ogni voce di catalogo collegata sia stata trovata
    (`Evidence(found=True)`), non che i dati strutturati al suo interno siano
    completi — quella lettura più fine dipende da `extract.py`, che questa
    fase non integra.
-3. **Nessuna `Anomaly` generata.** Le due soglie di materialità in
+2. **Nessuna `Anomaly` generata.** Le due soglie di materialità in
    `ClientConfig` sono `None` per decisione esplicita di Ruben
    (`TEMPLATE_RULES.md` §13.4): finché restano `None`, `_check_anomalies`
    ritorna sempre una lista vuota. Non è un bug, è il comportamento
@@ -34,7 +24,7 @@ consegnato a Ruben, non solo qui):
 from __future__ import annotations
 
 from backend.catalog import SECTION_ITEMS
-from backend.domain.models import Anomaly, ClientConfig, Evidence, Section, VerificationResult
+from backend.domain.models import Anomaly, ClientConfig, Evidence, HumanOverride, Section, VerificationResult
 
 # Sezioni di solo giudizio umano (TEMPLATE_RULES.md §4.1, §7.1/§7.4/§7.8/§7.9,
 # e piano_azione_redesign.md §4: A, D, H, I sono le più vicine a un giudizio
@@ -44,15 +34,9 @@ from backend.domain.models import Anomaly, ClientConfig, Evidence, Section, Veri
 JUDGMENT_ONLY_SECTIONS: frozenset[str] = frozenset({"A", "D", "H", "I"})
 
 
-def _connected_item_is_skipped(item_id: str, item_evidences: list[Evidence]) -> bool:
-    """Sempre False in Fase 1 — vedi punto 1 del docstring di modulo.
-
-    Segnaposto tipizzato per il giorno in cui "controllo saltato per scelta
-    umana" avrà una rappresentazione nei contratti (nuovo campo su
-    `Evidence` o su `ClientConfig`, da decidere con Ruben, non qui). Finché
-    ritorna sempre False, il ramo ✗ di `evaluate_section` non si attiva mai.
-    """
-    return False
+def _connected_item_is_skipped(item_id: str, overrides: list[HumanOverride]) -> bool:
+    """Vero se un override della pratica esclude la voce dal calcolo."""
+    return any(o.scope == "item" and o.target == item_id for o in overrides)
 
 
 def check_anomalies(
@@ -81,6 +65,7 @@ def evaluate_section(
     client: str,
     period: str,
     evidences: list[Evidence],
+    overrides: list[HumanOverride] | None = None,
     client_config: ClientConfig,
     section_items: dict[str, list[str]] | None = None,
 ) -> VerificationResult:
@@ -93,11 +78,27 @@ def evaluate_section(
     ogni sezione.
     """
     items_by_section = section_items if section_items is not None else SECTION_ITEMS
+    pratica_overrides = [o for o in (overrides or []) if o.pratica_id == pratica_id]
+    section_override = next(
+        (o for o in pratica_overrides if o.scope == "section" and o.target == section),
+        None,
+    )
+    if section_override is not None:
+        return VerificationResult(
+            pratica_id=pratica_id,
+            client=client,
+            period=period,
+            section=section,
+            status=section_override.decision,
+            reasoning=section_override.note or "Decisione umana applicata all'intera sezione.",
+        )
+
     applicable = set(client_config.applicable_items)
     # "voci collegate" = intersezione fra SECTION_ITEMS[sezione] e le voci
     # applicabili a QUESTO cliente (backend.catalog.SECTION_ITEMS resta
     # generico per tutti i clienti, il filtro per cliente è compito nostro).
     connected = [i for i in items_by_section.get(section, []) if i in applicable]
+    connected.extend(i.id for i in client_config.extra_items if i.section == section and i.id not in connected)
 
     by_item: dict[str, list[Evidence]] = {}
     for ev in evidences:
@@ -106,7 +107,10 @@ def evaluate_section(
     def item_found(item_id: str) -> bool:
         return any(ev.found for ev in by_item.get(item_id, []))
 
-    missing_items = [i for i in connected if not item_found(i)]
+    missing_items = [
+        i for i in connected
+        if not item_found(i) and not _connected_item_is_skipped(i, pratica_overrides)
+    ]
     relevant_evidence = [ev for ev in evidences if ev.item_id in connected]
 
     if not connected:
@@ -119,7 +123,7 @@ def evaluate_section(
             "(sezione di solo giudizio umano, oppure tutte le voci collegate sono N/A "
             "per questo cliente): resta wip finché un umano non decide."
         )
-    elif all(_connected_item_is_skipped(i, by_item.get(i, [])) for i in connected):
+    elif all(_connected_item_is_skipped(i, pratica_overrides) for i in connected):
         status = "✗"
         reasoning = "Tutte le voci collegate sono state saltate per scelta (controllo non richiesto questo trimestre)."
     elif not missing_items and section not in JUDGMENT_ONLY_SECTIONS:
@@ -155,6 +159,7 @@ def evaluate_pratica(
     client: str,
     period: str,
     evidences: list[Evidence],
+    overrides: list[HumanOverride] | None = None,
     client_config: ClientConfig,
     section_items: dict[str, list[str]] | None = None,
 ) -> dict[str, VerificationResult]:
@@ -171,6 +176,7 @@ def evaluate_pratica(
             client=client,
             period=period,
             evidences=evidences,
+            overrides=overrides,
             client_config=client_config,
             section_items=items_by_section,
         )
