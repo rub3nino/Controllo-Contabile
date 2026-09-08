@@ -88,7 +88,8 @@ def classify_text(name: str, text: str, relpath: str = "") -> tuple[str | None, 
                 name_hit.setdefault(item_id, False)
                 break
 
-    # G.2 folder copies of payroll files stay G.1 if the filename is payroll
+    # Un verbale di assemblea che nomina il Collegio resta C.1: non è un
+    # verbale di una riunione del Collegio sindacale (C.3).
     if scores.get("C.1", 0) >= 8 and scores.get("C.3", 0):
         scores["C.3"] = min(scores["C.3"], 3)
     if scores.get("C.1", 0) >= 8 and "collegio" in name_n:
@@ -98,13 +99,17 @@ def classify_text(name: str, text: str, relpath: str = "") -> tuple[str | None, 
     if scores.get("F.2", 0) >= 10:
         scores["F.1"] = min(scores.get("F.1", 0), 1)
 
-    # Giornale bollato/definitivo è D.1, i mastrini restano B.4
+    # Giornale bollato/definitivo è D.1; giornale provvisorio e mastrini
+    # restano B.4 anche quando data e altre parole separano i termini.
     if "mastrini" in name_n:
         scores["B.4"] = max(scores.get("B.4", 0), 16)
         scores["D.1"] = min(scores.get("D.1", 0), 2)
     elif "giornale" in name_n and re.search(r"definitiv|bollat", name_n):
         scores["D.1"] = max(scores.get("D.1", 0), 16)
         scores["B.4"] = min(scores.get("B.4", 0), 3)
+    elif "giornale" in name_n and re.search(r"provvisor", name_n):
+        scores["B.4"] = max(scores.get("B.4", 0), 16)
+        scores["D.1"] = min(scores.get("D.1", 0), 2)
 
     for item in checklist_items():
         iid = item["id"]

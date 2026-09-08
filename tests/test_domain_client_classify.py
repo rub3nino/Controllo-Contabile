@@ -13,11 +13,23 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from backend.catalog import checklist_items
-from backend.classify import scan_folder
+from backend.classify import classify_text, scan_folder
 from backend.domain import ClientCatalogItem, ClientConfig, scan_folder_for_client
 
 FIXTURES_DOCS = ROOT / "fixtures" / "docs"
 ALL_STANDARD_ITEMS = [it["id"] for it in checklist_items()]
+
+
+def test_swgi_provisional_journal_is_b4():
+    item_id, _, _ = classify_text(
+        "SWGI - Libro Giornale 2026.06.30 provvisorio.xlsx", ""
+    )
+    assert item_id == "B.4"
+
+
+def test_definitive_stamped_journal_remains_d1():
+    item_id, _, _ = classify_text("Libro giornale definitivo bollato.pdf", "")
+    assert item_id == "D.1"
 
 
 def test_no_extra_items_is_identical_to_plain_scan_folder():
