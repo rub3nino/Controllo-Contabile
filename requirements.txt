@@ -1,0 +1,12 @@
+fastapi>=0.115.0
+uvicorn>=0.32.0
+openpyxl>=3.1.5
+pyyaml>=6.0
+pypdf>=5.0.0
+pydantic>=2.0
+python-multipart>=0.0.9
+pymupdf>=1.24.0
+
+# OCR locale consigliato. PaddleOCR-VL richiede Python 3.9-3.13 e un runtime
+# PaddlePaddle adatto all'hardware; vedere docs/OCR.md prima dell'installazione.
+paddleocr[doc-parser]>=3.3.0

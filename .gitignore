@@ -1,0 +1,20 @@
+.venv/
+.venv-py313/
+.uv-cache/
+__pycache__/
+*.pyc
+node_modules/
+ui/dist/
+output/
+storage/
+logs/
+test/
+.DS_Store
+._*
+:memory:.ses
+_extract/
+__extract/
+*.egg-info/
+.pytest_cache/
+fixtures/docs/output/
+Template GF*.xlsx

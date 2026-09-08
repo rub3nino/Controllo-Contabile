@@ -1,0 +1,14 @@
+/// <reference types="vite/client" />
+
+import "react";
+
+declare module "react" {
+  interface InputHTMLAttributes<T> {
+    webkitdirectory?: string | boolean;
+    directory?: string;
+  }
+}
+
+interface File {
+  webkitRelativePath: string;
+}

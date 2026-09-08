@@ -1,0 +1,419 @@
+# Schema macchina del WPS. Fonte di verità narrativa: TEMPLATE_RULES.md
+# Se diverge dal markdown, si riallinea questo file.
+
+template:
+  source_file: "Template GF wps verifica trimestrale II TRIM .xlsx"
+  master_file: "Template_MASTER.xlsx"
+  kind: working_paper_set
+  standard: "SA Italia 250B"
+  legal_ref: "art. 2409-ter c.c."
+  client_instance: null  # master generico, tutti i clienti
+  period_label_cell: INDICE!M1
+  current_period: "[PERIODO]"
+  current_quarter_id: null
+  do_not_touch_sheets:
+    - DS_INTERNAL_DOCUMENT_STORAGE
+    - DS_INTERNAL_SETTINGS_STORAGE
+    - DS_INTERNAL_DOCGROUP_STORAGE
+    - DS_INTERNAL_SNIP_STORAGE
+
+status:
+  allowed: ["✓", "✗", "wip", "N/A"]
+  normalize:
+    "n/a": "N/A"
+    "NA": "N/A"
+    "ok": "✓"
+  meaning:
+    "✓": received_or_done
+    "✗": skipped_control
+    wip: missing_or_in_progress
+    "N/A": not_applicable_to_client
+  write_uppercase_na: true
+  missing_docs_status: ["wip", ""]
+  skip_status: ["✗", "N/A"]
+
+indice:
+  client: INDICE!A1
+  title: INDICE!D1
+  period: INDICE!M1
+  request_date_cell: INDICE!F5
+  activity_date: INDICE!F6
+  conclusion_shape: "textbox over H5:M29"
+  done_by: INDICE!C28
+  reviewed_by: INDICE!C29
+  section_status:
+    A: {row: 10, cell: INDICE!F10, title: "Sistema di controllo interno", sheet: A}
+    B: {row: 11, cell: INDICE!F11, title: "Libri obbligatori", sheet: B}
+    C: {row: 12, cell: INDICE!F12, title: "Adempimenti tributari e previdenziali", sheet: C}
+    D: {row: 13, cell: INDICE!F13, title: "Test su rilevazioni contabili", sheet: D}
+    E: {row: 14, cell: INDICE!F14, title: "Disponibilità liquide", sheet: E}
+    F: {row: 15, cell: INDICE!F15, title: "Lettura verbali degli Organi sociali e di Controllo", sheet: F}
+    G: {row: 16, cell: INDICE!F16, title: "Analisi situazione contabile periodica", sheet: G}
+    H: {row: 17, cell: INDICE!F17, title: "Colloqui con la Direzione", sheet: H}
+    I: {row: 18, cell: INDICE!F18, title: "Operazioni particolarmente significative", sheet: I}
+  status_range: INDICE!F10:F18
+  header_formulas:
+    client: "=+INDICE!A1"
+    period: "=+INDICE!M1"
+    done_by: "=INDICE!C28"
+    reviewed_by: "=+INDICE!C29"
+  known_bug_fixed: "B5 on working papers = INDICE!F6 (activity date). F5 is request date."
+
+richiesta_doc:
+  sheet: "Richiesta doc"
+  title_row: 2
+  freeze: A7
+  group_header_rows: [4, 10, 16, 23, 28, 35, 40]
+  note_bozza_verbali: A21
+  quarters:
+    Q4_2025:
+      header: D3
+      hidden: true
+      date_rif: D
+      note_cliente: E
+      note_bt: F
+      received: G
+    Q1_2026:
+      header: I3
+      hidden: false
+      date_rif: I
+      note_cliente: J
+      note_bt: K
+      received: L
+    Q2_2026:
+      header: N3
+      hidden: false
+      current: true
+      date_rif: N
+      note_cliente: O
+      note_bt: P
+      received: Q
+  write_only_current_quarter: true
+  items:
+    - id: A.1
+      row: 5
+      group: A
+      papers: [A]
+      kind: information
+      required_default: unknown
+    - id: A.2
+      row: 6
+      group: A
+      papers: [A, I, H]
+      kind: information
+      required_default: unknown
+    - id: A.3
+      row: 7
+      group: A
+      papers: [A, C]
+      kind: document
+      required_default: unknown
+    - id: A.4
+      row: 8
+      group: A
+      papers: [E, I]
+      kind: information
+      required_default: unknown
+    - id: B.1
+      row: 11
+      group: B
+      papers: [G, E]
+      kind: structured_file
+      formats: [xlsx, txt, xls]
+      classify_hints: [bilancino, "trial balance", "bilancio di verifica"]
+      fills:
+        - {sheet: G, what: trial_balance}
+        - {sheet: E, what: saldo_coge}
+    - id: B.2
+      row: 12
+      group: B
+      papers: [G]
+      kind: structured_file
+      classify_hints: [gestionale, budget, "conto economico"]
+    - id: B.3
+      row: 13
+      group: B
+      papers: [G]
+      kind: structured_file
+      classify_hints: [budget, cashflow, tesoreria]
+    - id: B.4
+      row: 14
+      group: B
+      papers: [B, D]
+      kind: structured_file
+      formats: [txt]
+      classify_hints: [giornale, mastrini, "prima nota"]
+    - id: C.1
+      row: 17
+      group: C
+      papers: [F]
+      kind: document
+      classify_hints: ["verbale assemblea", "assemblea soci"]
+    - id: C.2
+      row: 18
+      group: C
+      papers: [F]
+      kind: document
+      classify_hints: ["verbale cda", "consiglio di amministrazione"]
+    - id: C.3
+      row: 19
+      group: C
+      papers: [F]
+      kind: document
+      classify_hints: ["verbale collegio", sindaci]
+    - id: C.4
+      row: 20
+      group: C
+      papers: [F]
+      kind: document
+      classify_hints: ["libro soci"]
+    - id: D.1
+      row: 24
+      group: D
+      papers: [B]
+      kind: scan
+      classify_hints: ["giornale definitivo", bollato]
+    - id: D.2
+      row: 25
+      group: D
+      papers: [B]
+      kind: scan
+      classify_hints: ["libro inventari"]
+    - id: D.3
+      row: 26
+      group: D
+      papers: [B]
+      kind: document
+      classify_hints: ["registro iva"]
+    - id: E.1
+      row: 29
+      group: E
+      papers: [C]
+      kind: document
+      classify_hints: [f24, quietanza, "delega f24"]
+      fills:
+        - {sheet: C, what: f24_table}
+    - id: E.2
+      row: 30
+      group: E
+      papers: [C]
+      kind: document
+      classify_hints: [alifond, fasa, previndai, anima, fasi, enasarco]
+      fills:
+        - {sheet: C, what: fondi_trimestrali}
+    - id: E.3
+      row: 31
+      group: E
+      papers: [C]
+      kind: document
+      classify_hints: [lipe, "liquidazione iva"]
+      fills:
+        - {sheet: C, cell_row: 24, what: lipe_status}
+    - id: E.4
+      row: 32
+      group: E
+      papers: [C]
+      kind: document
+      classify_hints: ["dichiarazione iva", "iva annuale"]
+    - id: E.5
+      row: 33
+      group: E
+      papers: [C]
+      kind: document
+      classify_hints: [intrastat]
+    - id: F.1
+      row: 36
+      group: F
+      papers: [E]
+      kind: document
+      classify_hints: ["estratto conto", "e/c"]
+      fills:
+        - {sheet: E, what: saldo_ec}
+    - id: F.2
+      row: 37
+      group: F
+      papers: [E]
+      kind: document
+      classify_hints: [riconciliazione, "bank rec"]
+      fills:
+        - {sheet: E, what: sospesi}
+    - id: F.3
+      row: 38
+      group: F
+      papers: [E]
+      kind: document
+      classify_hints: ["centrale rischi"]
+    - id: G.1
+      row: 41
+      group: G
+      papers: [C]
+      kind: document
+      classify_hints: [cedolino, cedolone, lul, "prima nota"]
+    - id: G.2
+      row: 42
+      group: G
+      papers: [C, E]
+      kind: document
+      classify_hints: ["pagamento stipendi", "bonifico stipendi"]
+
+working_papers:
+  A:
+    title: "SEZIONE A - SISTEMA DI CONTROLLO INTERNO"
+    content: org_chart_image
+    auto_fill: none
+  B:
+    title: "SEZIONE B - LIBRI OBBLIGATORI"
+    table:
+      header_row: 10
+      data_rows: [11, 12, 13, 14, 15]
+      columns:
+        A: libro
+        C: nr_reg
+        D: data_reg
+        E: pag
+        F: descrizione
+        G: note
+      libri_fissi:
+        11: "Libro giornale definitivo"
+        12: "Libro giornale provvisorio anno in corso"
+        13: "Registro Beni Ammortizzabili"
+        14: "Registro IVA acquisti"
+        15: "Libro unico del lavoro"
+  C:
+    title: "SEZIONE C - ADEMPIMENTI TRIBUTARI E PREVIDENZIALI"
+    f24:
+      months: {B: 2026-01, C: 2026-02, D: 2026-03, E: 2026-04, F: 2026-05, G: 2026-06}
+      data_rif_row: 10
+      data_vers_row: 11
+      importo_row: 12
+      protocollo_row: 13
+      protocollo_format: text
+      importo_style: sum_of_tax_lines
+      scope_open: "APERTO: solo mesi del trimestre o YTD?"
+    fondi:
+      header_row: 18
+      status_range: B19:E24
+      rows:
+        19: QUADRIFOR
+        20: BB PREV IMPIEGATI
+        21: MARIO NEGRI
+        22: MARIO BESUSSO
+        23: ANTONIO PASTORE
+        24: LIPE
+      mapping_to_E2: APERTO
+    annuali:
+      header_row: 27
+      items:
+        28:
+          name: "TASSA ANNUALE LIBRI SOCI"
+          codice_tributo: "7085"
+          year: B27
+          data_invio: C28
+          protocollo: D28
+  D:
+    title: "SEZIONE D - TEST SU RILEVAZIONI CONTABILI"
+    auto_fill: none
+    skip_is_human_only: true
+  E:
+    title: "SEZIONE E - DISPONIBILITA' LIQUIDE"
+    period_title_cell: E!A9
+    period_title_must_match_indice: true
+    table:
+      header_row: 11
+      first_data_row: 12
+      last_data_row: 28
+      totals_row: 29
+      columns:
+        A: coge
+        B: banca
+        C: tipo_conto
+        D: numero_conto
+        E: saldo_coge
+        F: saldo_ec
+        G: sospesi
+        H: check
+        I: note_bt
+      check_formula: "=E{r}-F{r}"
+      check_formula_exceptions: {}
+      totals:
+        E29: "=SUM(E12:E28)"
+        F29: "=SUM(F12:F28)"
+        G29: "=SUM(G12:G28)"
+        H29: "=SUM(H12:H28)"
+    master_banche_ferrero:
+      - {coge: "100915100020", banca: "INTESA SANPAOLO SPA", conto: "00527/1000/00068796"}
+      - {coge: "100915100110", banca: "MONTE DEI PASCHI DI SIENA", conto: "APERTO"}
+      - {coge: "100915100121", banca: "UNICREDIT SPA", conto: "101476918"}
+      - {coge: "100915100130", banca: "BANCO BPM SPA", conto: "23515"}
+      - {coge: "100915100170", banca: "BNL GRUPPO BNP PARIBAS", conto: "000240"}
+      - {coge: "100915100210", banca: "BANCA DEL PIEMONTE S.P.A.", conto: "88419-7"}
+      - {coge: "100915100232", banca: "CREDITO EMILIANO SPA", conto: "1085924"}
+      - {coge: "100915100233", banca: "CREDEM EUROMOBILIARE SPA", conto: "198105"}
+      - {coge: "100915100700", banca: "DEUTSCHE BANK SPA 830320", conto: "830320-1"}
+      - {coge: "100915100701", banca: "DEUTSCHE BANK SPA 830321", conto: "830321-0"}
+      - {coge: "100915100704", banca: "DEUTSCHE C/GARANZ.401195", conto: "401195"}
+      - {coge: "100915100800", banca: "MEDIOBANCA SPA", conto: "13757-0"}
+      - {coge: "100915100900", banca: "ALLIANZ BANK SPA", conto: "949810"}
+      - {coge: "100915100350", banca: "BPER BANCA SPA", conto: "38035173"}
+      - {coge: "100915100360", banca: "BPER BANCA SPA (EX UBI)", conto: "42216254"}
+      - {coge: "100915100500", banca: "PASSADORE C/C N.1613722", conto: "000001613722"}
+      - {coge: "100915100501", banca: "PASSADORE C/C N.1614336", conto: "000001614336"}
+    extra_docs_not_in_table:
+      - "Intesa cc_USD"
+    source_links:
+      saldo_coge: "files\\andamento\\bilancino*.xlsx"
+      saldo_ec: "files\\banche"
+  F:
+    title: "SEZIONE F - LETTURA VERBALI DEGLI ORGANI SOCIALI E DI CONTROLLO"
+    table:
+      header_row: 9
+      columns:
+        B: libro
+        C: ultima_pagina
+        D: data_ultimo_verbale
+        E: ultimo_verbale_bozza
+        F: note
+      libri:
+        10: "Libro dei soci"
+        11: "Libro verbali ASSEMBLEE"
+        12: "Libro Obbligazione"
+        13: "Libro verbali del Consiglio di Amministrazione"
+      missing_row: "Libro verbali Collegio sindacale"  # APERTO
+    keep_ole_word_notes: true
+  G:
+    title: "SEZIONE G - ANALISI SITUAZIONE CONTABILE PERIODICA"
+    table:
+      header_row: 9
+      first_data_row: 10
+      columns:
+        B: account_number
+        D: account_name
+        E: amount_current
+        F: amount_prior
+        G: amount_chg
+        H: pct_chg
+    current_header_is_period_end: true
+    formulas_not_preloaded: true
+  H:
+    title: "SEZIONE H - COLLOQUI CON LA DIREZIONE"
+    auto_fill: none
+  I:
+    title: "SEZIONE I - OPERAZIONI PARTICOLARMENTE SIGNIFICATIVE"
+    auto_fill: none
+
+missing_docs_report:
+  source: richiesta_doc
+  quarter: current
+  include_status: ["wip", ""]
+  exclude_status: ["✓", "✗", "N/A"]
+  output: "mancanti.md plus compiled xlsx copy"
+
+automation_gates:
+  closed_2026_09_08:
+    - master_for_all_clients
+    - each_quarter_starts_from_master_plus_new_docs
+    - absent_doc_is_wip
+    - x_means_skipped_control
+    - app_writes_indice_status
+    - ferrero_oddities_were_human_error
+  still_open: [f24_ytd_vs_quarter, fondi_rows, collegio_row_on_F, materiality_threshold, datasnipper_ignore]
