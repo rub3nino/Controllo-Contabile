@@ -9,10 +9,10 @@ documento classificato — è il pezzo che Fase 0 ha lasciato come contratto
 ("un item_id per cui non è stata trovata alcuna evidenza è un fatto
 rilevante") e che qui prende vita per la prima volta.
 
-Non estrae campi strutturati (`Evidence.fields`): quello è compito di
-`backend/extract.py`, che oggi produce dati (F24: data/protocollo/importo,
-bilancino: saldi...) ma non è ancora integrato in questo adapter — vedi
-il riepilogo di Fase 1 per la segnalazione esplicita di questa lacuna.
+Fase 5: per i quattro item con estrattori puntuali già disponibili
+(`E.1`, `F.1`, `B.4`, `D.1`) popola anche `Evidence.fields`. Un errore di
+lettura/OCR degrada sempre a lista vuota per il singolo documento: non
+impedisce alla scansione di produrre le altre evidenze.
 
 Fix Fase 2: le voci di `client_config.extra_items` (es. il libro del
 Collegio sindacale) contano come "applicabili" esattamente come le 25 voci
@@ -23,7 +23,18 @@ visibile a nessuno, né trovato né segnalato come mancante.
 
 from __future__ import annotations
 
-from backend.domain.models import ClientConfig, Evidence
+from pathlib import Path
+
+from backend.domain.models import ClientConfig, Evidence, ExtractedField
+from backend.extract import (
+    extract_file,
+    find_f24_importo,
+    find_payment_date,
+    find_protocol,
+    find_statement_balance,
+    parse_giornale_last,
+    parse_mastrini_last,
+)
 from backend.models import DocumentOut
 
 # Metodo usato per le Evidence(found=False) generate da questo adapter: la
@@ -35,6 +46,51 @@ from backend.models import DocumentOut
 # (Evidence.method resta `str` libero, vedi backend/domain/models.py) e non
 # richiede di toccarlo.
 ABSENCE_METHOD = "scan"
+
+
+def _extracted_fields(doc: DocumentOut) -> list[ExtractedField]:
+    """Estrae i campi supportati senza propagare errori del singolo file."""
+    try:
+        path = Path(doc.path)
+        if doc.item_id == "E.1":
+            text, _ = extract_file(path, pages="key")
+            values = (
+                ("importo", find_f24_importo(text), "EUR"),
+                ("data_versamento", find_payment_date(text), None),
+                ("protocollo", find_protocol(text), None),
+            )
+            return [
+                ExtractedField(kind=kind, value=str(value), unit=unit)
+                for kind, value, unit in values
+                if value is not None
+            ]
+        if doc.item_id == "F.1":
+            text, _ = extract_file(path, pages="key")
+            balance = find_statement_balance(text)
+            return (
+                [ExtractedField(kind="saldo_ec", value=str(balance), unit="EUR")]
+                if balance is not None
+                else []
+            )
+        if doc.item_id in {"B.4", "D.1"}:
+            if doc.ext.lower() == ".xlsx":
+                parsed = parse_giornale_last(path)
+            else:
+                text, _ = extract_file(path, pages="key")
+                parsed = parse_mastrini_last(text)
+            mapping = (
+                ("ultimo_numero_registrazione", "nr_reg"),
+                ("data_ultimo_verbale", "data_reg"),
+                ("ultima_pagina", "page"),
+            )
+            return [
+                ExtractedField(kind=kind, value=str(parsed[key]))
+                for kind, key in mapping
+                if parsed.get(key) is not None
+            ]
+    except Exception:
+        return []
+    return []
 
 
 def documents_to_evidence(
@@ -69,6 +125,7 @@ def documents_to_evidence(
                 method=doc.method,
                 confidence=doc.confidence,
                 excerpt=doc.excerpt,
+                fields=_extracted_fields(doc),
             )
         )
         found_items.add(doc.item_id)

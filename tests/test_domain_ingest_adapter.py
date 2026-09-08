@@ -101,3 +101,45 @@ def test_extra_items_and_applicable_items_coexist():
     by_item = {e.item_id: e for e in evidences}
     assert by_item["E.1"].found is True
     assert by_item["CS.1"].found is False  # applicabile (extra), ma assente
+
+
+# --- Fase 5: estrazione campo-per-campo su fixture reali ---
+
+def real_doc(item_id: str, name: str) -> DocumentOut:
+    path = ROOT / "fixtures" / "docs" / name
+    return DocumentOut(
+        id=f"real-{name}", name=name, path=str(path), ext=path.suffix,
+        size=path.stat().st_size, item_id=item_id, method="filename",
+    )
+
+
+def test_real_f24_populates_extracted_fields():
+    cfg = ClientConfig(client_id="demo", display_name="Demo", applicable_items=["E.1"])
+    evidence = documents_to_evidence(
+        "p1", [real_doc("E.1", "F24_aprile_2026.txt")], cfg
+    )[0]
+    fields = {field.kind: field for field in evidence.fields}
+    assert fields["importo"].value == "35616.68"
+    assert fields["importo"].unit == "EUR"
+    assert fields["data_versamento"].value == "16/04/2026"
+    assert fields["protocollo"].value == "26041514340545867"
+
+
+def test_real_bank_statement_populates_balance():
+    cfg = ClientConfig(client_id="demo", display_name="Demo", applicable_items=["F.1"])
+    evidence = documents_to_evidence(
+        "p1", [real_doc("F.1", "Estratto_Unicredit_30.06.2026.txt")], cfg
+    )[0]
+    assert len(evidence.fields) == 1
+    assert evidence.fields[0].kind == "saldo_ec"
+    assert evidence.fields[0].value == "3037.12"
+    assert evidence.fields[0].unit == "EUR"
+
+
+def test_missing_extractable_document_degrades_to_empty_fields():
+    cfg = ClientConfig(client_id="demo", display_name="Demo", applicable_items=["E.1"])
+    evidence = documents_to_evidence(
+        "p1", [doc("E.1", name="inesistente.pdf")], cfg
+    )[0]
+    assert evidence.found is True
+    assert evidence.fields == []
