@@ -142,7 +142,7 @@ async function throwIfNotOk(res: Response): Promise<void> {
   throw new ApiError(parseErrorBody(t, res.statusText || "Errore dal server"));
 }
 
-async function j<T>(url: string, init?: RequestInit): Promise<T> {
+export async function j<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
