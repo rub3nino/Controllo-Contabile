@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from backend.models import Status
 
@@ -224,6 +224,19 @@ class VerificationResult(BaseModel):
     )
 
     computed_at: str = Field(default_factory=_now, description="Timestamp ISO del calcolo. Un nuovo calcolo produce un nuovo VerificationResult, non un update in-place (storico per verifiche 11/12).")
+
+    @field_validator("status")
+    @classmethod
+    def _status_non_vuoto(cls, v: Status) -> Status:
+        """Fix da revisione Fase 0 (docs/reviews/fase0_review.md, punto 5):
+        ``Status`` resta il Literal condiviso di backend.models (non va
+        ridefinito), ma un VerificationResult *calcolato* deve sempre avere
+        uno dei quattro stati veri — "" è ammesso dal tipo solo per
+        compatibilità con AppState.checklist esistente, non ha senso qui.
+        """
+        if v == "":
+            raise ValueError("VerificationResult.status non può essere '' — usa uno tra ✓ | wip | ✗ | N/A")
+        return v
 
 
 class FindingRef(BaseModel):

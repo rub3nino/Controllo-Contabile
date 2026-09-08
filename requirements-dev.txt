@@ -1,0 +1,5 @@
+# Dipendenze solo per sviluppo/test, separate da requirements.txt (runtime).
+# pyyaml è già in requirements.txt (serve anche a runtime per regole/schema.yaml
+# e per i ClientConfig di backend/domain): non ripetuto qui.
+-r requirements.txt
+pytest>=8.0
