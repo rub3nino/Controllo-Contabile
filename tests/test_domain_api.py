@@ -1,5 +1,6 @@
 """Fase 3a — il motore di dominio esposto dall'app FastAPI reale."""
 
+from datetime import datetime
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -122,3 +123,58 @@ def test_domain_excel_export_requires_saved_verifications(tmp_path: Path, monkey
     response = client.get("/api/domain/pratiche/excel-too-soon/export.xlsx")
     assert response.status_code == 409
     assert "richiama prima" in response.json()["detail"]
+
+
+def test_override_history_returns_all_overrides(tmp_path: Path, monkeypatch):
+    client = api_client(tmp_path, monkeypatch)
+    assert scan(client, "override-history").status_code == 200
+    for target, decision in (("E.1", "✗"), ("F", "N/A")):
+        response = client.post(
+            "/api/domain/pratiche/override-history/overrides",
+            json={
+                "scope": "item" if "." in target else "section",
+                "target": target,
+                "decision": decision,
+            },
+        )
+        assert response.status_code == 201
+
+    response = client.get("/api/domain/pratiche/override-history/overrides")
+    assert response.status_code == 200
+    assert {item["target"] for item in response.json()["overrides"]} == {"E.1", "F"}
+
+
+def test_override_history_returns_404_for_missing_pratica(tmp_path: Path, monkeypatch):
+    client = api_client(tmp_path, monkeypatch)
+    response = client.get("/api/domain/pratiche/missing/overrides")
+    assert response.status_code == 404
+
+
+def test_override_gets_current_timestamp_by_default(tmp_path: Path, monkeypatch):
+    client = api_client(tmp_path, monkeypatch)
+    assert scan(client, "override-timestamp").status_code == 200
+    response = client.post(
+        "/api/domain/pratiche/override-timestamp/overrides",
+        json={"scope": "section", "target": "D", "decision": "✗"},
+    )
+    decided_at = response.json()["override"]["decided_at"]
+    assert response.status_code == 201
+    assert decided_at is not None
+    assert datetime.fromisoformat(decided_at).tzinfo is not None
+
+
+def test_override_preserves_explicit_timestamp(tmp_path: Path, monkeypatch):
+    client = api_client(tmp_path, monkeypatch)
+    assert scan(client, "override-import").status_code == 200
+    decided_at = "2025-12-31T23:59:58+00:00"
+    response = client.post(
+        "/api/domain/pratiche/override-import/overrides",
+        json={
+            "scope": "item",
+            "target": "E.1",
+            "decision": "N/A",
+            "decided_at": decided_at,
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["override"]["decided_at"] == decided_at

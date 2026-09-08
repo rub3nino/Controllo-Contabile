@@ -23,11 +23,13 @@ visibile a nessuno, né trovato né segnalato come mancante.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from backend.domain.models import ClientConfig, Evidence, ExtractedField
 from backend.extract import (
     extract_file,
+    find_dates,
     find_f24_importo,
     find_payment_date,
     find_protocol,
@@ -88,6 +90,22 @@ def _extracted_fields(doc: DocumentOut) -> list[ExtractedField]:
                 for kind, key in mapping
                 if parsed.get(key) is not None
             ]
+        if doc.item_id in {"C.1", "C.2", "C.4"}:
+            text, _ = extract_file(path, pages="key")
+            filename_date = re.search(r"(20\d{2})(\d{2})(\d{2})", doc.name)
+            if filename_date:
+                value = (
+                    f"{filename_date.group(3)}/{filename_date.group(2)}/"
+                    f"{filename_date.group(1)}"
+                )
+            else:
+                dates = find_dates(text)
+                value = dates[-1] if dates else None
+            return (
+                [ExtractedField(kind="data_verbale", value=value)]
+                if value is not None
+                else []
+            )
     except Exception:
         return []
     return []

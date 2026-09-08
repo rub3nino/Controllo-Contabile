@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
@@ -34,6 +35,7 @@ class OverrideRequest(BaseModel):
     decision: Literal["✗", "N/A"]
     note: str = ""
     decided_by: str | None = None
+    decided_at: str | None = None
 
 
 def _store() -> EvidenceStore:
@@ -127,9 +129,22 @@ def create_override(pratica_id: str, body: OverrideRequest):
     store = _store()
     if store.get_pratica(pratica_id) is None:
         raise HTTPException(status_code=404, detail="Pratica non trovata")
-    override = HumanOverride(pratica_id=pratica_id, **body.model_dump())
+    override_data = body.model_dump()
+    if override_data["decided_at"] is None:
+        override_data["decided_at"] = datetime.now(timezone.utc).isoformat(
+            timespec="seconds"
+        )
+    override = HumanOverride(pratica_id=pratica_id, **override_data)
     store.save_human_override(override)
     return {"override": override}
+
+
+@router.get("/pratiche/{pratica_id}/overrides")
+def overrides(pratica_id: str):
+    store = _store()
+    if store.get_pratica(pratica_id) is None:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+    return {"overrides": store.human_overrides_for_pratica(pratica_id)}
 
 
 @router.get("/pratiche/{pratica_id}/export.xlsx")

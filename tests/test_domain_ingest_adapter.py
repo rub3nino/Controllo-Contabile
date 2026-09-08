@@ -143,3 +143,22 @@ def test_missing_extractable_document_degrades_to_empty_fields():
     )[0]
     assert evidence.found is True
     assert evidence.fields == []
+
+
+def test_real_verbale_populates_meeting_date():
+    cfg = ClientConfig(client_id="demo", display_name="Demo", applicable_items=["C.1"])
+    evidence = documents_to_evidence(
+        "p1", [real_doc("C.1", "Verbale_CDA_05.05.2026.txt")], cfg
+    )[0]
+    assert len(evidence.fields) == 1
+    assert evidence.fields[0].kind == "data_verbale"
+    assert evidence.fields[0].value == "05/05/2026"
+
+
+def test_missing_verbale_degrades_to_empty_fields():
+    cfg = ClientConfig(client_id="demo", display_name="Demo", applicable_items=["C.2"])
+    evidence = documents_to_evidence(
+        "p1", [doc("C.2", name="verbale-inesistente.pdf")], cfg
+    )[0]
+    assert evidence.found is True
+    assert evidence.fields == []
