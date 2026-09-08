@@ -102,3 +102,23 @@ def test_clients_and_legacy_endpoints_still_work(tmp_path: Path, monkeypatch):
     assert legacy.status_code == 200
     assert client.get("/api/state").json()["pratica"]["client"] == "Legacy Demo"
     assert client.get("/api/health").json() == {"ok": True}
+
+
+def test_domain_excel_export_end_to_end(tmp_path: Path, monkeypatch):
+    client = api_client(tmp_path, monkeypatch)
+    assert scan(client, "excel-export").status_code == 200
+    assert client.get("/api/domain/pratiche/excel-export/verifiche").status_code == 200
+
+    exported = client.get("/api/domain/pratiche/excel-export/export.xlsx")
+    assert exported.status_code == 200
+    assert exported.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    assert exported.content.startswith(b"PK")
+
+
+def test_domain_excel_export_requires_saved_verifications(tmp_path: Path, monkeypatch):
+    client = api_client(tmp_path, monkeypatch)
+    assert scan(client, "excel-too-soon").status_code == 200
+
+    response = client.get("/api/domain/pratiche/excel-too-soon/export.xlsx")
+    assert response.status_code == 409
+    assert "richiama prima" in response.json()["detail"]

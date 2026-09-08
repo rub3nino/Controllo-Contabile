@@ -5,16 +5,18 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.domain.client_classify import scan_folder_for_client
 from backend.domain.client_config_loader import list_clients, load_client_config
 from backend.domain.continuity import carry_forward_open_findings
 from backend.domain.ingest_adapter import documents_to_evidence
+from backend.domain.excel_renderer import render_domain_workbook
 from backend.domain.models import ClientConfig, HumanOverride, PraticaRecord
 from backend.domain.store import EvidenceStore
 from backend.domain.verification_engine import evaluate_pratica
-from backend.workspace import new_pratica_id, resolve_link, storage_root
+from backend.workspace import new_pratica_id, output_dir, resolve_link, storage_root
 
 router = APIRouter(prefix="/api/domain", tags=["domain"])
 
@@ -128,3 +130,28 @@ def create_override(pratica_id: str, body: OverrideRequest):
     override = HumanOverride(pratica_id=pratica_id, **body.model_dump())
     store.save_human_override(override)
     return {"override": override}
+
+
+@router.get("/pratiche/{pratica_id}/export.xlsx")
+def export_workbook(pratica_id: str):
+    store = _store()
+    pratica = store.get_pratica(pratica_id)
+    if pratica is None:
+        raise HTTPException(status_code=404, detail="Pratica non trovata")
+    verifiche = store.latest_verification_results(pratica_id)
+    if not verifiche:
+        raise HTTPException(
+            status_code=409,
+            detail="Nessuna verifica calcolata: richiama prima l'endpoint /verifiche.",
+        )
+    path = render_domain_workbook(
+        pratica,
+        verifiche,
+        store.open_findings_for_client(pratica.client),
+        output_dir(pratica_id),
+    )
+    return FileResponse(
+        path,
+        filename=path.name,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
