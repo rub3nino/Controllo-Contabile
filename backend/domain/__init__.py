@@ -10,6 +10,7 @@ codice, non di duplicarlo. Nessuno di questi import scrive nei moduli
 esistenti.
 """
 
+from backend.domain.client_classify import scan_folder_for_client
 from backend.domain.continuity import carry_forward_open_findings
 from backend.domain.ingest_adapter import documents_to_evidence
 from backend.domain.models import (
@@ -43,4 +44,5 @@ __all__ = [
     "documents_to_evidence",
     "evaluate_pratica",
     "evaluate_section",
+    "scan_folder_for_client",
 ]

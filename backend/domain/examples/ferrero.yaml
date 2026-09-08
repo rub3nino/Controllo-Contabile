@@ -44,15 +44,22 @@ applicable_items:
   - G.2
 
 # APERTO in TEMPLATE_RULES.md §7.6 / §13 punto 3: se il libro verbali del
-# Collegio sindacale va aggiunto come riga della carta F. Non e' una
-# decisione presa (Ruben non l'ha chiusa), quindi qui resta vuoto invece di
-# inventare una risposta. Se/quando verra' deciso di aggiungerlo, la voce
-# andrebbe qui con qualcosa come:
-#   - id: F.5
-#     label: "Libro verbali del Collegio sindacale"
-#     section: F
-#     note: "TEMPLATE_RULES.md §7.6/§13.3 — aperto al 2026-09-08, decidere prima di generalizzare"
-extra_items: []
+# Collegio sindacale va aggiunto come riga della carta F sul MASTER Excel
+# reale. Quella decisione resta non presa (Ruben non l'ha chiusa) e questo
+# file non la prende: TEMPLATE_RULES.md §7.6/§13.3 restano APERTI, invariati.
+# La voce qui sotto e' solo la dimostrazione, nella Fase 2, che il
+# meccanismo ClientCatalogItem + hints (backend/domain/client_classify.py)
+# sa rappresentare e classificare un caso reale come questo, SE e QUANDO la
+# decisione sul master verra' presa — non e' quella decisione.
+extra_items:
+  - id: CS.1
+    label: "Libro verbali del Collegio sindacale"
+    section: F
+    note: "TEMPLATE_RULES.md §7.6/§13.3 — riga aperta sul master reale al 2026-09-08; questa voce dimostra solo il meccanismo di Fase 2, non anticipa quella decisione."
+    hints:
+      - "collegio sindacale"
+      - "verbale collegio"
+      - sindaci
 
 # 17 conti bancari, da regole/schema.yaml:working_papers.E.master_banche_ferrero
 # (stessa fonte di TEMPLATE_RULES.md §7.5).

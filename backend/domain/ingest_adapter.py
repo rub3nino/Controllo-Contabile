@@ -13,6 +13,12 @@ Non estrae campi strutturati (`Evidence.fields`): quello è compito di
 `backend/extract.py`, che oggi produce dati (F24: data/protocollo/importo,
 bilancino: saldi...) ma non è ancora integrato in questo adapter — vedi
 il riepilogo di Fase 1 per la segnalazione esplicita di questa lacuna.
+
+Fix Fase 2: le voci di `client_config.extra_items` (es. il libro del
+Collegio sindacale) contano come "applicabili" esattamente come le 25 voci
+standard di `applicable_items`. Prima di questo fix una voce extra senza
+documento non generava mai una `Evidence(found=False)`: il gap non era
+visibile a nessuno, né trovato né segnalato come mancante.
 """
 
 from __future__ import annotations
@@ -39,11 +45,12 @@ def documents_to_evidence(
     """Traduce i documenti classificati di una pratica in `Evidence`.
 
     Un `DocumentOut` con `item_id` non applicabile a questo cliente (non in
-    `client_config.applicable_items`) viene ignorato silenziosamente: è N/A
-    per il cliente, non deve comparire né come trovato né come mancante
-    (altrimenti un cliente senza Intrastat vedrebbe comunque "E.5 mancante").
+    `client_config.applicable_items` né in `client_config.extra_items`)
+    viene ignorato silenziosamente: è N/A per il cliente, non deve comparire
+    né come trovato né come mancante (altrimenti un cliente senza Intrastat
+    vedrebbe comunque "E.5 mancante").
     """
-    applicable = set(client_config.applicable_items)
+    applicable = set(client_config.applicable_items) | {item.id for item in client_config.extra_items}
     evidences: list[Evidence] = []
     found_items: set[str] = set()
 

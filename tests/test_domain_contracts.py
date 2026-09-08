@@ -46,7 +46,18 @@ def test_ferrero_has_25_catalog_items_and_17_banks():
     assert len(cfg.applicable_items) == 25
     assert len(set(cfg.applicable_items)) == 25  # nessun duplicato
     assert len(cfg.banks) == 17
-    assert cfg.extra_items == []  # Collegio sindacale: APERTO, non deciso
+
+
+def test_ferrero_collegio_sindacale_extra_item_is_a_demo_not_a_decision():
+    # Fase 2: la voce esiste ora per dimostrare il meccanismo
+    # (ClientCatalogItem.hints + client_classify.py), NON perché la
+    # decisione APERTA in TEMPLATE_RULES.md §7.6/§13.3 sia stata presa.
+    cfg = load_ferrero_config()
+    assert len(cfg.extra_items) == 1
+    cs = cfg.extra_items[0]
+    assert cs.id == "CS.1"
+    assert cs.section == "F"
+    assert "collegio sindacale" in cs.hints
 
 
 def test_ferrero_thresholds_are_unset_not_zero():

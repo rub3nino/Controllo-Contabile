@@ -331,6 +331,18 @@ class ClientCatalogItem(BaseModel):
     label: str = Field(description="Descrizione, come ITEM_LABELS.")
     section: Section = Field(description="Carta di lavoro A-I a cui appartiene.")
     note: str | None = Field(default=None, description="Motivo per cui è stato aggiunto, per chi onboarda il cliente in futuro.")
+    hints: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Parole chiave per riconoscere un file su questa voce (nome file e/o testo "
+            "estratto), stesso ruolo di `EXTRA_HINTS` in backend/catalog.py ma per-cliente "
+            "invece che globale. Campo aggiunto in Fase 2 (backend/domain/client_classify.py): "
+            "senza hints una voce extra esiste nel catalogo del cliente ma nessun meccanismo "
+            "può classificarci un file contro. Lista vuota = nessuna parola chiave nota, la "
+            "voce resta raggiungibile solo per assegnazione manuale (come DocumentPatch.item_id "
+            "in backend/models.py oggi)."
+        ),
+    )
 
 
 class ClientBankAccount(BaseModel):

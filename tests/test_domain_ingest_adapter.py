@@ -6,7 +6,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from backend.domain import ClientConfig, documents_to_evidence
+from backend.domain import ClientCatalogItem, ClientConfig, documents_to_evidence
 from backend.models import DocumentOut
 
 
@@ -55,3 +55,49 @@ def test_two_documents_same_item_id_both_kept():
     )
     assert len(evidences) == 2
     assert all(e.found for e in evidences)
+
+
+# --- Fase 2: extra_items del cliente contano come applicabili ---
+
+def collegio_extra_item() -> ClientCatalogItem:
+    return ClientCatalogItem(
+        id="CS.1", label="Libro verbali del Collegio sindacale", section="F",
+        hints=["collegio sindacale", "verbale collegio"],
+    )
+
+
+def test_extra_item_document_becomes_found_evidence():
+    cfg = ClientConfig(
+        client_id="demo", display_name="Demo", applicable_items=[],
+        extra_items=[collegio_extra_item()],
+    )
+    evidences = documents_to_evidence("p1", [doc("CS.1", name="Verbale_Collegio_2026.pdf")], cfg)
+    assert len(evidences) == 1
+    assert evidences[0].found is True
+    assert evidences[0].item_id == "CS.1"
+
+
+def test_extra_item_with_no_document_becomes_absent_evidence():
+    # Prima del fix di Fase 2, un item_id non in applicable_items veniva
+    # ignorato — quindi un extra_item senza documento non generava MAI
+    # un'Evidence(found=False): il gap era invisibile. Questo test copre
+    # esattamente quel caso.
+    cfg = ClientConfig(
+        client_id="demo", display_name="Demo", applicable_items=[],
+        extra_items=[collegio_extra_item()],
+    )
+    evidences = documents_to_evidence("p1", [], cfg)
+    assert len(evidences) == 1
+    assert evidences[0].item_id == "CS.1"
+    assert evidences[0].found is False
+
+
+def test_extra_items_and_applicable_items_coexist():
+    cfg = ClientConfig(
+        client_id="demo", display_name="Demo", applicable_items=["E.1"],
+        extra_items=[collegio_extra_item()],
+    )
+    evidences = documents_to_evidence("p1", [doc("E.1")], cfg)
+    by_item = {e.item_id: e for e in evidences}
+    assert by_item["E.1"].found is True
+    assert by_item["CS.1"].found is False  # applicabile (extra), ma assente
