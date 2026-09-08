@@ -13,6 +13,79 @@ PDF_EXTS = {".pdf"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp", ".bmp"}
 
 
+def _safe_read_text_last_page(path: Path, limit: int = 20000) -> str:
+    """Mastrini/giornale TXT: solo l'ultima pagina di stampa (o la coda del file)."""
+    raw = path.read_bytes()
+    text = ""
+    for enc in ("utf-8", "latin-1", "cp1252"):
+        try:
+            text = raw.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if not text:
+        text = raw.decode("utf-8", errors="replace")
+    if "\f" in text:
+        parts = [p for p in text.split("\f") if p.strip()]
+        return (parts[-1] if parts else text)[-limit:]
+    marks = list(re.finditer(r"Pagina\s+\d+", text, re.I))
+    if marks:
+        start = text.rfind("\n", 0, marks[-1].start()) + 1
+        return text[start:][-limit:]
+    return text[-limit:]
+
+
+def parse_mastrini_last(text: str) -> dict:
+    """Dati di chiusura dall'ultima pagina mastrini/giornale."""
+    page = None
+    pm = list(re.finditer(r"Pagina\s+(\d+)", text, re.I))
+    if pm:
+        page = int(pm[-1].group(1))
+    data_reg = None
+    saldo_al = list(re.finditer(r"Progr\.e saldo al\s+(\d{1,2}/\d{1,2}/\d{2,4})", text, re.I))
+    if saldo_al:
+        data_reg = saldo_al[-1].group(1)
+    else:
+        dates = find_dates(text)
+        if dates:
+            data_reg = dates[-1]
+    desc = ""
+    sc = re.search(
+        r"Sottoconto\s+\S+\s+(.+?)(?:\s{2,}Elaborazione|\s*$)",
+        text,
+        re.I | re.M,
+    )
+    if sc:
+        desc = re.sub(r"\s+", " ", sc.group(1)).strip()
+    cut = text[: saldo_al[-1].start()] if saldo_al else text
+    dated = list(re.finditer(r"^\s*\d{1,2}/\d{1,2}/\d{2,4}\b", cut, re.M))
+    if dated:
+        bits = []
+        for line in cut[dated[-1].start() :].splitlines():
+            s = re.sub(r"\d{1,2}/\d{1,2}/\d{2,4}", " ", line)
+            s = re.sub(r"[\d.]+,\d{2}", " ", s)
+            s = re.sub(r"\b\d+\b", " ", s)
+            s = re.sub(r"\s+", " ", s).strip(" -")
+            if re.search(r"[A-Za-zÀ-ÿ]{4,}", s) and not re.search(
+                r"Saldi preced|Progr\.e saldo|Pagina|Elaborazione", s, re.I
+            ):
+                bits.append(s)
+        narrative = " ".join(bits)
+        if narrative:
+            desc = f"{desc} — {narrative}".strip(" —") if desc else narrative
+    if not desc:
+        for line in reversed(text.splitlines()):
+            s = line.strip()
+            if len(s) < 4 or s.startswith("-"):
+                continue
+            if re.search(r"FINE STAMPA|Saldi preced|Progr\.e saldo|Pagina\s+\d+|Elaborazione", s, re.I):
+                continue
+            if re.search(r"[A-Za-zÀ-ÿ]{4,}", s):
+                desc = re.sub(r"\s+", " ", s)
+                break
+    return {"page": page, "data_reg": data_reg, "descrizione": desc[:80], "nr_reg": None}
+
+
 def _safe_read_text(path: Path, limit: int = 80000) -> str:
     raw = path.read_bytes()[: limit * 2]
     for enc in ("utf-8", "latin-1", "cp1252"):
@@ -51,10 +124,11 @@ def extract_xlsx_text(path: Path, limit: int = 80000) -> str:
 
 
 def extract_pdf_text(
-    path: Path, limit: int = 80000, ocr: bool = True, layout: bool = False
+    path: Path, limit: int = 80000, ocr: bool = True, layout: bool = False, pages: str = "key"
 ) -> tuple[str, str]:
     """Returns (text, method). PyMuPDF first (handles AES); OCR only if asked."""
     text = ""
+    native_pages = 200 if pages == "all" else 40
     try:
         import pymupdf
 
@@ -63,10 +137,15 @@ def extract_pdf_text(
             if doc.needs_pass:
                 return "", "pdf-encrypted"
             parts = []
-            for i, page in enumerate(doc):
-                if i >= 40:
-                    break
-                parts.append(page.get_text() or "")
+            n = doc.page_count
+            if pages == "last" and n:
+                parts.append(doc[n - 1].get_text() or "")
+            else:
+                native_pages = 200 if pages == "all" else 40
+                for i, page in enumerate(doc):
+                    if i >= native_pages:
+                        break
+                    parts.append(page.get_text() or "")
             text = "\n".join(parts)
         finally:
             doc.close()
@@ -76,15 +155,20 @@ def extract_pdf_text(
 
             reader = PdfReader(str(path))
             parts = []
-            for i, page in enumerate(reader.pages[:40]):
-                parts.append(page.extract_text() or "")
+            if pages == "last" and reader.pages:
+                parts.append(reader.pages[-1].extract_text() or "")
+            else:
+                cap = 200 if pages == "all" else native_pages
+                for i, page in enumerate(reader.pages[:cap]):
+                    parts.append(page.extract_text() or "")
             text = "\n".join(parts)
         except Exception:
             text = ""
     if len(text.strip()) >= 80:
         return text[:limit], "pdf-text"
     if ocr:
-        ocr_t = ocr_pdf(path, limit, layout=layout)
+        ocr_limit = 200000 if pages == "all" else limit
+        ocr_t = ocr_pdf(path, ocr_limit, layout=layout, pages=pages)
         if ocr_t.strip():
             return ocr_t, "ocr"
     return text[:limit], "pdf-text"
@@ -108,7 +192,42 @@ def _rapidocr():
     return _OCR
 
 
+def ocr_wants_layout() -> bool:
+    """VL 0.9B solo se richiesto. Su CPU Mac il default è PP-OCRv6 (leggero)."""
+    return os.getenv("QUADRA_OCR_VL", "0").strip().lower() in {"1", "true", "yes"}
+
+
+def _ocr_max_pages() -> int:
+    try:
+        return max(1, int(os.getenv("QUADRA_OCR_MAX_PAGES", "4")))
+    except ValueError:
+        return 4
+
+
+def _ocr_deep_max() -> int:
+    try:
+        return max(_ocr_max_pages(), int(os.getenv("QUADRA_OCR_DEEP_MAX_PAGES", "80")))
+    except ValueError:
+        return 80
+
+
+def _ocr_deep_skip_over() -> int:
+    try:
+        return max(_ocr_deep_max(), int(os.getenv("QUADRA_OCR_DEEP_SKIP_OVER", "80")))
+    except ValueError:
+        return 80
+
+
+def _ocr_page_indices(n: int, max_pages: int) -> list[int]:
+    if n <= max_pages:
+        return list(range(n))
+    head = max(1, max_pages // 2)
+    tail = max_pages - head
+    return sorted(set(list(range(head)) + list(range(n - tail, n))))
+
+
 def ocr_image_bytes(data: bytes, layout: bool = False) -> str:
+    layout = bool(layout and ocr_wants_layout())
     provider = os.getenv("QUADRA_OCR_PROVIDER", "paddle").lower()
     if provider in {"paddle", "auto"}:
         try:
@@ -135,7 +254,14 @@ def ocr_image_bytes(data: bytes, layout: bool = False) -> str:
     return "\n".join(lines)
 
 
-def ocr_pdf(path: Path, limit: int = 80000, max_pages: int = 40, layout: bool = False) -> str:
+def ocr_pdf(
+    path: Path,
+    limit: int = 80000,
+    max_pages: int | None = None,
+    layout: bool = False,
+    pages: str = "key",
+) -> str:
+    layout = bool(layout and ocr_wants_layout())
     try:
         import pymupdf
     except ImportError:
@@ -143,12 +269,19 @@ def ocr_pdf(path: Path, limit: int = 80000, max_pages: int = 40, layout: bool = 
     doc = pymupdf.open(str(path))
     texts = []
     try:
-        for i, page in enumerate(doc):
-            if i >= max_pages:
-                break
-            # PP-OCR benefits from 300 DPI for small accounting text. The VL
-            # parser uses dynamic visual resolution and is much faster at 200 DPI.
-            dpi = 160 if layout else 300
+        n = doc.page_count
+        if pages == "last":
+            indices = [n - 1] if n else []
+        elif pages == "all":
+            cap = _ocr_deep_max()
+            indices = list(range(min(n, cap)))
+        else:
+            if max_pages is None:
+                max_pages = _ocr_max_pages()
+            indices = _ocr_page_indices(n, max_pages)
+        dpi = 160 if layout else 200
+        for i in indices:
+            page = doc[i]
             pix = page.get_pixmap(matrix=pymupdf.Matrix(dpi / 72, dpi / 72), alpha=False)
             texts.append(ocr_image_bytes(pix.tobytes("png"), layout=layout))
     finally:
@@ -160,9 +293,13 @@ def ocr_image_file(path: Path, layout: bool = False) -> str:
     return ocr_image_bytes(path.read_bytes(), layout=layout)[:80000]
 
 
-def extract_file(path: Path, ocr: bool = True, layout: bool = False) -> tuple[str, str]:
+def extract_file(
+    path: Path, ocr: bool = True, layout: bool = False, pages: str = "key"
+) -> tuple[str, str]:
     ext = path.suffix.lower()
     if ext in TEXT_EXTS:
+        if pages == "last":
+            return _safe_read_text_last_page(path), "txt"
         return _safe_read_text(path), "txt"
     if ext in SHEET_EXTS:
         try:
@@ -170,13 +307,26 @@ def extract_file(path: Path, ocr: bool = True, layout: bool = False) -> tuple[st
         except Exception as e:
             return str(e), "xlsx"
     if ext in PDF_EXTS:
-        return extract_pdf_text(path, ocr=ocr, layout=layout)
+        return extract_pdf_text(path, ocr=ocr, layout=layout, pages=pages)
     if ext in IMAGE_EXTS:
         if not ocr:
             return "", "ocr"
         text = ocr_image_file(path, layout=layout)
         return text, "ocr"
     return "", "filename"
+
+
+def pdf_page_count(path: Path) -> int:
+    try:
+        import pymupdf
+
+        doc = pymupdf.open(str(path))
+        try:
+            return int(doc.page_count)
+        finally:
+            doc.close()
+    except Exception:
+        return 0
 
 
 def parse_amount(text: str) -> float | None:

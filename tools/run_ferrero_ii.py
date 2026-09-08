@@ -24,6 +24,7 @@ os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(ROOT / "output" / ".paddlex")
 os.environ.setdefault("QUADRA_OCR_CACHE", str(ROOT / "output" / ".ocr-cache"))
 os.environ.setdefault("QUADRA_OCR_DEVICE", "cpu")
 os.environ.setdefault("QUADRA_OCR_PROVIDER", "paddle")
+os.environ.setdefault("QUADRA_OCR_DEEP", "0")
 
 
 def log(msg: str) -> None:

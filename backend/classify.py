@@ -17,14 +17,20 @@ ALLOWED_EXT = {
 
 # (item_id, score, needles) — needles matched on "relpath / filename"
 NAME_RULES: list[tuple[str, float, tuple[str, ...]]] = [
-    ("E.1", 10, ("f24", "quietanza")),
-    ("E.2", 10, ("enasarco", "previmoda", "sanimoda", "alifond", "fasa", "previndai", "fasi", "anima")),
+    ("E.1", 10, ("f24", "quietanza", "imposta di bollo", "imposta bollo")),
+    ("E.2", 10, ("enasarco", "previmoda", "sanimoda", "alifond", "fasa", "previndai", "fasi", "anima", "previdenza complementare", "versamenti fondi", "ricevute fondi")),
     ("E.3", 10, ("lipe", "liquidazione periodica")),
-    ("E.4", 8, ("dichiarazione iva", "iva annuale")),
+    ("E.4", 8, ("dichiarazione iva", "iva annuale", "ricevuta di trasmissione", "d.iva", "d. iva")),
     ("E.5", 8, ("intrastat",)),
     ("G.2", 11, ("contabile pag", "pag stip", "pagamento stipendi", "contabile stip")),
-    ("G.1", 8, ("riepilogo", "scritture", "welfare", "cedolin", "cedolone", "amm_coll", "libro unico", "lul")),
-    ("B.4", 9, ("libro giornale", "giornale provv", "mastrini")),
+    ("D.3", 7, ("registro iva", "iva acquisti", "iva vendite", "registro corrispettivi", "registro riepilogativo", "registro ai", "registro ap", "registro ar", "registro ni", "registro va", "registro vg", "registro vi", "registro vr")),
+    ("G.1", 8, (
+        "personale aprile", "personale maggio", "personale giugno", "personale luglio",
+        "personale agosto", "personale settembre", "personale ottobre", "personale novembre",
+        "personale dicembre", "personale gen",
+        "welfare", "cedolin", "cedolone", "amm_coll", "libro unico", "lul",
+    )),
+    ("B.4", 9, ("giornale provv", "mastrini")),
     ("B.1", 8, ("bilancino", "bilancio sap", "bil. verifica", "trial balance")),
     ("F.2", 10, ("saldi_coge", "coge_saldi", "situazione_banche", "df_situazione", "docfinance", "riconciliaz")),
     ("F.3", 8, ("centrale rischi", "centrale_rischi")),
@@ -32,12 +38,12 @@ NAME_RULES: list[tuple[str, float, tuple[str, ...]]] = [
     ("C.2", 7, ("cda", "consiglio di amministrazione", "esame 1", "quater", "marcante")),
     ("C.3", 7, ("collegio sindacale", "sindaci")),
     ("C.4", 6, ("libro soci",)),
-    ("D.3", 7, ("registro iva", "iva acquisti", "iva vendite")),
-    ("D.1", 7, ("giornale definitivo", "giornale bollato")),
+    ("D.1", 12, ("giornale definitivo", "giornale bollato", "libro giornale")),
     ("F.1", 6, (
         "estratto", "estratti", "e/c",
         "bnl_", "credem", "sella", "unicr", "unicredit", "intesa",
         "asti_", "commerz", "biver", "passadore", "bpm",
+        "deutsche", "bper", "mediobanca", "allianz", "piemonte", "mps",
     )),
 ]
 
@@ -47,7 +53,9 @@ PATH_RULES: list[tuple[str, float, tuple[str, ...]]] = [
     ("F.1", 3.0, ("f_banche", "f banche", "/banche/", "ec 30.")),
     ("E.1", 1.5, ("e_adempimenti",)),
     ("C.2", 1.2, ("c_libri sociali", "c_libri")),
-    ("B.1", 2.0, ("b_bilancio", "scritture contabili")),
+    ("B.1", 2.0, ("b_bilancio",)),
+    ("D.1", 4.0, ("d libri fiscali", "libri fiscali")),
+    ("D.3", 2.0, ("d libri fiscali", "libri fiscali")),
     ("G.1", 1.5, ("g_personale",)),
 ]
 
@@ -90,6 +98,14 @@ def classify_text(name: str, text: str, relpath: str = "") -> tuple[str | None, 
     if scores.get("F.2", 0) >= 10:
         scores["F.1"] = min(scores.get("F.1", 0), 1)
 
+    # Giornale bollato/definitivo è D.1, i mastrini restano B.4
+    if "mastrini" in name_n:
+        scores["B.4"] = max(scores.get("B.4", 0), 16)
+        scores["D.1"] = min(scores.get("D.1", 0), 2)
+    elif "giornale" in name_n and re.search(r"definitiv|bollat", name_n):
+        scores["D.1"] = max(scores.get("D.1", 0), 16)
+        scores["B.4"] = min(scores.get("B.4", 0), 3)
+
     for item in checklist_items():
         iid = item["id"]
         for hint in item["hints"]:
@@ -126,7 +142,7 @@ def scan_folder(folder: str, pratica_id: str = "") -> list[DocumentOut]:
             continue
         if is_junk_name(path.name):
             continue
-        if re.search(r"^template wps", path.name, re.I):
+        if re.search(r"^template wps|template.*wps|wps verifica trimestrale|documenti mancanti", path.name, re.I):
             continue
         hidden = False
         for parent in path.parents:
@@ -143,9 +159,9 @@ def scan_folder(folder: str, pratica_id: str = "") -> list[DocumentOut]:
         item_id, conf, how = classify_text(path.name, "", rel)
         text, method = "", "filename"
         if not item_id or conf < 0.55:
-            # Content OCR is needed for scanned documents whose filename/folder is
-            # not sufficient to classify them. The provider caches repeated work.
-            text, method = extract_file(path, ocr=True)
+            # Solo testo nativo (PDF digitale, TXT, Excel). Mai OCR in scansione:
+            # sui PDF scansionati l'OCR parte dopo, in compilazione.
+            text, method = extract_file(path, ocr=False)
             item_id, conf, how = classify_text(path.name, text, rel)
         excerpt = " ".join(text.split())[:280] if text else rel
         docs.append(

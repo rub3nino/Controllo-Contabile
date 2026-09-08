@@ -180,9 +180,9 @@ class Engine:
         self.state.running = True
         self.state.job_step = 1
         self.state.job_total = 2
-        self.state.job_label = "Lettura e classificazione dei file"
+        self.state.job_label = "Lettura nomi e cartelle (senza copia, senza OCR)"
         self.state.progress = 20
-        self.log("Scansione in corso", section="Documenti")
+        self.log("Scansione in corso (file sul disco, classificazione da nome/cartella)", section="Documenti")
         try:
             docs = scan_folder(str(root), p.pratica_id)
             self.state.documents = docs
@@ -218,6 +218,11 @@ class Engine:
             self.state.error = err.title
             self.state.error_detail = err.detail
             self.state.error_missing = err.missing
+            self.state.progress = 0
+            self.state.job_step = 0
+            self.state.job_total = 0
+            self.state.job_label = ""
+            self.state.running = False
             raise err from e
         finally:
             self.state.running = False
@@ -338,11 +343,15 @@ class Engine:
             self.state.error = err.title
             self.state.error_detail = err.detail
             self.state.error_missing = err.missing
+            self.state.progress = 0
+            self.state.job_step = 0
+            self.state.job_total = 0
+            self.state.job_label = ""
             self.log(err.title, level="error")
             if err.detail:
                 self.log(err.detail, level="error")
             self.state.running = False
-            yield self._evt("error", err.title, self.state.progress, detail=err.detail, missing=err.missing)
+            yield self._evt("error", err.title, 0, detail=err.detail, missing=err.missing)
         finally:
             self.state.running = False
             if not self.state.error:

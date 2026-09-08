@@ -203,6 +203,80 @@ def test_giornale_last_row(tmp_path: Path):
     assert meta["page"] == 12
 
 
+def test_mastrini_last_page_only(tmp_path: Path):
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    from backend.extract import extract_file, parse_mastrini_last
+    from backend.fill import parse_date
+
+    sample = """\
+KLDGFE2  Mastrini a ripresa di saldo                         Pagina     1
+  Sottoconto   100000000001  CONTO VECCHIO
+               01/04/26                               100 Prima riga
+                                                Progr.e saldo al 30/06/26                                1,00
+KLDGFE2  Mastrini a ripresa di saldo                         Pagina   284
+  Gruppo       50            RICAVI
+  Sottoconto   500401100003  PLUSV. SU PARTECIP.                           Elaborazione Statistica
+               13/05/26                               100 Rilevazione                                897.352,73
+                                                RILEVAZIONE CHIUSURA LIQU
+                                                IDAZIONE DELLA CONTROLLAT
+                                                A METALLURGICA P.SE SRL
+                                                Progr.e saldo al 30/06/26                            897.352,73
+                                                      *** FINE STAMPA ***
+"""
+    path = tmp_path / "MASTRINI.txt"
+    path.write_text(sample, encoding="utf-8")
+    text, method = extract_file(path, ocr=False, pages="last")
+    assert method == "txt"
+    assert "Pagina   284" in text
+    assert "CONTO VECCHIO" not in text
+    meta = parse_mastrini_last(text)
+    assert meta["page"] == 284
+    assert meta["data_reg"] == "30/06/26"
+    assert parse_date(meta["data_reg"]).year == 2026
+    assert "PLUSV" in meta["descrizione"]
+
+
+def test_classify_ferrero_names():
+    from backend.classify import classify_text
+    from backend.fill import account_from_bank_name, bank_dedup_key, f24_date_from_name, f24_month_from_name
+
+    def cid(name, rel=""):
+        return classify_text(name, "", rel)[0]
+
+    assert cid("MASTRINI.txt", "B Bilancio/MASTRINI.txt") == "B.4"
+    assert cid(
+        "Libro giornale al 301125 definitivo.pdf",
+        "D Libri fiscali_Contabili/Libro giornale al 301125 definitivo.pdf",
+    ) == "D.1"
+    assert cid("Registro AI.pdf", "D Libri fiscali_Contabili/Registro AI.pdf") == "D.3"
+    assert cid("Ricevute Previdenza Complementare.pdf", "E Adempimenti/x.pdf") == "E.2"
+    assert cid("Ricevute versamenti Fondi .pdf", "E Adempimenti/x.pdf") == "E.2"
+    assert cid("Ricevuta di trasmissione D.IVA 2026 - Periodo d'imposta 2025.pdf", "E/x.pdf") == "E.4"
+    assert cid("IMPOSTA DI BOLLO.pdf", "E Adempimenti/IMPOSTA DI BOLLO.pdf") == "E.1"
+    assert cid("Personale Aprile.pdf", "G Personale/Personale Aprile.pdf") == "G.1"
+    assert cid("Contabile stipendi aprile.pdf", "G Personale/Contabile stipendi aprile.pdf") == "G.2"
+    assert cid("Deutsche cc_401195 30.06.2026.pdf", "EC 30.06.2026/Deutsche cc_401195 30.06.2026.pdf") == "F.1"
+    assert f24_month_from_name("F24 160426.pdf") == 4
+    assert f24_month_from_name("F24 300626.pdf") == 6
+    assert f24_date_from_name("F24 160426.pdf").month == 4
+    assert bank_dedup_key("Deutsche cc_401195 30.06.2026.pdf") != bank_dedup_key("Deutsche cc_830320 30.06.2026.pdf")
+    assert account_from_bank_name("Bper cc_38035173 30.06.2026.pdf") == "38035173"
+    keys = {
+        bank_dedup_key(n) for n in (
+            "Deutsche cc_401195 30.06.2026.pdf",
+            "Deutsche cc_830320 30.06.2026.pdf",
+            "Deutsche cc_830321 30.06.2026.pdf",
+            "Passadore cc_1613722 30.06.2026.pdf",
+            "Passadore cc_1614336 30.06.2026.pdf",
+            "Bper cc_38035173 30.06.2026.pdf",
+            "Bper cc_42216254 30.06.2026.pdf",
+            "Intesa cc_Usd 30.06.2026.pdf",
+            "Unicredit 30.06.2026.pdf",
+        )
+    }
+    assert len(keys) == 9
+
+
 if __name__ == "__main__":
     from tempfile import TemporaryDirectory
 
@@ -219,4 +293,6 @@ if __name__ == "__main__":
         test_skip_section_writes_cross(root / "skip")
         test_fondi_go_to_named_quarter(root / "fondi")
         test_giornale_last_row(root / "gio")
+        test_mastrini_last_page_only(root / "mastrini")
+        test_classify_ferrero_names()
     print("all ok")

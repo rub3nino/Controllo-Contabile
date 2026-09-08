@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ApiError,
   api,
@@ -168,7 +168,18 @@ export default function App() {
 
   function fail(e: unknown) {
     setErr(asUserError(e));
-    setState((prev) => (prev ? { ...prev, running: false } : prev));
+    setState((prev) =>
+      prev
+        ? {
+            ...prev,
+            running: false,
+            progress: 0,
+            job_step: 0,
+            job_total: 0,
+            job_label: "",
+          }
+        : prev
+    );
     go("overview");
   }
 
@@ -246,11 +257,11 @@ export default function App() {
   }
 
   async function ingestIfNeeded() {
-    if (folderFiles.length) {
-      return api.ingest(folderFiles);
-    }
     if (linkDir.trim()) {
       return api.ingestLink(linkDir.trim());
+    }
+    if (folderFiles.length) {
+      return api.ingest(folderFiles);
     }
     return null;
   }
@@ -273,7 +284,7 @@ export default function App() {
             current_section: "Documenti",
             job_step: 1,
             job_total: 2,
-            job_label: "Lettura e classificazione dei file",
+            job_label: "Lettura nomi e cartelle (senza copia, senza OCR)",
             progress: 8,
           }
         : prev
@@ -285,7 +296,7 @@ export default function App() {
         setState({
           ...ingested,
           running: true,
-          job_label: "Lettura e classificazione dei file",
+          job_label: "Lettura nomi e cartelle (senza copia, senza OCR)",
           progress: 18,
         });
       }
@@ -430,25 +441,33 @@ export default function App() {
             period={form.period}
             onChange={(v) => setForm({ ...form, period: v })}
           />
-          <FolderPicker
-            count={folderFiles.length}
-            ingestKind={state?.pratica?.ingest_kind || ""}
-            onPick={(files) => {
-              setFolderFiles(files);
-              if (files.length) setLinkDir("");
+          <Field
+            label="Cartella sul Mac (lettura diretta)"
+            value={linkDir}
+            onChange={(v) => {
+              setLinkDir(v);
+              if (v) setFolderFiles([]);
             }}
+            placeholder="/Volumes/…/II Trimestre 2026"
           />
+          <p className="px-1 text-[11px] leading-snug text-muted">
+            Quadra gira su questo computer: incolla il percorso e i file restano dove sono. Non si caricano su nessun server.
+          </p>
+          {state?.pratica?.ingest_kind === "link" ? (
+            <p className="break-anywhere px-1 text-[11px] text-emerald-800">{state.pratica.documents_dir}</p>
+          ) : null}
           <details className="rounded-lg border border-line bg-paper/60 px-2.5 py-2">
-            <summary className="cursor-pointer text-[11px] font-medium text-muted">Collega cartella già sul server (LAN / demo)</summary>
+            <summary className="cursor-pointer text-[11px] font-medium text-muted">
+              Invece copia i file (lento, solo se Quadra è su un altro PC)
+            </summary>
             <div className="pt-2">
-              <Field
-                label="Percorso visibile al server"
-                value={linkDir}
-                onChange={(v) => {
-                  setLinkDir(v);
-                  if (v) setFolderFiles([]);
+              <FolderPicker
+                count={folderFiles.length}
+                ingestKind={state?.pratica?.ingest_kind || ""}
+                onPick={(files) => {
+                  setFolderFiles(files);
+                  if (files.length) setLinkDir("");
                 }}
-                placeholder="test/… oppure /data/studio/…"
               />
             </div>
           </details>
@@ -605,8 +624,8 @@ export default function App() {
 
           {view === "overview" && (
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-              <section className="min-w-0 rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5 xl:col-span-2">
-                <WorkPanel state={state} catalog={catalog} working={working} />
+              <section className="min-w-0 overflow-hidden rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5 xl:col-span-2">
+                <WorkPanel state={state} catalog={catalog} working={working} errored={Boolean(shownError)} />
                 {(state?.missing || []).length > 0 && !working && (
                   <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-3">
                     <p className="text-xs font-semibold text-amber-950">Cosa manca ancora</p>
@@ -948,11 +967,9 @@ function FolderPicker({
         </span>
       </span>
       {ingestKind === "upload" ? (
-        <span className="mt-1 block text-[11px] text-muted">File copiati nella pratica sul server, path POSIX.</span>
-      ) : ingestKind === "link" ? (
-        <span className="mt-1 block text-[11px] text-muted">Cartella collegata sul server, senza copia.</span>
+        <span className="mt-1 block text-[11px] text-amber-900">I file verranno copiati. Su questo Mac è inutile: usa il percorso sopra.</span>
       ) : (
-        <span className="mt-1 block text-[11px] text-muted">Il browser non invia path C:\ o /Volumes. Solo i file.</span>
+        <span className="mt-1 block text-[11px] text-muted">Il browser non può mandare il path /Volumes. Per quello serve il campo percorso.</span>
       )}
     </label>
   );
@@ -1011,99 +1028,66 @@ function ErrorBanner({ err }: { err: UserFacingError }) {
   );
 }
 
+function workTime(ts: string) {
+  const part = ts.includes("T") ? ts.split("T")[1] : ts;
+  return part.replace("Z", "").slice(0, 8);
+}
+
 function WorkPanel({
   state,
   catalog,
   working,
+  errored,
 }: {
   state: AppState | null;
   catalog: Catalog | null;
   working: boolean;
+  errored: boolean;
 }) {
-  const target = state?.progress || 0;
+  const target = Math.max(0, Math.min(100, state?.progress || 0));
   const step = state?.job_step || 0;
   const total = state?.job_total || 0;
-  const [shown, setShown] = useState(target);
-  const shownRef = useRef(target);
-
-  useEffect(() => {
-    shownRef.current = shown;
-  }, [shown]);
-
-  useEffect(() => {
-    if (!working) {
-      setShown(target);
-      shownRef.current = target;
-      return;
-    }
-    let id = 0;
-    let last = performance.now();
-    const loop = (now: number) => {
-      const dt = Math.min(0.08, (now - last) / 1000);
-      last = now;
-      const nextBound = total > 0 ? 8 + (step / Math.max(total, 1)) * 84 : Math.min(92, target + 14);
-      const ceiling = Math.min(96, Math.max(target + 0.4, nextBound - 0.6));
-      let cur = shownRef.current;
-      if (target > cur) {
-        cur += Math.min(target - cur, Math.max(18 * dt, (target - cur) * 0.22));
-      } else if (cur < ceiling) {
-        cur += dt * 1.6;
-      }
-      cur = Math.min(cur, ceiling, 99);
-      shownRef.current = cur;
-      setShown(cur);
-      id = requestAnimationFrame(loop);
-    };
-    id = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(id);
-  }, [working, target, step, total]);
-
-  const pct = working ? shown : target;
-  const filled = Math.round((pct / 100) * 48);
+  const stopped = errored || Boolean(state?.error);
+  const finished = !working && !stopped && target >= 100;
   const remaining = total > 0 ? Math.max(0, total - step) : 0;
-  const subtitle = working
-    ? state?.job_label || "Elaborazione in corso"
-    : state?.current_section
-      ? ALL_SECTIONS.includes(state.current_section)
-        ? `${state.current_section} — ${sectionHelp(state.current_section, catalog).title}`
-        : state.current_section
-      : "In attesa di avvio";
+  const barPct = working ? Math.max(6, target) : stopped ? 0 : target;
+
+  let subtitle = "Niente in corso. Quando sei pronto: 1 · Scansiona, poi 2 · Avvia.";
+  if (working) subtitle = state?.job_label || "Elaborazione in corso";
+  else if (stopped) subtitle = "Fermato. Correggi il problema sopra e riprova.";
+  else if (finished) {
+    subtitle = state?.job_label || "Completato";
+    if (state?.current_section && ALL_SECTIONS.includes(state.current_section)) {
+      subtitle = `${state.current_section} — ${sectionHelp(state.current_section, catalog).title}`;
+    }
+  } else if (state?.current_section && state.current_section !== "Documenti") {
+    subtitle = ALL_SECTIONS.includes(state.current_section)
+      ? `${state.current_section} — ${sectionHelp(state.current_section, catalog).title}`
+      : state.current_section;
+  }
 
   return (
-    <div>
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold">Lavoro in corso</h2>
-          <p className={`break-anywhere text-xs ${working ? "text-ink" : "text-muted"}`}>{subtitle}</p>
+          <p className={`mt-1 max-w-prose text-xs leading-5 ${working ? "text-ink" : "text-muted"}`}>{subtitle}</p>
         </div>
-        <div className="text-right">
-          <span className="text-sm tabular-nums text-muted">{Math.round(pct)}%</span>
+        <div className="shrink-0 text-right">
+          <p className="text-sm tabular-nums text-muted">{Math.round(barPct)}%</p>
           {working && total > 0 ? (
-            <p className="text-[11px] tabular-nums text-muted">
+            <p className="mt-0.5 text-[11px] leading-4 tabular-nums text-muted">
               passo {step}/{total}
               {remaining ? ` · restano ${remaining}` : ""}
             </p>
           ) : null}
         </div>
       </div>
-      <div className="mb-3 h-2 overflow-hidden rounded-full bg-neutral-200" aria-hidden>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-neutral-200" aria-hidden>
         <div
-          className={`h-full rounded-full ${working ? "work-bar-fill" : "bg-ink"}`}
-          style={{ width: `${Math.max(working ? 4 : 0, pct)}%` }}
+          className={`h-full rounded-full bg-ink ${working ? "work-bar-fill" : ""}`}
+          style={{ width: `${barPct}%`, transition: "width 280ms ease-out" }}
         />
-      </div>
-      <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-12">
-        {Array.from({ length: 48 }).map((_, i) => {
-          const live = working && i === filled;
-          const on = i < filled;
-          return (
-            <div
-              key={i}
-              className={`h-3.5 rounded-sm ${on ? "bg-ink" : "bg-neutral-200"} ${live ? "work-block-live" : ""}`}
-              style={{ transition: "background 200ms, transform 200ms" }}
-            />
-          );
-        })}
       </div>
     </div>
   );
@@ -1112,20 +1096,29 @@ function WorkPanel({
 function LogList({ logs, working }: { logs: AppState["logs"]; working?: boolean }) {
   const last = logs.slice(-12).reverse();
   return (
-    <ul className="mt-5 max-h-56 space-y-2 overflow-y-auto text-sm">
+    <ul className="mt-5 min-w-0 divide-y divide-line border-t border-line">
       {last.length === 0 && (
-        <li className="text-muted">
+        <li className="pt-3 text-sm leading-5 text-muted">
           {working
             ? "Avvio in corso…"
             : "Ordine: cartella documenti → 1 Scansiona → controlla Documenti → 2 Avvia."}
         </li>
       )}
       {last.map((l, i) => (
-        <li key={i} className="flex min-w-0 gap-3">
-          <span className="w-12 shrink-0 text-xs text-muted sm:w-16">{l.section || "—"}</span>
-          <span className={`min-w-0 break-anywhere ${l.level === "error" ? "text-rose-700" : l.level === "warn" ? "text-amber-800" : ""}`}>
+        <li key={`${l.ts}-${l.section}-${i}`} className="min-w-0 py-3">
+          <div className="flex min-w-0 items-baseline justify-between gap-3 text-[11px] leading-4 text-muted">
+            <span className="min-w-0 truncate font-medium" title={l.section || undefined}>
+              {l.section || "Attività"}
+            </span>
+            <span className="shrink-0 tabular-nums">{workTime(l.ts)}</span>
+          </div>
+          <p
+            className={`mt-1 min-w-0 break-anywhere text-sm leading-5 ${
+              l.level === "error" ? "text-rose-700" : l.level === "warn" ? "text-amber-800" : "text-ink"
+            }`}
+          >
             {l.message}
-          </span>
+          </p>
         </li>
       ))}
     </ul>

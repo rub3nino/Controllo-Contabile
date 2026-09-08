@@ -40,6 +40,11 @@ def output_dir(pratica_id: str) -> Path:
 
 def allowed_roots() -> list[Path]:
     roots = [ROOT.resolve(), storage_root()]
+    # Quadra gira in locale: può leggere altre cartelle sullo stesso disco del progetto
+    # senza copiare i file nel "server" (che è questo Mac).
+    disk = ROOT.resolve().parent
+    if str(disk) not in {"/", ""}:
+        roots.append(disk)
     extra = os.getenv("QUADRA_ALLOWED_ROOTS", "")
     for raw in extra.split(","):
         raw = raw.strip()

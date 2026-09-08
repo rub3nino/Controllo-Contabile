@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import shutil
 from datetime import datetime
@@ -19,10 +20,15 @@ from .extract import (
     find_payment_date,
     find_protocol,
     find_statement_balance,
+    ocr_wants_layout,
+    pdf_page_count,
+    parse_giornale_last,
+    parse_mastrini_last,
     parse_csv_accounts,
     parse_docfinance_saldi,
-    parse_giornale_last,
     parse_xlsx_accounts,
+    _ocr_max_pages,
+    _ocr_deep_max,
 )
 from .models import DocumentOut, PraticaIn, ProvenanceRow
 from .provenance import ProvenanceLog
@@ -87,7 +93,7 @@ def parse_period_months(period: str) -> list[tuple[int, int]]:
 def parse_date(value: str | None):
     if not value:
         return None
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y"):
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y", "%d/%m/%y", "%d-%m-%y", "%d.%m.%y"):
         try:
             return datetime.strptime(value[:10], fmt)
         except ValueError:
@@ -137,7 +143,43 @@ def f24_month_from_name(name: str) -> int | None:
     )
     if m:
         return MONTHS_IT.get(m.group(1))
+    m = re.search(r"\b(\d{2})(\d{2})(\d{2})\b", name)
+    if m:
+        day, month = int(m.group(1)), int(m.group(2))
+        if 1 <= month <= 12 and 1 <= day <= 31:
+            return month
     return None
+
+
+def f24_date_from_name(name: str):
+    m = re.search(r"\b(\d{2})(\d{2})(\d{2})\b", name)
+    if not m:
+        return None
+    day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if not (1 <= month <= 12 and 1 <= day <= 31):
+        return None
+    return parse_date(f"{day:02d}/{month:02d}/{2000 + year}")
+
+
+def bank_dedup_key(name: str) -> str:
+    n = name.lower()
+    cc = re.search(r"cc[_\s-]*(\d+)", n)
+    extra = cc.group(1) if cc else (
+        "usd" if "usd" in n else ("ecom" if "ecomm" in n or "e comm" in n or "e-comm" in n else "cc")
+    )
+    for alias, _ in BANK_ALIASES:
+        if alias in n:
+            return f"{alias}:{extra}"
+    return n
+
+
+def account_from_bank_name(name: str) -> str:
+    m = re.search(r"cc[_\s-]*(\d+)", name, re.I)
+    if m:
+        return m.group(1)
+    if re.search(r"usd", name, re.I):
+        return "USD"
+    return ""
 
 
 def apply_status_fill(cell, status: str):
@@ -206,6 +248,8 @@ class Filler:
         self.filled_mechanical = {"E": False, "C": False, "G": False, "B": False, "F": False}
         self.warnings: list[str] = []
         self.missing: list[dict] = []
+        self.bank_rows: list[tuple[int, DocumentOut]] = []
+        self.f24_cols: list[tuple[str, DocumentOut]] = []
 
     def docs_for(self, item_id: str) -> list[DocumentOut]:
         return [d for d in self.documents if d.item_id == item_id and not d.skip]
@@ -261,10 +305,10 @@ class Filler:
         ]
         if "E" not in skipped:
             jobs.append(
-                ("E", "Leggo estratti conto e riconciliazioni (i PDF scansionati richiedono OCR)", self._fill_banks)
+                ("E", "Leggo estratti conto (OCR PP-OCRv6 sulle pagine chiave, non il modello VL)", self._fill_banks)
             )
         if "C" not in skipped:
-            jobs.append(("C", "Leggo quietanze F24 e adempimenti (OCR se il PDF non ha testo)", self._fill_f24))
+            jobs.append(("C", "Leggo quietanze F24 (OCR solo se il PDF è una scansione)", self._fill_f24))
         if "G" not in skipped:
             jobs.append(("G", "Compilo il bilancino di verifica, se presente", self._fill_trial_balance))
         if "B" not in skipped:
@@ -272,17 +316,29 @@ class Filler:
         if "F" not in skipped:
             jobs.append(("F", "Compilo i verbali degli organi sociali", self._fill_verbali))
 
+        heavy = []
+        if os.getenv("QUADRA_OCR_DEEP", "1").strip().lower() not in {"0", "false", "no"}:
+            heavy = self._heavy_pdfs(skipped)
+        deep_jobs = [
+            (
+                "OCR",
+                f"Rilettura completa {doc.name} ({i}/{len(heavy)}) — tutte le pagine, i dati spesso non sono in copertina",
+                (lambda d=doc: self._deep_reread_doc(d)),
+            )
+            for i, doc in enumerate(heavy, start=1)
+        ]
+
         def _close():
+            self._refresh_bank_checks()
             self._fill_judgment_notes(skipped)
             self._fill_indice_status(skip, na, skipped)
             self.prov.write_xlsx_sheet(self.wb)
             self.wb.save(dest)
             self._write_mancanti(out_dir / "mancanti.md")
 
-        jobs.append(("INDICE", "Chiudo i semafori delle sezioni e salvo l'Excel", _close))
-
-        total = len(jobs)
-        for i, (sec, label, fn) in enumerate(jobs, start=1):
+        all_jobs = jobs + deep_jobs + [("INDICE", "Chiudo i semafori delle sezioni e salvo l'Excel", _close)]
+        total = len(all_jobs)
+        for i, (sec, label, fn) in enumerate(all_jobs, start=1):
             yield "step", {"section": sec, "label": label, "step": i, "total": total}
             fn()
         yield "done", dest
@@ -342,7 +398,14 @@ class Filler:
                 src["method"] = "umano"
             elif docs:
                 status = "✓"
-                note = ", ".join(d.name for d in docs[:4])
+                uniq = []
+                for d in docs:
+                    if d.name not in uniq:
+                        uniq.append(d.name)
+                shown = uniq[:8]
+                note = ", ".join(shown)
+                if len(uniq) > 8:
+                    note += f" (+{len(uniq) - 8})"
                 src = self._src(docs[0], iid, note)
             else:
                 status = "wip"
@@ -395,17 +458,12 @@ class Filler:
         for score, doc in ranked:
             if score < 0:
                 continue
-            key = doc.name.lower()
-            for alias, _ in BANK_ALIASES:
-                if alias in key:
-                    extra = "usd" if "usd" in key else ("ecom" if "ecomm" in key or "e comm" in key else "cc")
-                    key = f"{alias}:{extra}"
-                    break
+            key = bank_dedup_key(doc.name)
             if key in seen:
                 continue
             seen.add(key)
             picked.append(doc)
-            if len(picked) >= 16:
+            if len(picked) >= 17:
                 break
         return picked
 
@@ -418,7 +476,7 @@ class Filler:
         df_rows = []
         df_doc = None
         for doc in self.docs_for("F.2"):
-            text, method = extract_file(Path(doc.path), ocr=True, layout=True)
+            text, method = extract_file(Path(doc.path), ocr=True, layout=ocr_wants_layout())
             parsed = parse_docfinance_saldi(text)
             if parsed:
                 df_rows = parsed
@@ -431,7 +489,7 @@ class Filler:
         for doc in docs:
             if row > 28:
                 break
-            text, method = extract_file(Path(doc.path), ocr=True, layout=True)
+            text, method = extract_file(Path(doc.path), ocr=True, layout=ocr_wants_layout())
             blob_name = doc.name.lower()
             blob = f"{doc.name} {text}".lower()
             banca = "CONTO BANCARIO"
@@ -447,14 +505,15 @@ class Filler:
                         banca = label
                         alias_key = alias
                         break
+            conto = account_from_bank_name(doc.name)
+            if not conto:
+                iban = re.search(r"IT\d{2}[A-Z]\d{10,}", text.replace(" ", ""), re.I)
+                conto_m = re.search(r"conto\s*corrente\s*n\.?\s*([\d /]+)", text, re.I)
+                if conto_m:
+                    conto = re.sub(r"\s+", "", conto_m.group(1))[:20]
+                elif iban:
+                    conto = iban.group(0)[-12:]
             saldo = find_statement_balance(text)
-            iban = re.search(r"IT\d{2}[A-Z]\d{10,}", text.replace(" ", ""), re.I)
-            conto_m = re.search(r"conto\s*corrente\s*n\.?\s*([\d /]+)", text, re.I)
-            conto = ""
-            if conto_m:
-                conto = re.sub(r"\s+", "", conto_m.group(1))[:20]
-            elif iban:
-                conto = iban.group(0)[-12:]
             ccy = "USD" if "usd" in blob else "cc"
             src = self._src(doc, "F.1", f"saldo={saldo}")
             src["method"] = method
@@ -489,6 +548,7 @@ class Filler:
                         break
             row += 1
             used += 1
+            self.bank_rows.append((row - 1, doc))
         if used:
             self.filled_mechanical["E"] = True
 
@@ -518,6 +578,105 @@ class Filler:
                         )
                         break
 
+        self._refresh_bank_checks()
+
+    def _heavy_pdfs(self, skipped: set[str] | None = None) -> list[DocumentOut]:
+        """PDF lunghi da rileggere per intero dopo la compilazione veloce."""
+        skipped = skipped or set()
+        section_of = {"F.1": "E", "F.2": "E", "E.1": "C", "E.2": "C"}
+        seen: set[str] = set()
+        out: list[DocumentOut] = []
+        key_pages = _ocr_max_pages()
+        cap = _ocr_deep_max()
+        for doc in self.documents:
+            if doc.skip or not doc.item_id or doc.item_id not in section_of:
+                continue
+            if section_of[doc.item_id] in skipped:
+                continue
+            path = Path(doc.path)
+            if path.suffix.lower() != ".pdf" or doc.id in seen:
+                continue
+            n = pdf_page_count(path)
+            if n <= key_pages:
+                continue
+            seen.add(doc.id)
+            if n > cap:
+                self.warnings.append(
+                    f"{doc.name}: {n} pagine; la rilettura completa fa le prime {cap} "
+                    f"(oltre si va troppo lunghi su CPU)."
+                )
+            out.append(doc)
+        return out
+
+    def _deep_reread_doc(self, doc: DocumentOut) -> None:
+        text, method = extract_file(
+            Path(doc.path), ocr=True, layout=ocr_wants_layout(), pages="all"
+        )
+        for row, bank_doc in self.bank_rows:
+            if bank_doc.id == doc.id:
+                self._update_bank_row(row, doc, text, method)
+        for col, f24_doc in self.f24_cols:
+            if f24_doc.id == doc.id:
+                self._update_f24_col(col, doc, text, method)
+
+    def _update_bank_row(self, row: int, doc: DocumentOut, text: str, method: str) -> None:
+        ws = self.wb["E"]
+        p = self.pratica
+        saldo = find_statement_balance(text)
+        iban = re.search(r"IT\d{2}[A-Z]\d{10,}", text.replace(" ", ""), re.I)
+        conto_m = re.search(r"conto\s*corrente\s*n\.?\s*([\d /]+)", text, re.I)
+        conto = ""
+        if conto_m:
+            conto = re.sub(r"\s+", "", conto_m.group(1))[:20]
+        elif iban:
+            conto = iban.group(0)[-12:]
+        if conto and not ws[f"D{row}"].value:
+            set_cell(ws, f"D{row}", conto, self.prov, p, **self._src(doc, "F.1", conto))
+        if saldo is not None:
+            ws[f"F{row}"].value = saldo
+            ws[f"F{row}"].number_format = "#,##0.00"
+            self.prov.add(
+                client=p.client, period=p.period, sheet="E", cell=f"F{row}",
+                value=str(saldo), source_rel=doc.rel, source_name=doc.name,
+                method=method, excerpt="OCR completo di tutte le pagine",
+                confidence=max(doc.confidence, 0.8), item_id="F.1",
+            )
+            self.filled_mechanical["E"] = True
+
+    def _update_f24_col(self, col: str, doc: DocumentOut, text: str, method: str) -> None:
+        ws = self.wb["C"]
+        p = self.pratica
+        src = self._src(doc, "E.1")
+        src["method"] = method
+        pay = find_payment_date(text)
+        dv = parse_date(pay.replace(".", "/")) if pay else None
+        if dv:
+            ws[f"{col}11"].value = dv
+            ws[f"{col}11"].number_format = "dd/mm/yyyy"
+            self.prov.add(
+                client=p.client, period=p.period, sheet="C", cell=f"{col}11",
+                value=pay, source_rel=doc.rel, source_name=doc.name,
+                method=method, excerpt="OCR completo di tutte le pagine",
+                confidence=doc.confidence, item_id="E.1",
+            )
+        importo = find_f24_importo(text)
+        if importo is not None:
+            ws[f"{col}12"].value = importo
+            ws[f"{col}12"].number_format = "#,##0.00"
+            self.prov.add(
+                client=p.client, period=p.period, sheet="C", cell=f"{col}12",
+                value=str(importo), source_rel=doc.rel, source_name=doc.name,
+                method=method, excerpt="OCR completo di tutte le pagine",
+                confidence=doc.confidence, item_id="E.1",
+            )
+        proto = find_protocol(text)
+        if proto:
+            set_cell(ws, f"{col}13", proto, self.prov, p, **src)
+
+    def _refresh_bank_checks(self) -> None:
+        ws = self.wb["E"]
+        p = self.pratica
+        self.warnings = [w for w in self.warnings if "check bancario" not in w]
         for r in range(12, 29):
             banca = ws[f"B{r}"].value
             e_val, f_val = ws[f"E{r}"].value, ws[f"F{r}"].value
@@ -561,16 +720,19 @@ class Filler:
                 value=dt.strftime("%Y-%m"), source_path="", source_name="periodo pratica",
                 method="umano", excerpt="mese F24 del trimestre", confidence=1, human=True, item_id="E.1",
             )
-        all_f24 = self.docs_for("E.1")
-        iva_docs = [d for d in all_f24 if re.search(r"iva", d.name, re.I)]
-        docs = iva_docs or all_f24
-        if len(all_f24) > len(docs):
-            self.warnings.append(f"{len(all_f24)} quietanze F24 in cartella; in tabella C usate {len(docs)} IVA di periodo")
+        all_f24 = [d for d in self.docs_for("E.1") if "bollo" not in d.name.lower()]
+        if not all_f24:
+            all_f24 = self.docs_for("E.1")
+        docs = all_f24
+        if len(self.docs_for("E.1")) > len(docs):
+            self.warnings.append(
+                f"{len(self.docs_for('E.1'))} quietanze F24 in cartella; in tabella C usate {len(docs)}"
+            )
         used = 0
         for doc in docs:
             text, method = extract_file(Path(doc.path), ocr=False)
             if len(text.strip()) < 40:
-                text, method = extract_file(Path(doc.path), ocr=True, layout=True)
+                text, method = extract_file(Path(doc.path), ocr=True, layout=ocr_wants_layout())
             blob = f"{doc.name} {text}".lower()
             proto = find_protocol(text)
             dates = find_dates(text)
@@ -602,6 +764,10 @@ class Filler:
             src["method"] = method
             pay = find_payment_date(text)
             dv = parse_date(pay.replace(".", "/")) if pay else None
+            if not dv:
+                dv = f24_date_from_name(doc.name)
+                if dv:
+                    pay = dv.strftime("%d/%m/%Y")
             if dv:
                 ws[f"{target_col}11"].value = dv
                 ws[f"{target_col}11"].number_format = "dd/mm/yyyy"
@@ -622,6 +788,7 @@ class Filler:
             if proto:
                 set_cell(ws, f"{target_col}13", proto, self.prov, p, **src)
             used += 1
+            self.f24_cols.append((target_col, doc))
         if used:
             self.filled_mechanical["C"] = True
 
@@ -646,9 +813,11 @@ class Filler:
                     set_cell(ws, f"A{r}", name[:40], self.prov, p, **self._src(doc, "E.2"))
                     set_cell(ws, f"{dest_col}{r}", "✓", self.prov, p, **self._src(doc, "E.2"))
                     break
-                if any(tok in blob for tok in label.split() if len(tok) > 3):
-                    set_cell(ws, f"{dest_col}{r}", "✓", self.prov, p, **self._src(doc, "E.2"))
-                    break
+        iva_ann = self.docs_for("E.4")
+        if iva_ann:
+            note = ", ".join(d.name for d in iva_ann)
+            set_cell(ws, "B26", note[:80], self.prov, p, **self._src(iva_ann[0], "E.4", note))
+            set_cell(ws, f"{qcol}26", "✓", self.prov, p, **self._src(iva_ann[0], "E.4"))
 
     def _fill_trial_balance(self):
         ws = self.wb["G"]
@@ -710,21 +879,52 @@ class Filler:
             docs = self.docs_for(iid)
             if not docs:
                 continue
+            if iid == "B.4":
+                docs = sorted(
+                    docs,
+                    key=lambda d: (0 if "mastrini" in d.name.lower() else 1, d.name),
+                )
+            elif iid == "D.1":
+                docs = sorted(
+                    docs,
+                    key=lambda d: (0 if "libri fiscali" in (d.rel or "").lower() else 1, d.name),
+                )
+            wrap_b = Alignment(wrap_text=True, vertical="center")
+            seen_n = []
+            for d in docs:
+                if d.name not in seen_n:
+                    seen_n.append(d.name)
+            names = ", ".join(seen_n)
             doc = docs[0]
             src = self._src(doc, iid)
-            set_cell(ws, f"H{row}", doc.name, self.prov, p, **src)
-            wrap_b = Alignment(wrap_text=True, vertical="center")
+            set_cell(ws, f"H{row}", names[:240], self.prov, p, **src)
             ws[f"H{row}"].alignment = wrap_b
-            ws.row_dimensions[row].height = 32
+            ws.row_dimensions[row].height = 36 if len(docs) > 1 else 32
+            if iid in ("D.3", "G.1"):
+                set_cell(
+                    ws, f"G{row}",
+                    f"{len(docs)} file in cartella",
+                    self.prov, p, **src,
+                )
+                self.filled_mechanical["B"] = True
+                continue
             meta = {}
             path = Path(doc.path)
+            last_only = path.suffix.lower() in {".txt", ".pdf", ".csv"} and (
+                iid in ("B.4", "D.1") or "mastrini" in doc.name.lower()
+            )
             if iid in ("B.4", "D.1") and path.suffix.lower() in {".xlsx", ".xlsm", ".xls"}:
                 try:
                     meta = parse_giornale_last(path)
                 except Exception:
                     meta = {}
-            text, method = extract_file(path, ocr=True)
+            text, method = extract_file(
+                path, ocr=True, pages="last" if last_only else "key"
+            )
             src["method"] = method
+            if last_only:
+                parsed = parse_mastrini_last(text)
+                meta = {k: v for k, v in parsed.items() if v} | {k: v for k, v in meta.items() if v}
             if meta.get("nr_reg") is not None:
                 set_cell(ws, f"C{row}", meta["nr_reg"], self.prov, p, **src)
             if meta.get("data_reg") is not None:
@@ -735,7 +935,9 @@ class Filler:
                     self.prov.add(
                         client=p.client, period=p.period, sheet="B", cell=f"D{row}",
                         value=str(meta["data_reg"]), source_rel=doc.rel, source_name=doc.name,
-                        method=method, excerpt="data ultima registrazione", confidence=doc.confidence, item_id=iid,
+                        method=method,
+                        excerpt="ultima pagina mastrini" if last_only else "data ultima registrazione",
+                        confidence=doc.confidence, item_id=iid,
                     )
             if meta.get("page") is not None:
                 set_cell(ws, f"E{row}", meta["page"], self.prov, p, **src)
@@ -753,7 +955,12 @@ class Filler:
                 if pag and not ws[f"E{row}"].value:
                     set_cell(ws, f"E{row}", int(pag.group(1)), self.prov, p, **src)
             if not ws[f"G{row}"].value:
-                set_cell(ws, f"G{row}", "ultimo aggiornamento rilevato dal file", self.prov, p, **src)
+                note = (
+                    "ultima pagina (chiusura stampa)"
+                    if last_only
+                    else "ultimo aggiornamento rilevato dal file"
+                )
+                set_cell(ws, f"G{row}", note, self.prov, p, **src)
             self.filled_mechanical["B"] = True
 
     def _fill_verbali(self):

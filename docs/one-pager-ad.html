@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quadra — nota per l’Amministratore Delegato</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --ink: #1a1a1a;
+        --muted: #6b6b6b;
+        --line: #e8e8e4;
+        --paper: #f6f6f3;
+        --card: #ffffff;
+        --ok-bg: #d1fae5;
+        --ok-fg: #064e3b;
+        --wip-bg: #fde047;
+        --wip-fg: #422006;
+        --skip-bg: #ffe4e6;
+        --skip-fg: #9f1239;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .page {
+        max-width: 820px;
+        margin: 32px auto;
+        padding: 0 20px 48px;
+      }
+
+      header {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 22px;
+      }
+
+      .logo {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        color: var(--ink);
+      }
+
+      .kicker {
+        margin: 0;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      h1 {
+        margin: 2px 0 0;
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.2;
+      }
+
+      .sub {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .lead {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px 20px;
+        box-shadow: 0 1px 2px rgba(20, 20, 20, 0.04), 0 8px 24px rgba(20, 20, 20, 0.04);
+        font-size: 16px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        margin-bottom: 12px;
+      }
+
+      .shot {
+        margin: 0 0 16px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 1px 2px rgba(20, 20, 20, 0.04), 0 8px 24px rgba(20, 20, 20, 0.04);
+      }
+
+      .shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+        vertical-align: top;
+      }
+
+      .shot figcaption {
+        margin: 0;
+        padding: 8px 14px 10px;
+        border-top: 1px solid var(--line);
+        background: var(--paper);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      section {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 16px 18px;
+        box-shadow: 0 1px 2px rgba(20, 20, 20, 0.04);
+      }
+
+      section.wide {
+        grid-column: 1 / -1;
+      }
+
+      h2 {
+        margin: 0 0 8px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      p {
+        margin: 0;
+      }
+
+      p + p {
+        margin-top: 8px;
+      }
+
+      ol {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      li + li {
+        margin-top: 4px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      th {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        background: var(--paper);
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 3px 10px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .pill i {
+        width: 6px;
+        height: 6px;
+        border-radius: 99px;
+        background: currentColor;
+        opacity: 0.8;
+      }
+
+      .ok {
+        background: var(--ok-bg);
+        color: var(--ok-fg);
+      }
+
+      .wip {
+        background: var(--wip-bg);
+        color: var(--wip-fg);
+      }
+
+      .skip {
+        background: var(--skip-bg);
+        color: var(--skip-fg);
+      }
+
+      .ask {
+        background: var(--ink);
+        color: var(--paper);
+        border-color: var(--ink);
+      }
+
+      .ask h2,
+      .ask p {
+        color: var(--paper);
+      }
+
+      .ask h2 {
+        opacity: 0.7;
+      }
+
+      @media (max-width: 720px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media print {
+        body {
+          background: white;
+        }
+
+        .page {
+          margin: 0;
+          max-width: none;
+          padding: 12mm;
+        }
+
+        section,
+        .lead,
+        .shot {
+          box-shadow: none;
+          break-inside: avoid;
+        }
+
+        .shot img {
+          max-height: 105mm;
+          object-fit: cover;
+          object-position: top left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="currentColor" />
+          <path
+            d="M8.2 16.6 13.4 21.6 23.8 10.8"
+            fill="none"
+            stroke="#F6F6F3"
+            stroke-width="2.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <div>
+          <h1>Quadra</h1>
+          <p class="sub">Controllo contabile trimestrale · SA Italia 250B · art. 2409-ter c.c.</p>
+        </div>
+      </header>
+
+      <p class="lead">
+        Quadra prende la cartella documenti del trimestre e restituisce il working paper già compilato, con traccia di ogni cifra. La conclusione e la firma restano dello studio.
+      </p>
+
+      <figure class="shot">
+        <img src="quadra-app.png" alt="Schermata di Quadra: pratica a sinistra, lavoro in corso e carte A–I" />
+        <figcaption>L’interfaccia: a sinistra la pratica, al centro lo stato del lavoro, a destra le carte A–I.</figcaption>
+      </figure>
+
+      <div class="grid">
+        <section>
+          <h2>Il problema</h2>
+          <p>
+            Ogni trimestre ripetiamo lo stesso lavoro meccanico: trovare F24, estratti, mastrini e verbali, spuntare la checklist, copiare i saldi sull’Excel. È tempo di assistente, non di revisione. Gli errori tipici sono di trascrizione, non di giudizio.
+          </p>
+        </section>
+
+        <section>
+          <h2>Cosa non fa</h2>
+          <p>
+            Non firma. Non scrive la conclusione. Non decide la materialità. Non decide se un controllo si salta. Non sostituisce il senior né DataSnipper.
+          </p>
+          <p>L’output è una <strong>bozza di carte di lavoro</strong>. La responsabilità resta di chi rivede e firma.</p>
+        </section>
+
+        <section class="wide">
+          <h2>Cosa fa oggi</h2>
+          <ol>
+            <li>Legge la cartella del cliente (PDF, Excel, TXT, immagini).</li>
+            <li>Classifica i file sulla richiesta documenti.</li>
+            <li>Compila le carte di lavoro A–I e l’INDICE.</li>
+            <li>Elenca i documenti mancanti.</li>
+            <li>Indica da quale file è uscita ogni cella.</li>
+          </ol>
+          <p style="margin-top: 10px">Gira <strong>in locale</strong>: i documenti non escono dallo studio.</p>
+        </section>
+
+        <section class="wide">
+          <h2>Perché vale la pena</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Oggi</th>
+                <th>Con Quadra</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Copia manuale da decine di file</td>
+                <td>Compilazione dal master unico, stesso per tutti i clienti</td>
+              </tr>
+              <tr>
+                <td>Stati usati in modo disomogeneo</td>
+                <td>Stessi codici, stesso significato</td>
+              </tr>
+              <tr>
+                <td>Difficile rintracciare una cifra</td>
+                <td>Ogni cella ha la fonte</td>
+              </tr>
+              <tr>
+                <td>L’INDICE si aggiorna a mano</td>
+                <td>Semaforo delle 9 sezioni calcolato, poi correggibile</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pills">
+            <span class="pill ok"><i></i> ✓ fatto</span>
+            <span class="pill wip"><i></i> wip mancante</span>
+            <span class="pill skip"><i></i> ✗ saltato di proposito</span>
+          </div>
+        </section>
+
+        <section>
+          <h2>Stato</h2>
+          <p>
+            Abbiamo iniziato a testarlo sui controlli contabili, in locale. Funziona, ma è ancora un prototipo: non è in cloud e non è pronto da mettere su tutti i clienti.
+          </p>
+          <p style="margin-top: 8px">
+            Resta il lavoro dell’operatore: correggere i file classificati male e completare le carte di giudizio (colloqui con la Direzione; parti di controllo interno, test e operazioni significative).
+          </p>
+        </section>
+
+        <section class="ask">
+          <h2>Cosa chiediamo</h2>
+          <p>Un parere: se ha senso continuare su questa strada, e con quale priorità rispetto al resto dello studio.</p>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

@@ -89,17 +89,23 @@ def _pp_ocr():
     if _PP_OCR is not None:
         return _PP_OCR
     os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(Path("output") / ".paddlex"))
+    print(
+        "Quadra OCR: carico PP-OCRv6 italiano su CPU. "
+        "I messaggi verdi di Paddle non sono errori; la prima volta può richiedere 1-2 minuti.",
+        flush=True,
+    )
     from paddleocr import PaddleOCR
 
     _PP_OCR = PaddleOCR(
         lang="it",
         ocr_version="PP-OCRv6",
         device=os.getenv("QUADRA_OCR_DEVICE", "cpu"),
-        use_doc_orientation_classify=True,
-        use_doc_unwarping=True,
+        use_doc_orientation_classify=False,
+        use_doc_unwarping=False,
         use_textline_orientation=True,
         return_word_box=True,
     )
+    print("Quadra OCR: PP-OCRv6 pronto.", flush=True)
     return _PP_OCR
 
 
@@ -108,6 +114,11 @@ def _pp_vl():
     if _PP_VL is not None:
         return _PP_VL
     os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(Path("output") / ".paddlex"))
+    print(
+        "Quadra OCR: carico PaddleOCR-VL 0.9B (lento su CPU). "
+        "Attiva solo con QUADRA_OCR_VL=1.",
+        flush=True,
+    )
     from paddleocr import PaddleOCRVL
 
     _PP_VL = PaddleOCRVL(
