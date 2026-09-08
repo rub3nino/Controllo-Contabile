@@ -40,6 +40,7 @@ __all__ = [
     "FindingRef",
     "Finding",
     "HumanOverride",
+    "PraticaRecord",
     "ClientCatalogItem",
     "ClientBankAccount",
     "ClientConfig",
@@ -339,6 +340,22 @@ class HumanOverride(BaseModel):
     note: str = Field(default="", description="Motivazione libera della decisione umana.")
     decided_by: str | None = Field(default=None, description="Nome o iniziali di chi ha deciso, se disponibili.")
     decided_at: str | None = Field(default=None, description="Timestamp ISO della decisione, se disponibile.")
+
+
+class PraticaRecord(BaseModel):
+    """Identità persistita di una pratica usata dal flusso domain API.
+
+    Finora pratica, cliente, periodo e cartella erano parametri passati a
+    mano al motore. L'API deve poterli recuperare usando il solo id senza
+    dipendere dallo stato globale del flusso Excel esistente.
+    """
+
+    id: str
+    client_id: str
+    client: str = Field(description="Nome visualizzato letto dal ClientConfig.")
+    period: str
+    documents_dir: str
+    created_at: str = Field(default_factory=_now)
 
 
 class ClientCatalogItem(BaseModel):

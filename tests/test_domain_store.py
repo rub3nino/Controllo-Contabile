@@ -8,7 +8,15 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from backend.domain import Evidence, EvidenceStore, Finding, FindingRef, HumanOverride, VerificationResult
+from backend.domain import (
+    Evidence,
+    EvidenceStore,
+    Finding,
+    FindingRef,
+    HumanOverride,
+    PraticaRecord,
+    VerificationResult,
+)
 
 
 def make_store(tmp_path: Path) -> EvidenceStore:
@@ -38,6 +46,24 @@ def test_evidence_for_pratica_is_scoped(tmp_path: Path):
     assert len(store.evidence_for_pratica("p1")) == 1
     assert len(store.evidence_for_pratica("p2")) == 1
     assert store.evidence_for_pratica("p3") == []
+
+
+def test_pratica_roundtrip_and_evidence_replacement(tmp_path: Path):
+    store = make_store(tmp_path)
+    pratica = PraticaRecord(
+        id="p1", client_id="demo", client="Demo", period="Q2", documents_dir="/docs"
+    )
+    store.save_pratica(pratica)
+    assert store.get_pratica("p1") == pratica
+    assert store.get_pratica("missing") is None
+
+    store.save_evidences([
+        Evidence(pratica_id="p1", item_id="E.1", found=True, method="filename"),
+        Evidence(pratica_id="p1", item_id="F.1", found=True, method="filename"),
+    ])
+    replacement = [Evidence(pratica_id="p1", item_id="E.1", found=False, method="scan")]
+    store.replace_evidences_for_pratica("p1", replacement)
+    assert store.evidence_for_pratica("p1") == replacement
 
 
 def test_human_override_roundtrip_is_scoped_by_pratica(tmp_path: Path):

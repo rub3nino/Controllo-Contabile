@@ -23,6 +23,7 @@ from backend.domain.models import (
     Finding,
     FindingRef,
     HumanOverride,
+    PraticaRecord,
     Section,
     VerificationResult,
 )
@@ -40,6 +41,7 @@ __all__ = [
     "Finding",
     "FindingRef",
     "HumanOverride",
+    "PraticaRecord",
     "Section",
     "VerificationResult",
     "carry_forward_open_findings",

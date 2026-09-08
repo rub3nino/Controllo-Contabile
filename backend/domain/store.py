@@ -26,7 +26,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from backend.domain.models import Evidence, Finding, HumanOverride, VerificationResult
+from backend.domain.models import Evidence, Finding, HumanOverride, PraticaRecord, VerificationResult
 
 
 class EvidenceStore:
@@ -78,6 +78,12 @@ class EvidenceStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_override_pratica
                     ON human_override(pratica_id);
+
+                CREATE TABLE IF NOT EXISTS pratica (
+                    id TEXT PRIMARY KEY,
+                    client_id TEXT NOT NULL,
+                    data TEXT NOT NULL
+                );
                 """
             )
 
@@ -103,6 +109,35 @@ class EvidenceStore:
                 "SELECT data FROM evidence WHERE pratica_id = ?", (pratica_id,)
             ).fetchall()
         return [Evidence.model_validate_json(r["data"]) for r in rows]
+
+    def replace_evidences_for_pratica(
+        self, pratica_id: str, evidences: list[Evidence]
+    ) -> None:
+        """Sostituisce atomicamente lo stato corrente di una scansione."""
+        if any(e.pratica_id != pratica_id for e in evidences):
+            raise ValueError("Tutte le Evidence devono appartenere alla pratica sostituita")
+        with self._connect() as conn:
+            conn.execute("DELETE FROM evidence WHERE pratica_id = ?", (pratica_id,))
+            conn.executemany(
+                "INSERT INTO evidence (id, pratica_id, item_id, data) VALUES (?, ?, ?, ?)",
+                [(e.id, e.pratica_id, e.item_id, e.model_dump_json()) for e in evidences],
+            )
+
+    # ---------- PraticaRecord ----------
+
+    def save_pratica(self, pratica: PraticaRecord) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO pratica (id, client_id, data) VALUES (?, ?, ?)",
+                (pratica.id, pratica.client_id, pratica.model_dump_json()),
+            )
+
+    def get_pratica(self, pratica_id: str) -> PraticaRecord | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT data FROM pratica WHERE id = ?", (pratica_id,)
+            ).fetchone()
+        return PraticaRecord.model_validate_json(row["data"]) if row else None
 
     # ---------- HumanOverride ----------
 
@@ -187,5 +222,12 @@ class EvidenceStore:
             rows = conn.execute(
                 "SELECT data FROM finding WHERE client = ? AND status != 'sistemato'",
                 (client,),
+            ).fetchall()
+        return [Finding.model_validate_json(r["data"]) for r in rows]
+
+    def findings_for_pratica(self, pratica_id: str) -> list[Finding]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT data FROM finding WHERE pratica_id = ?", (pratica_id,)
             ).fetchall()
         return [Finding.model_validate_json(r["data"]) for r in rows]
