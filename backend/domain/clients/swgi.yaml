@@ -1,0 +1,99 @@
+# ClientConfig di Suedwolle Group Italia S.p.A. (SWGI), costruito dalla
+# documentazione del controllo contabile del II trimestre 2026 in
+# test/Docs da analizzare/. Le scelte sotto distinguono sempre dati
+# verificati da punti ancora aperti: nessun identificativo o valore soglia
+# e' stato inventato.
+
+client_id: swgi
+display_name: "Suedwolle Group Italia S.p.A."
+
+# La checklist "richiesta CC II trimestre 2026 swgi.xlsx" contiene tutte
+# le 25 voci standard A.1-G.2. Alcune celle storiche riportano N/A o esiti
+# di trimestri precedenti, ma nessuna voce e' esclusa strutturalmente per
+# SWGI nella richiesta corrente; per questo restano tutte applicabili.
+applicable_items:
+  - A.1
+  - A.2
+  - A.3
+  - A.4
+  - B.1
+  - B.2
+  - B.3
+  - B.4
+  - C.1
+  - C.2
+  - C.3
+  - C.4
+  - D.1
+  - D.2
+  - D.3
+  - E.1
+  - E.2
+  - E.3
+  - E.4
+  - E.5
+  - F.1
+  - F.2
+  - F.3
+  - G.1
+  - G.2
+
+# Come per Ferrero, il libro dei verbali del Collegio sindacale resta una
+# questione aperta distinta dai singoli verbali richiesti in C.3. Il
+# verbale SWGI del 29/04/2026 documenta la nomina del Collegio, ma non
+# risolve se il libro debba diventare una riga stabile del master: questa
+# voce mantiene visibile il caso senza anticipare la decisione.
+extra_items:
+  - id: CS.1
+    label: "Libro verbali del Collegio sindacale"
+    section: F
+    note: "Questione aperta sul master: il verbale SWGI del 29/04/2026 documenta la nomina del Collegio ma non prova la continuita' del relativo libro; voce dimostrativa, non decisione normativa."
+    hints:
+      - "collegio sindacale"
+      - "verbale collegio"
+      - sindaci
+
+# Conti con saldo corrente non nullo nel foglio Mapping Finale/Bilancio SAP
+# e relativo estratto conto disponibile in F_Banche. I numeri sono stati
+# letti negli estratti di giugno; per Commerz l'OCR conferma anche l'IBAN.
+# Intesa 280900/280905 e Bulbank 287600/287610/287620 restano fuori: saldo
+# corrente nullo nella mappatura e nessun estratto presente nel trimestre.
+banks:
+  - coge: "280200"
+    banca: "Commerzbank AG"
+    numero_conto: "959104304100EUR"
+  - coge: "280920"
+    banca: "Unicredit Bank Italy EUR"
+    numero_conto: "000005283621"
+  - coge: "280930"
+    banca: "Credem Banca EUR"
+    numero_conto: "010/000001145"
+  - coge: "280940"
+    banca: "Credem - ECommerce"
+    numero_conto: "010/000817013"
+  - coge: "287500"
+    banca: "Banca Sella EUR"
+    numero_conto: "2052898905000"
+  - coge: "287505"
+    banca: "Banca Sella USD"
+    numero_conto: "207889890500A"
+  - coge: "287520"
+    banca: "Cassa di Risparmio di Asti S.p.A. EUR"
+    numero_conto: "IT59Y0608544910000014910449"
+  - coge: "287540"
+    banca: "BNL Gruppo BNP Paribas EUR"
+    numero_conto: "000000009514"
+
+# I tre fondi hanno documenti dedicati in E_Adempimenti tributari e sono
+# riscontrati anche nel bilancino (Enasarco/Firr, Sanimoda/FASI e
+# Previmoda/Previndai). La checklist cita inoltre altri fondi, ma senza un
+# documento del trimestre o una voce contabile univoca non vengono aggiunti.
+fondi_previdenziali:
+  - ENASARCO
+  - PREVIMODA
+  - SANIMODA
+
+# Le soglie non risultano deliberate per SWGI: null conserva la stessa
+# semantica prudente del ClientConfig Ferrero.
+soglia_scostamento_bancario_eur: null
+soglia_variazione_significativa_g_pct: null
