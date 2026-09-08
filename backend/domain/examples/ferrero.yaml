@@ -1,0 +1,129 @@
+# Esempio di ClientConfig (backend/domain/models.py) popolato con i dati
+# reali del caso Ferrero, presi da regole/schema.yaml e regole/TEMPLATE_RULES.md.
+# Serve a validare che i modelli della Fase 0 riescano a rappresentare un
+# cliente vero, non solo a compilare come tipi Python astratti.
+#
+# Non e' la fonte di verita' normativa (quella resta regole/TEMPLATE_RULES.md
+# e regole/schema.yaml): e' la stessa sostanza, tradotta nel formato che il
+# livello 4 del piano (client config) userebbe in Fase 2+.
+
+client_id: ferrero
+display_name: "Gruppo Ferrero S.p.A."
+
+# Le 25 voci standard del catalogo (A.1...G.2, vedi backend/catalog.py e
+# regole/schema.yaml:richiesta_doc.items) si applicano tutte a Ferrero: non
+# risulta, nelle fonti lette, un motivo per escluderne qualcuna (es.
+# l'Intrastat E.5 e' plausibile per un gruppo che opera nell'UE). Nessuna
+# esclusione e' stata inventata qui: se in futuro emerge che una voce non
+# si applica, va tolta da questa lista, non lasciata "wip" per sempre.
+applicable_items:
+  - A.1
+  - A.2
+  - A.3
+  - A.4
+  - B.1
+  - B.2
+  - B.3
+  - B.4
+  - C.1
+  - C.2
+  - C.3
+  - C.4
+  - D.1
+  - D.2
+  - D.3
+  - E.1
+  - E.2
+  - E.3
+  - E.4
+  - E.5
+  - F.1
+  - F.2
+  - F.3
+  - G.1
+  - G.2
+
+# APERTO in TEMPLATE_RULES.md §7.6 / §13 punto 3: se il libro verbali del
+# Collegio sindacale va aggiunto come riga della carta F. Non e' una
+# decisione presa (Ruben non l'ha chiusa), quindi qui resta vuoto invece di
+# inventare una risposta. Se/quando verra' deciso di aggiungerlo, la voce
+# andrebbe qui con qualcosa come:
+#   - id: F.5
+#     label: "Libro verbali del Collegio sindacale"
+#     section: F
+#     note: "TEMPLATE_RULES.md §7.6/§13.3 — aperto al 2026-09-08, decidere prima di generalizzare"
+extra_items: []
+
+# 17 conti bancari, da regole/schema.yaml:working_papers.E.master_banche_ferrero
+# (stessa fonte di TEMPLATE_RULES.md §7.5).
+banks:
+  - coge: "100915100020"
+    banca: "INTESA SANPAOLO SPA"
+    numero_conto: "00527/1000/00068796"
+  - coge: "100915100110"
+    banca: "MONTE DEI PASCHI DI SIENA"
+    # APERTO anche nella fonte (regole/schema.yaml lo segna "APERTO"):
+    # nel file Ferrero c'era un importo (39095.72) in questa colonna,
+    # segnalato come sospetto in TEMPLATE_RULES.md §7.5. Non e' un numero
+    # di conto vero: si riporta "APERTO" invece di inventarne uno.
+    numero_conto: "APERTO"
+  - coge: "100915100121"
+    banca: "UNICREDIT SPA"
+    numero_conto: "101476918"
+  - coge: "100915100130"
+    banca: "BANCO BPM SPA"
+    numero_conto: "23515"
+  - coge: "100915100170"
+    banca: "BNL GRUPPO BNP PARIBAS"
+    numero_conto: "000240"
+  - coge: "100915100210"
+    banca: "BANCA DEL PIEMONTE S.P.A."
+    numero_conto: "88419-7"
+  - coge: "100915100232"
+    banca: "CREDITO EMILIANO SPA"
+    numero_conto: "1085924"
+  - coge: "100915100233"
+    banca: "CREDEM EUROMOBILIARE SPA"
+    numero_conto: "198105"
+  - coge: "100915100700"
+    banca: "DEUTSCHE BANK SPA 830320"
+    numero_conto: "830320-1"
+  - coge: "100915100701"
+    banca: "DEUTSCHE BANK SPA 830321"
+    numero_conto: "830321-0"
+  - coge: "100915100704"
+    banca: "DEUTSCHE C/GARANZ.401195"
+    numero_conto: "401195"
+  - coge: "100915100800"
+    banca: "MEDIOBANCA SPA"
+    numero_conto: "13757-0"
+  - coge: "100915100900"
+    banca: "ALLIANZ BANK SPA"
+    numero_conto: "949810"
+  - coge: "100915100350"
+    banca: "BPER BANCA SPA"
+    numero_conto: "38035173"
+  - coge: "100915100360"
+    banca: "BPER BANCA SPA (EX UBI)"
+    numero_conto: "42216254"
+  - coge: "100915100500"
+    banca: "PASSADORE C/C N.1613722"
+    numero_conto: "000001613722"
+  - coge: "100915100501"
+    banca: "PASSADORE C/C N.1614336"
+    numero_conto: "000001614336"
+
+# Da regole/schema.yaml:working_papers.C.fondi.rows, righe 19-23 (riga 24 e'
+# LIPE, che non e' un fondo previdenziale: resta fuori da questa lista,
+# la sua voce di catalogo e' E.3 in applicable_items).
+fondi_previdenziali:
+  - QUADRIFOR
+  - "BB PREV IMPIEGATI"
+  - "MARIO NEGRI"
+  - "MARIO BESUSSO"
+  - "ANTONIO PASTORE"
+
+# TEMPLATE_RULES.md §13 punto 4: soglia non decisa. None (null in YAML) per
+# non inventare un numero — vedi il docstring di ClientConfig nel modello.
+soglia_scostamento_bancario_eur: null
+soglia_variazione_significativa_g_pct: null
