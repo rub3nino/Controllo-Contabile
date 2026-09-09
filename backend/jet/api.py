@@ -218,20 +218,15 @@ def export_results(
     for cell in ws[1]:
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill("solid", fgColor="31556F")
-    offset = 0
-    while True:
-        batch, _ = _store().query_results(
-            pratica_id, da_investigare=da_investigare, conto_contabile=conto_contabile,
-            punteggio_minimo=punteggio_minimo, limit=1000, offset=offset,
-        )
-        if not batch: break
-        for item in batch:
-            r, e = item.riga, item.esito
-            motivi = ", ".join(label for field, label in FLAG_LABELS.items() if getattr(e, field) is True)
-            ws.append([r.identificativo_registrazione, r.numero_documento, r.data_effettiva,
-                       r.conto_contabile, float(r.importo_netto), r.descrizione, r.utente,
-                       e.punteggio_totale, "Sì" if e.da_investigare else "No", motivi])
-        offset += len(batch)
+    for item in _store().iter_export_results(
+        pratica_id, da_investigare=da_investigare, conto_contabile=conto_contabile,
+        punteggio_minimo=punteggio_minimo, batch_size=1000,
+    ):
+        r, e = item.riga, item.esito
+        motivi = ", ".join(label for field, label in FLAG_LABELS.items() if getattr(e, field) is True)
+        ws.append([r.identificativo_registrazione, r.numero_documento, r.data_effettiva,
+                   r.conto_contabile, float(r.importo_netto), r.descrizione, r.utente,
+                   e.punteggio_totale, "Sì" if e.da_investigare else "No", motivi])
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = ws.dimensions
     widths = [20, 20, 16, 20, 18, 45, 22, 12, 16, 60]

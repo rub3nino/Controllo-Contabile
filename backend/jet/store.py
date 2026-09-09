@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from backend.jet.models import EsitoRigaJet, EsitoSequenzaJet, RigaGiornale
@@ -145,6 +145,39 @@ class JetStore:
                 [*args, limit, offset],
             ).fetchall()
         return [RisultatoJet.model_validate_json(row["data"]) for row in rows], total
+
+    def iter_export_results(
+        self, pratica_id: str, *, da_investigare: bool | None = None,
+        conto_contabile: str | None = None, punteggio_minimo: int | None = None,
+        batch_size: int = 1000,
+    ) -> Iterator[RisultatoJet]:
+        """Itera i risultati per id, senza il costo crescente di OFFSET."""
+        clauses = ["pratica_id = ?"]
+        args: list[object] = [pratica_id]
+        if da_investigare is not None:
+            clauses.append("da_investigare = ?")
+            args.append(int(da_investigare))
+        if conto_contabile is not None:
+            clauses.append("conto_contabile = ?")
+            args.append(conto_contabile)
+        if punteggio_minimo is not None:
+            clauses.append("punteggio_totale >= ?")
+            args.append(punteggio_minimo)
+        clauses.append("id > ?")
+        where = " AND ".join(clauses)
+        last_id = 0
+        with self._connect() as conn:
+            while True:
+                rows = conn.execute(
+                    f"SELECT id, data FROM risultato_jet WHERE {where} "
+                    "ORDER BY id ASC LIMIT ?",
+                    [*args, last_id, batch_size],
+                ).fetchall()
+                if not rows:
+                    return
+                last_id = rows[-1]["id"]
+                for row in rows:
+                    yield RisultatoJet.model_validate_json(row["data"])
 
     def sequence(self, pratica_id: str) -> tuple[list[EsitoSequenzaJet], list[IntervalloSequenzaJet]]:
         with self._connect() as conn:
