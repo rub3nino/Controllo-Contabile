@@ -13,8 +13,10 @@ from openpyxl.styles import Font, PatternFill
 
 from backend.jet.criteri import calcola_frequenza_conti, valuta_riga
 from backend.jet.ingest import leggi_righe_xlsx, mappa_righe_giornale
+from backend.jet.ingest_pdf import estrai_righe_pdf, mappa_righe_pdf
 from backend.jet.ingest_txt import (
     AnteprimaTxt,
+    ispeziona_righe,
     ispeziona_txt,
     mappa_righe_txt,
     normalizza_intestazione,
@@ -33,6 +35,7 @@ from backend.jet.store import JetStore
 from backend.workspace import output_dir, storage_root, write_inbox_file
 
 router = APIRouter(prefix="/api/jet", tags=["jet"])
+FORMATI_PROFILABILI = {".txt", ".pdf"}
 
 
 def _store() -> JetStore:
@@ -53,18 +56,22 @@ def _file_path(pratica: PraticaJet) -> Path:
 
 
 def _raw_rows(pratica: PraticaJet) -> list[dict]:
-    if Path(pratica.file_originale_nome or "").suffix.lower() == ".txt":
+    suffix = Path(pratica.file_originale_nome or "").suffix.lower()
+    if suffix in FORMATI_PROFILABILI:
         if not pratica.profilo_estrazione_id:
             raise HTTPException(
                 status_code=409, detail="Applica prima un profilo di estrazione TXT"
             )
         profilo = _store().get_profilo(pratica.profilo_estrazione_id)
         if profilo is None:
-            raise HTTPException(status_code=409, detail="Profilo di estrazione TXT non trovato")
+            raise HTTPException(status_code=409, detail="Profilo di estrazione non trovato")
         try:
+            if suffix == ".pdf":
+                return mappa_righe_pdf(_file_path(pratica), profilo)
             return mappa_righe_txt(_file_path(pratica), profilo)
         except (OSError, ValueError, TypeError) as exc:
-            raise HTTPException(status_code=400, detail=f"File TXT non leggibile: {exc}") from exc
+            formato = "PDF" if suffix == ".pdf" else "TXT"
+            raise HTTPException(status_code=400, detail=f"File {formato} non leggibile: {exc}") from exc
     try:
         return leggi_righe_xlsx(_file_path(pratica))
     except (OSError, ValueError, KeyError) as exc:
@@ -118,14 +125,18 @@ async def upload_file(pratica_id: str, file: UploadFile = File(...)):
     pratica = _pratica_or_404(pratica_id)
     filename = Path(file.filename or "giornale.xlsx").name
     suffix = Path(filename).suffix.lower()
-    if suffix not in {".xlsx", ".txt"}:
-        raise HTTPException(status_code=400, detail="Sono accettati solo file .xlsx o .txt")
+    if suffix not in {".xlsx", ".txt", ".pdf"}:
+        raise HTTPException(status_code=400, detail="Sono accettati solo file .xlsx, .txt o .pdf")
     path = write_inbox_file(pratica.id, filename, await file.read())
-    if suffix == ".txt":
+    if suffix in FORMATI_PROFILABILI:
         try:
-            anteprima = ispeziona_txt(path)
+            if suffix == ".pdf":
+                anteprima = ispeziona_righe(estrai_righe_pdf(path), origine="pdf")
+            else:
+                anteprima = ispeziona_txt(path)
         except (OSError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail=f"File TXT non leggibile: {exc}") from exc
+            formato = "PDF" if suffix == ".pdf" else "TXT"
+            raise HTTPException(status_code=400, detail=f"File {formato} non leggibile: {exc}") from exc
         profilo = _store().find_profilo_by_intestazione(
             normalizza_intestazione(anteprima.intestazione)
         )
@@ -163,11 +174,18 @@ async def upload_file(pratica_id: str, file: UploadFile = File(...)):
 @router.get("/pratiche/{pratica_id}/intestazioni")
 def get_headers(pratica_id: str):
     pratica = _pratica_or_404(pratica_id)
-    if Path(pratica.file_originale_nome or "").suffix.lower() == ".txt":
+    suffix = Path(pratica.file_originale_nome or "").suffix.lower()
+    if suffix in FORMATI_PROFILABILI:
         try:
-            anteprima = ispeziona_txt(_file_path(pratica))
+            if suffix == ".pdf":
+                anteprima = ispeziona_righe(
+                    estrai_righe_pdf(_file_path(pratica)), origine="pdf"
+                )
+            else:
+                anteprima = ispeziona_txt(_file_path(pratica))
         except (OSError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail=f"File TXT non leggibile: {exc}") from exc
+            formato = "PDF" if suffix == ".pdf" else "TXT"
+            raise HTTPException(status_code=400, detail=f"File {formato} non leggibile: {exc}") from exc
         return {
             "intestazioni": [], "intestazione": anteprima.intestazione,
             "riga_intestazione": anteprima.riga_intestazione,
@@ -195,20 +213,27 @@ def _valida_posizioni_profilo(posizioni: dict[str, tuple[int, int]]) -> None:
         )
 
 
-def _pratica_txt_or_400(pratica_id: str) -> tuple[PraticaJet, AnteprimaTxt]:
+def _pratica_profilabile_or_400(pratica_id: str) -> tuple[PraticaJet, AnteprimaTxt]:
     pratica = _pratica_or_404(pratica_id)
-    if Path(pratica.file_originale_nome or "").suffix.lower() != ".txt":
-        raise HTTPException(status_code=400, detail="La pratica non contiene un file TXT")
+    suffix = Path(pratica.file_originale_nome or "").suffix.lower()
+    if suffix not in FORMATI_PROFILABILI:
+        raise HTTPException(status_code=400, detail="La pratica non contiene un file TXT o PDF")
     try:
-        anteprima = ispeziona_txt(_file_path(pratica))
+        if suffix == ".pdf":
+            anteprima = ispeziona_righe(
+                estrai_righe_pdf(_file_path(pratica)), origine="pdf"
+            )
+        else:
+            anteprima = ispeziona_txt(_file_path(pratica))
     except (OSError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail=f"File TXT non leggibile: {exc}") from exc
+        formato = "PDF" if suffix == ".pdf" else "TXT"
+        raise HTTPException(status_code=400, detail=f"File {formato} non leggibile: {exc}") from exc
     return pratica, anteprima
 
 
 @router.put("/pratiche/{pratica_id}/profilo/{profilo_id}", response_model=PraticaJet)
 def apply_profilo(pratica_id: str, profilo_id: str):
-    pratica, anteprima = _pratica_txt_or_400(pratica_id)
+    pratica, anteprima = _pratica_profilabile_or_400(pratica_id)
     profilo = _store().get_profilo(profilo_id)
     if profilo is None:
         raise HTTPException(status_code=404, detail="Profilo di estrazione non trovato")
@@ -224,7 +249,7 @@ def apply_profilo(pratica_id: str, profilo_id: str):
 
 @router.post("/pratiche/{pratica_id}/profilo", response_model=PraticaJet, status_code=201)
 def create_and_apply_profilo(pratica_id: str, body: CreaProfiloEstrazione):
-    pratica, anteprima = _pratica_txt_or_400(pratica_id)
+    pratica, anteprima = _pratica_profilabile_or_400(pratica_id)
     _valida_posizioni_profilo(body.posizioni)
     profilo = ProfiloEstrazione(
         nome=body.nome.strip(), riga_intestazione=anteprima.riga_intestazione,
@@ -269,15 +294,16 @@ def analyze(pratica_id: str):
     if pratica.parametri is None: missing.append("parametri")
     if pratica.file_originale_nome is None:
         missing.append("file Excel")
-    elif Path(pratica.file_originale_nome).suffix.lower() == ".txt":
+    elif Path(pratica.file_originale_nome).suffix.lower() in FORMATI_PROFILABILI:
         if pratica.profilo_estrazione_id is None:
-            missing.append("profilo di estrazione TXT")
+            formato = Path(pratica.file_originale_nome).suffix[1:].upper()
+            missing.append(f"profilo di estrazione {formato}")
     elif pratica.mappatura is None:
         missing.append("mappatura colonne")
     if missing:
         raise HTTPException(status_code=409, detail=f"Prima di analizzare completa: {', '.join(missing)}")
     try:
-        if Path(pratica.file_originale_nome or "").suffix.lower() == ".txt":
+        if Path(pratica.file_originale_nome or "").suffix.lower() in FORMATI_PROFILABILI:
             righe = _raw_rows(pratica)
         else:
             righe = mappa_righe_giornale(_raw_rows(pratica), pratica.mappatura)

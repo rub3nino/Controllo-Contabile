@@ -44,31 +44,42 @@ def _leggi_testo(percorso: str | Path) -> tuple[str, str]:
     )
 
 
-def ispeziona_txt(percorso: str | Path, *, numero_esempi: int = 5) -> AnteprimaTxt:
-    testo, codifica = _leggi_testo(percorso)
-    righe = testo.splitlines()
+def ispeziona_righe(
+    righe: list[str], *, origine: str, numero_esempi: int = 5
+) -> AnteprimaTxt:
+    """Costruisce l'anteprima profilabile da righe, indipendentemente dall'origine."""
     for indice, riga in enumerate(righe):
         if riga.strip():
             return AnteprimaTxt(
-                codifica=codifica,
+                codifica=origine,
                 riga_intestazione=indice,
                 intestazione=riga,
                 righe_esempio=[x for x in righe[indice + 1:] if x.strip()][
                     :numero_esempi
                 ],
             )
-    raise ValueError("Il file TXT non contiene un'intestazione non vuota")
+    raise ValueError("Il contenuto non contiene un'intestazione non vuota")
 
 
-def estrai_righe_txt(
-    percorso: str | Path, profilo: ProfiloEstrazione
+def ispeziona_txt(percorso: str | Path, *, numero_esempi: int = 5) -> AnteprimaTxt:
+    testo, codifica = _leggi_testo(percorso)
+    try:
+        return ispeziona_righe(
+            testo.splitlines(), origine=codifica, numero_esempi=numero_esempi
+        )
+    except ValueError as exc:
+        raise ValueError("Il file TXT non contiene un'intestazione non vuota") from exc
+
+
+def estrai_righe_testo(
+    righe: list[str], profilo: ProfiloEstrazione, *, formato: str = "TXT"
 ) -> list[dict[str, str]]:
-    """Estrae campi grezzi con gli intervalli 0-based ``[inizio, fine)``."""
-    testo, _ = _leggi_testo(percorso)
-    righe = testo.splitlines()
-    anteprima = ispeziona_txt(percorso)
+    """Applica un profilo alle righe con intervalli 0-based ``[inizio, fine)``."""
+    anteprima = ispeziona_righe(righe, origine="testo")
     if normalizza_intestazione(anteprima.intestazione) != profilo.intestazione_riferimento:
-        raise ValueError("L'intestazione del file TXT non corrisponde al profilo applicato")
+        raise ValueError(
+            f"L'intestazione del file {formato} non corrisponde al profilo applicato"
+        )
 
     lunghezza_minima = max((fine for _, fine in profilo.posizioni.values()), default=0)
     risultato: list[dict[str, str]] = []
@@ -90,9 +101,24 @@ def estrai_righe_txt(
     return risultato
 
 
+def estrai_righe_txt(
+    percorso: str | Path, profilo: ProfiloEstrazione
+) -> list[dict[str, str]]:
+    """Wrapper TXT compatibile sul motore condiviso di righe profilabili."""
+    testo, _ = _leggi_testo(percorso)
+    return estrai_righe_testo(testo.splitlines(), profilo)
+
+
+def mappa_righe_testo(
+    righe: list[str], profilo: ProfiloEstrazione, *, formato: str = "TXT"
+) -> list[RigaGiornale]:
+    grezze = estrai_righe_testo(righe, profilo, formato=formato)
+    mappatura = {campo: campo for campo in profilo.posizioni}
+    return mappa_righe_giornale(grezze, mappatura)
+
+
 def mappa_righe_txt(
     percorso: str | Path, profilo: ProfiloEstrazione
 ) -> list[RigaGiornale]:
-    grezze = estrai_righe_txt(percorso, profilo)
-    mappatura = {campo: campo for campo in profilo.posizioni}
-    return mappa_righe_giornale(grezze, mappatura)
+    testo, _ = _leggi_testo(percorso)
+    return mappa_righe_testo(testo.splitlines(), profilo)
