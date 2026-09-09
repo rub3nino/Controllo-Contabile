@@ -101,15 +101,21 @@ body {
 
   /* Sidebar nav item base */
   .nav-item {
-    @apply flex items-center gap-md px-md py-sm rounded text-label-md text-ink-secondary transition-colors-fast;
+    @apply flex items-center gap-3 px-3 py-2 rounded text-ink-secondary;
+    font-size: 0.8125rem;
+    line-height: 1.125rem;
+    font-weight: 500;
+    transition: color 120ms ease, background-color 120ms ease;
   }
 
   .nav-item:hover {
-    @apply bg-surface-sidebar-hover text-ink-primary;
+    background-color: #ebebea;
+    color: #232321;
   }
 
   .nav-item.active {
-    @apply bg-surface-sidebar-hover text-ink-primary;
+    background-color: #ebebea;
+    color: #232321;
   }
 
   /* Card base (hairline border, no shadow) */
@@ -179,4 +185,141 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #c0c0bb;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Dark Mode
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  @apply bg-[#191918] text-[#e8e8e6];
+}
+
+.dark .bg-surface {
+  background-color: #191918;
+}
+
+.dark .bg-surface-sidebar {
+  background-color: #1f1f1e;
+}
+
+.dark .bg-surface-card {
+  background-color: #242423;
+}
+
+.dark .bg-surface-hover {
+  background-color: #2a2a29;
+}
+
+.dark .bg-surface-recessed {
+  background-color: #151514;
+}
+
+.dark .border-border-subtle {
+  border-color: #333332;
+}
+
+.dark .border-border-muted {
+  border-color: #2a2a29;
+}
+
+.dark .text-ink-primary {
+  color: #e8e8e6;
+}
+
+.dark .text-ink-secondary {
+  color: #a3a3a0;
+}
+
+.dark .text-ink-tertiary {
+  color: #6b6b68;
+}
+
+.dark .dot-pattern {
+  background-image: radial-gradient(#333332 1px, transparent 1px);
+}
+
+.dark .nav-item:hover,
+.dark .nav-item.active {
+  background-color: #2a2a29;
+  color: #e8e8e6;
+}
+
+.dark .data-table thead {
+  background-color: #1f1f1e;
+}
+
+.dark .data-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #444443;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #555554;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Microinterazioni e hover effects
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Effetto click/press */
+.press-effect:active {
+  transform: scale(0.98);
+}
+
+/* Highlight per onboarding */
+.onboarding-highlight {
+  position: relative;
+  z-index: 91;
+  box-shadow: 0 0 0 4px rgba(43, 89, 102, 0.3);
+  border-radius: 8px;
+}
+
+/* Focus ring per accessibilità */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #faf9f6, 0 0 0 4px #2b5966;
+}
+
+.dark .focus-ring:focus-visible {
+  box-shadow: 0 0 0 2px #191918, 0 0 0 4px #4a9eb3;
+}
+
+/* Smooth transitions per elementi interattivi */
+button,
+a,
+input,
+select,
+textarea {
+  @apply transition-colors-fast;
+}
+
+/* Caption text style */
+.text-caption {
+  font-size: 0.6875rem;
+  line-height: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Heading styles per consistency */
+.text-heading-sm {
+  font-size: 1.0625rem;
+  line-height: 1.5rem;
+  letter-spacing: -0.012em;
+  font-weight: 600;
+}
+
+.text-heading-md {
+  font-size: 1.375rem;
+  line-height: 1.75rem;
+  letter-spacing: -0.018em;
+  font-weight: 600;
 }

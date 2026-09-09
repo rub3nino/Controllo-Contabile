@@ -5,7 +5,7 @@
  * ma usa la nuova struttura visiva con sidebar fissa.
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
 import {
   ApiError,
   api,
@@ -16,11 +16,35 @@ import {
   type ProvenanceRow,
   type UserFacingError,
 } from "./api";
-import { Sidebar, PlaceholderSection, Icon, StatusBadge, Card, CardHeader, mapStatusToVariant } from "./components";
+import {
+  Sidebar,
+  PlaceholderSection,
+  Icon,
+  StatusBadge,
+  Card,
+  CardHeader,
+  mapStatusToVariant,
+  // Nuovi componenti
+  ToastProvider,
+  useToast,
+  CommandPaletteProvider,
+  useCommandPalette,
+  OnboardingProvider,
+  OnboardingTooltips,
+  ShortcutsModal,
+  ThemeToggle,
+  ConnectionStatus,
+  ConnectionBanner,
+  EmptyDocuments,
+  Skeleton,
+  SkeletonCard,
+  type Command,
+} from "./components";
 import type { SectionId } from "./components/Sidebar";
 import { DomainDashboard } from "./domain/DomainDashboard";
 import { JetPage } from "./pages";
 import { ALL_SECTIONS, sectionHelp } from "./sectionHelp";
+import { useKeyboardShortcuts } from "./hooks";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -83,10 +107,35 @@ function getBreadcrumb(section: SectionId, clientName?: string): string[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Main App Component
+// Main App Component (wrapped with providers)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  return (
+    <ToastProvider>
+      <CommandPaletteProvider>
+        <OnboardingProvider autoStart={true}>
+          <AppContent />
+          <OnboardingTooltips />
+          <ConnectionBanner />
+        </OnboardingProvider>
+      </CommandPaletteProvider>
+    </ToastProvider>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App Content (main application logic)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AppContent() {
+  // ─── Hooks from providers ───
+  const { toast } = useToast();
+  const { registerCommands, open: openCommandPalette } = useCommandPalette();
+
+  // ─── Shortcuts modal ───
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
   // ─── Sidebar state ───
   const [activeSection, setActiveSection] = useState<SectionId>("controllo-contabile");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -251,8 +300,13 @@ export default function App() {
       const scanned = await api.scan();
       setState(scanned);
       setView("docs");
+      toast.success(
+        "Scansione completata",
+        `${scanned.documents?.length || 0} documenti trovati`
+      );
     } catch (e) {
       fail(e);
+      toast.error("Scansione fallita", "Controlla i dettagli dell'errore");
     } finally {
       setBusy(false);
     }
@@ -315,8 +369,10 @@ export default function App() {
         }
       }
       await refresh();
+      toast.success("Compilazione completata", "La verifica è stata compilata con successo");
     } catch (e) {
       fail(e);
+      toast.error("Compilazione fallita", "Controlla i dettagli dell'errore");
     } finally {
       setBusy(false);
     }
@@ -351,6 +407,132 @@ export default function App() {
   const scanned = (state?.documents || []).length > 0;
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Keyboard Shortcuts
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const toggleSidebar = useCallback(() => {
+    const newValue = !sidebarCollapsed;
+    localStorage.setItem("quadra-sidebar-collapsed", String(newValue));
+    setSidebarCollapsed(newValue);
+  }, [sidebarCollapsed]);
+
+  useKeyboardShortcuts({
+    "cmd+k": openCommandPalette,
+    "cmd+/": () => setShowShortcuts(true),
+    "1": () => setActiveSection("controllo-contabile"),
+    "2": () => setActiveSection("jet"),
+    "3": () => setActiveSection("sezione-3"),
+    "4": () => setActiveSection("sezione-4"),
+    "5": () => setActiveSection("sezione-5"),
+    "[": toggleSidebar,
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Command Palette Commands
+  // ─────────────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const commands: Command[] = [
+      // Navigation
+      {
+        id: "nav-controllo",
+        title: "Controllo Contabile",
+        subtitle: "Vai alla sezione principale",
+        icon: "fact_check",
+        shortcut: "1",
+        section: "Navigazione",
+        onSelect: () => setActiveSection("controllo-contabile"),
+      },
+      {
+        id: "nav-jet",
+        title: "JET (ISA 240)",
+        subtitle: "Analisi Journal Entry Testing",
+        icon: "analytics",
+        shortcut: "2",
+        section: "Navigazione",
+        onSelect: () => setActiveSection("jet"),
+      },
+      {
+        id: "nav-sezione3",
+        title: "Sezione 3",
+        icon: "article",
+        shortcut: "3",
+        section: "Navigazione",
+        onSelect: () => setActiveSection("sezione-3"),
+      },
+      {
+        id: "nav-sezione4",
+        title: "Sezione 4",
+        icon: "article",
+        shortcut: "4",
+        section: "Navigazione",
+        onSelect: () => setActiveSection("sezione-4"),
+      },
+      {
+        id: "nav-sezione5",
+        title: "Sezione 5",
+        icon: "article",
+        shortcut: "5",
+        section: "Navigazione",
+        onSelect: () => setActiveSection("sezione-5"),
+      },
+      // Actions
+      {
+        id: "action-scan",
+        title: "Avvia scansione",
+        subtitle: "Analizza i documenti nella cartella",
+        icon: "document_scanner",
+        shortcut: "⌘↵",
+        section: "Azioni",
+        onSelect: () => {
+          if (!busy && hasFolder) scan();
+        },
+      },
+      {
+        id: "action-compile",
+        title: "Compila verifica",
+        subtitle: "Esegui la compilazione automatica",
+        icon: "play_arrow",
+        section: "Azioni",
+        onSelect: () => {
+          if (!busy && scanned) run();
+        },
+      },
+      {
+        id: "action-shortcuts",
+        title: "Mostra scorciatoie",
+        subtitle: "Visualizza le scorciatoie da tastiera",
+        icon: "keyboard",
+        shortcut: "⌘/",
+        section: "Aiuto",
+        onSelect: () => setShowShortcuts(true),
+      },
+      {
+        id: "action-toggle-sidebar",
+        title: "Comprimi/espandi sidebar",
+        icon: "view_sidebar",
+        shortcut: "[",
+        section: "Interfaccia",
+        onSelect: toggleSidebar,
+      },
+    ];
+
+    // Add client-specific commands if we have a client
+    if (state?.pratica?.client) {
+      commands.push({
+        id: "client-current",
+        title: state.pratica.client,
+        subtitle: "Cliente corrente",
+        icon: "business",
+        section: "Cliente",
+        onSelect: () => setView("overview"),
+      });
+    }
+
+    return registerCommands(commands);
+  }, [registerCommands, busy, hasFolder, scanned, state?.pratica?.client, toggleSidebar]);
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -370,7 +552,7 @@ export default function App() {
         `}
       >
         {/* ─── Top bar with breadcrumb ─── */}
-        <header className="h-11 flex items-center px-lg border-b border-border-muted bg-surface/80 backdrop-blur-sm flex-shrink-0">
+        <header className="h-11 flex items-center justify-between px-lg border-b border-border-muted bg-surface/80 backdrop-blur-sm flex-shrink-0">
           <nav className="flex items-center gap-xs text-body-sm">
             {breadcrumb.map((item, index) => (
               <span key={index} className="flex items-center gap-xs">
@@ -381,10 +563,31 @@ export default function App() {
               </span>
             ))}
           </nav>
+
+          {/* Right side controls */}
+          <div className="flex items-center gap-2">
+            {/* Search button */}
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              data-onboarding="search"
+              className="flex items-center gap-2 h-8 px-3 rounded-md border border-border-subtle bg-surface-card hover:bg-surface-hover transition-colors text-body-sm text-ink-tertiary"
+            >
+              <Icon name="search" size="sm" />
+              <span className="hidden sm:inline">Cerca...</span>
+              <kbd className="hidden sm:inline-flex ml-2 px-1.5 py-0.5 rounded bg-surface-recessed text-caption">⌘K</kbd>
+            </button>
+
+            {/* Theme toggle */}
+            <ThemeToggle />
+
+            {/* Connection status */}
+            <ConnectionStatus compact className="ml-1" />
+          </div>
         </header>
 
         {/* ─── Content ─── */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto dot-pattern">
           <div className="max-w-content-wide mx-auto px-2xl py-lg">
             {activeSection === "controllo-contabile" && (
               <ControlloContabileSection
@@ -449,6 +652,9 @@ export default function App() {
       {picked && (
         <ProvenancePanel picked={picked} onClose={() => setPicked(null)} />
       )}
+
+      {/* ─── Shortcuts modal ─── */}
+      <ShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   );
 }
