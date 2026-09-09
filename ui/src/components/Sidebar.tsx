@@ -1,14 +1,11 @@
 /**
- * Sidebar — Navigazione principale a sinistra.
+ * Sidebar — Navigazione principale a sinistra, stile Atelier / Notion.
  * Stato espanso/collassato persistito in localStorage.
  */
 
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
+import { ThemeToggle } from "./ThemeToggle";
 
 export type SectionId =
   | "controllo-contabile"
@@ -25,14 +22,18 @@ interface NavItem {
   badgeType?: "neutral" | "muted";
 }
 
+interface ArchiveItem {
+  id: string;
+  label: string;
+  icon: string;
+  badge?: string;
+}
+
 interface SidebarProps {
   activeSection: SectionId;
   onSectionChange: (section: SectionId) => void;
+  onSearch?: () => void;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Navigation items config
-// ─────────────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS: NavItem[] = [
   {
@@ -72,17 +73,85 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+const ARCHIVE_ITEMS: ArchiveItem[] = [
+  {
+    id: "verbali",
+    label: "Verbali Collegio Sindacale",
+    icon: "gavel",
+  },
+];
+
 const STORAGE_KEY = "quadra-sidebar-collapsed";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Component
-// ─────────────────────────────────────────────────────────────────────────────
+function NavButton({
+  icon,
+  label,
+  badge,
+  badgeType,
+  collapsed,
+  active,
+  onClick,
+  title,
+}: {
+  icon: string;
+  label: string;
+  badge?: string;
+  badgeType?: "neutral" | "muted";
+  collapsed: boolean;
+  active?: boolean;
+  onClick?: () => void;
+  title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={collapsed ? title || label : undefined}
+      className={`
+        w-full flex items-center gap-3 rounded-md
+        transition-colors
+        ${collapsed ? "justify-center px-2 py-2" : "px-3 py-1.5"}
+        ${
+          active
+            ? "bg-surface-sidebar-hover text-ink-primary"
+            : "text-ink-secondary hover:bg-surface-sidebar-hover hover:text-ink-primary"
+        }
+      `}
+    >
+      <Icon
+        name={icon}
+        size="sm"
+        className={active ? "text-ink-primary" : "text-ink-secondary"}
+      />
+      {!collapsed && (
+        <>
+          <span className="flex-1 text-left text-[13px] font-medium truncate">{label}</span>
+          {badge && (
+            <span
+              className={`
+                text-[11px] px-1.5 py-0.5 rounded
+                ${
+                  badgeType === "muted"
+                    ? "text-ink-tertiary"
+                    : "bg-tint-gray-bg text-tint-gray-text"
+                }
+              `}
+            >
+              {badge}
+            </span>
+          )}
+        </>
+      )}
+    </button>
+  );
+}
 
-export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
+export function Sidebar({ activeSection, onSectionChange, onSearch }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(STORAGE_KEY) === "true";
   });
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(collapsed));
@@ -90,6 +159,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
 
   return (
     <aside
+      data-onboarding="sidebar"
       className={`
         fixed inset-y-0 left-0 z-40 flex flex-col
         bg-surface-sidebar border-r border-border-subtle
@@ -97,151 +167,145 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         ${collapsed ? "w-sidebar-collapsed" : "w-sidebar-expanded"}
       `}
     >
-      {/* ─── Header: Logo + Nome ─── */}
+      {/* Brand */}
       <div
         className={`
-          flex items-center gap-md px-md py-base
-          border-b border-border-muted
-          hover:bg-surface-sidebar-hover transition-colors-fast cursor-default
+          flex items-center gap-3 px-3 py-3
           ${collapsed ? "justify-center" : ""}
         `}
       >
-        {/* Logo box */}
         <div className="w-7 h-7 rounded bg-ink-primary flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-label-md font-semibold">Q</span>
+          <span className="text-white text-[13px] font-semibold">Q</span>
         </div>
-
         {!collapsed && (
           <div className="min-w-0">
-            <div className="text-label-md font-semibold text-ink-primary truncate">
+            <div className="text-[13px] font-semibold text-ink-primary truncate leading-tight">
               Quadra Revisione
             </div>
-            <div className="text-body-sm text-ink-tertiary truncate">
+            <div className="text-[11px] text-ink-tertiary truncate">
               SA Italia 250B · art. 2409-ter
             </div>
           </div>
         )}
       </div>
 
-      {/* ─── Navigation ─── */}
-      <nav className="flex-1 overflow-y-auto px-sm py-md">
+      <nav className="flex-1 overflow-y-auto px-2 py-1">
+        {/* Utility */}
+        <ul className="space-y-0.5 mb-4">
+          <li>
+            <NavButton
+              icon="search"
+              label="Cerca"
+              collapsed={collapsed}
+              onClick={onSearch}
+            />
+          </li>
+          <li>
+            <NavButton
+              icon="notifications_none"
+              label="Aggiornamenti"
+              collapsed={collapsed}
+            />
+          </li>
+          <li className="relative">
+            <NavButton
+              icon="settings"
+              label="Impostazioni & Membri"
+              collapsed={collapsed}
+              active={settingsOpen}
+              onClick={() => setSettingsOpen((v) => !v)}
+            />
+            {settingsOpen && !collapsed && (
+              <div className="mx-2 mt-1 mb-2 p-2 rounded-md border border-border-subtle bg-surface-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] text-ink-secondary">Tema</span>
+                  <ThemeToggle />
+                </div>
+              </div>
+            )}
+          </li>
+        </ul>
+
+        {/* Procedure */}
         {!collapsed && (
-          <div className="px-sm pb-sm">
-            <span className="text-label-sm text-ink-tertiary uppercase tracking-wide">
+          <div className="px-3 pb-1.5">
+            <span className="text-[11px] font-medium text-ink-tertiary uppercase tracking-wider">
               Procedure di Audit
             </span>
           </div>
         )}
+        <ul className="space-y-0.5 mb-4">
+          {NAV_ITEMS.map((item) => (
+            <li key={item.id}>
+              <NavButton
+                icon={item.icon}
+                label={item.label}
+                badge={item.badge}
+                badgeType={item.badgeType}
+                collapsed={collapsed}
+                active={activeSection === item.id}
+                onClick={() => onSectionChange(item.id)}
+              />
+            </li>
+          ))}
+        </ul>
 
-        <ul className="space-y-xxs">
-          {NAV_ITEMS.map((item) => {
-            const isActive = activeSection === item.id;
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => onSectionChange(item.id)}
-                  title={collapsed ? item.label : undefined}
-                  className={`
-                    w-full flex items-center gap-md rounded
-                    transition-colors-fast
-                    ${collapsed ? "justify-center px-sm py-sm" : "px-md py-sm"}
-                    ${
-                      isActive
-                        ? "bg-surface-sidebar-hover text-ink-primary"
-                        : "text-ink-secondary hover:bg-surface-sidebar-hover hover:text-ink-primary"
-                    }
-                  `}
-                >
-                  <Icon
-                    name={item.icon}
-                    size="md"
-                    className={isActive ? "text-ink-primary" : "text-ink-secondary"}
-                  />
-
-                  {!collapsed && (
-                    <>
-                      <span className="flex-1 text-left text-label-md truncate">
-                        {item.label}
-                      </span>
-
-                      {item.badge && (
-                        <span
-                          className={`
-                            text-label-sm px-xs py-xxs rounded
-                            ${
-                              item.badgeType === "muted"
-                                ? "text-ink-tertiary"
-                                : "bg-tint-gray-bg text-tint-gray-text"
-                            }
-                          `}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </button>
-              </li>
-            );
-          })}
+        {/* Archivio */}
+        {!collapsed && (
+          <div className="px-3 pb-1.5">
+            <span className="text-[11px] font-medium text-ink-tertiary uppercase tracking-wider">
+              Archivio Cartelle
+            </span>
+          </div>
+        )}
+        <ul className="space-y-0.5">
+          {ARCHIVE_ITEMS.map((item) => (
+            <li key={item.id}>
+              <NavButton
+                icon={item.icon}
+                label={item.label}
+                badge="In arrivo"
+                badgeType="muted"
+                collapsed={collapsed}
+              />
+            </li>
+          ))}
         </ul>
       </nav>
 
-      {/* ─── Footer: Session indicator + Collapse button ─── */}
+      {/* Footer */}
       <div className="mt-auto border-t border-border-muted">
-        {/* Session indicator */}
-        <div
-          className={`
-            bg-surface-recessed px-md py-md
-            ${collapsed ? "text-center" : ""}
-          `}
-        >
+        <div className={`px-3 py-3 ${collapsed ? "text-center" : ""}`}>
           {collapsed ? (
             <div className="w-2 h-2 rounded-full bg-status-green-text mx-auto" title="Sessione attiva" />
           ) : (
             <>
-              <div className="text-body-sm text-ink-secondary mb-xs">
-                Sessione di Revisione
-              </div>
-              <div className="flex items-center gap-xs">
+              <div className="text-[12px] text-ink-secondary mb-1">Sessione di Revisione</div>
+              <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-status-green-text flex-shrink-0" />
-                <span className="text-body-sm text-ink-primary truncate">
-                  Incarico Fiscale Attivo
-                </span>
+                <span className="text-[12px] text-ink-primary truncate">Incarico Fiscale Attivo</span>
               </div>
             </>
           )}
         </div>
-
-        {/* Collapse toggle */}
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
           className={`
-            w-full flex items-center gap-md px-md py-md
+            w-full flex items-center gap-2 px-3 py-2.5
             text-ink-secondary hover:text-ink-primary hover:bg-surface-sidebar-hover
-            transition-colors-fast
+            transition-colors
             ${collapsed ? "justify-center" : ""}
           `}
         >
-          <Icon
-            name={collapsed ? "chevron_right" : "chevron_left"}
-            size="sm"
-          />
-          {!collapsed && (
-            <span className="text-body-sm">Riduci barra laterale</span>
-          )}
+          <Icon name={collapsed ? "chevron_right" : "chevron_left"} size="sm" />
+          {!collapsed && <span className="text-[12px]">Riduci barra laterale</span>}
         </button>
       </div>
     </aside>
   );
 }
 
-/**
- * Hook per ottenere la larghezza attuale della sidebar.
- * Utile per il layout dell'area contenuto.
- */
 export function useSidebarWidth(): string {
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -254,7 +318,6 @@ export function useSidebarWidth(): string {
     };
 
     window.addEventListener("storage", handleStorage);
-    // Polling leggero per aggiornamenti nella stessa tab
     const interval = setInterval(() => {
       const current = localStorage.getItem(STORAGE_KEY) === "true";
       if (current !== collapsed) setCollapsed(current);

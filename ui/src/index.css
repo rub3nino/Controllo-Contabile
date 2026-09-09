@@ -277,8 +277,28 @@ body {
 
 /* Header/Top bar */
 .dark header {
-  background-color: rgba(25, 25, 24, 0.8) !important;
+  background-color: #191918 !important;
   border-color: #2a2a29 !important;
+}
+
+.dark aside {
+  background-color: #1f1f1e !important;
+  border-color: #333332 !important;
+}
+
+.dark aside .text-ink-primary,
+.dark header .text-ink-primary {
+  color: #e8e8e6;
+}
+
+.dark aside .text-ink-secondary,
+.dark header .text-ink-secondary {
+  color: #a3a3a0;
+}
+
+.dark aside .text-ink-tertiary,
+.dark header .text-ink-tertiary {
+  color: #6b6b68;
 }
 
 /* Cards and surfaces */

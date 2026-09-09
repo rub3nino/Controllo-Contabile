@@ -32,7 +32,6 @@ import {
   OnboardingProvider,
   OnboardingTooltips,
   ShortcutsModal,
-  ThemeToggle,
   ConnectionStatus,
   ConnectionBanner,
   EmptyDocuments,
@@ -41,8 +40,7 @@ import {
   type Command,
 } from "./components";
 import type { SectionId } from "./components/Sidebar";
-import { DomainDashboard } from "./domain/DomainDashboard";
-import { JetPage } from "./pages";
+import { JetPage, ControlloDashboard } from "./pages";
 import { ALL_SECTIONS, sectionHelp } from "./sectionHelp";
 import { useKeyboardShortcuts } from "./hooks";
 
@@ -87,22 +85,24 @@ function splitPeriod(period: string): { q: string; year: string } {
 // Breadcrumb mapping
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getBreadcrumb(section: SectionId, clientName?: string): string[] {
-  const base = clientName ? ["Clienti", clientName] : ["Quadra"];
+function getBreadcrumb(section: SectionId, clientName?: string, period?: string): string[] {
+  const client = clientName?.trim();
 
   switch (section) {
     case "controllo-contabile":
-      return [...base, "Controllo Contabile"];
+      return client
+        ? ["Clienti", client, period ? `Verifica ${period}` : "Controllo Contabile"]
+        : ["Clienti", "Controllo Contabile"];
     case "jet":
-      return [...base, "JET (ISA 240)"];
+      return client ? ["Clienti", client, "JET (ISA 240)"] : ["Quadra", "JET (ISA 240)"];
     case "sezione-3":
-      return [...base, "Sezione 3"];
+      return ["Quadra", "Sezione 3"];
     case "sezione-4":
-      return [...base, "Sezione 4"];
+      return ["Quadra", "Sezione 4"];
     case "sezione-5":
-      return [...base, "Sezione 5"];
+      return ["Quadra", "Sezione 5"];
     default:
-      return base;
+      return ["Quadra"];
   }
 }
 
@@ -536,12 +536,12 @@ function AppContent() {
   // Render
   // ─────────────────────────────────────────────────────────────────────────
 
-  const breadcrumb = getBreadcrumb(activeSection, state?.pratica?.client);
+  const breadcrumb = getBreadcrumb(activeSection, state?.pratica?.client || form.client, state?.pratica?.period || form.period);
 
   return (
     <div className="flex h-dvh min-h-0 overflow-hidden bg-surface">
       {/* ─── Sidebar ─── */}
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} onSearch={openCommandPalette} />
 
       {/* ─── Main content area ─── */}
       <main
@@ -552,43 +552,48 @@ function AppContent() {
         `}
       >
         {/* ─── Top bar with breadcrumb ─── */}
-        <header className="h-11 flex items-center justify-between px-lg border-b border-border-muted bg-surface/80 backdrop-blur-sm flex-shrink-0">
-          <nav className="flex items-center gap-xs text-body-sm">
+        <header className="h-12 flex items-center justify-between px-6 border-b border-border-muted bg-surface flex-shrink-0">
+          <nav className="flex items-center gap-1.5 text-[13px] min-w-0">
             {breadcrumb.map((item, index) => (
-              <span key={index} className="flex items-center gap-xs">
+              <span key={index} className="flex items-center gap-1.5 min-w-0">
                 {index > 0 && <span className="text-ink-tertiary">/</span>}
-                <span className={index === breadcrumb.length - 1 ? "text-ink-primary" : "text-ink-secondary"}>
+                <span
+                  className={`truncate ${index === breadcrumb.length - 1 ? "text-ink-primary" : "text-ink-secondary"}`}
+                >
                   {item}
                 </span>
               </span>
             ))}
           </nav>
 
-          {/* Right side controls */}
-          <div className="flex items-center gap-2">
-            {/* Search button */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="hidden md:inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-status-green-bg text-[12px] font-medium text-status-green-text">
+              <Icon name="check_circle" size="sm" />
+              Conforme ISA / SA Italia
+            </span>
             <button
               type="button"
-              onClick={openCommandPalette}
-              data-onboarding="search"
-              className="flex items-center gap-2 h-8 px-3 rounded-md border border-border-subtle bg-surface-card hover:bg-surface-hover transition-colors text-body-sm text-ink-tertiary"
+              className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] text-ink-secondary hover:bg-surface-hover"
+              title="Condividi"
             >
-              <Icon name="search" size="sm" />
-              <span className="hidden sm:inline">Cerca...</span>
-              <kbd className="hidden sm:inline-flex ml-2 px-1.5 py-0.5 rounded bg-surface-recessed text-caption">⌘K</kbd>
+              <Icon name="ios_share" size="sm" />
+              <span className="hidden sm:inline">Condividi</span>
             </button>
-
-            {/* Theme toggle */}
-            <ThemeToggle />
-
-            {/* Connection status */}
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(true)}
+              className="p-1.5 rounded-md text-ink-secondary hover:bg-surface-hover"
+              title="Altro"
+            >
+              <Icon name="more_horiz" size="sm" />
+            </button>
             <ConnectionStatus compact className="ml-1" />
           </div>
         </header>
 
         {/* ─── Content ─── */}
         <div className="flex-1 overflow-y-auto dot-pattern">
-          <div className="max-w-content-wide mx-auto px-2xl py-lg">
+          <div className="max-w-[1180px] mx-auto px-8 py-8">
             {activeSection === "controllo-contabile" && (
               <ControlloContabileSection
                 state={state}
@@ -729,117 +734,43 @@ function ControlloContabileSection(props: ControlloContabileSectionProps) {
     setPicked,
   } = props;
 
-  const activeSection = ALL_SECTIONS.includes(view) ? sectionHelp(view, catalog) : null;
-  const nextStep = !form.client.trim()
-    ? "Inserisci il nome del cliente per iniziare."
-    : !hasFolder
-      ? "Seleziona la cartella dei documenti."
-      : !scanned
-        ? "Premi Scansiona per leggere i file."
-        : "Controlla i documenti, poi premi Avvia per compilare.";
+  const activeSectionHelp = ALL_SECTIONS.includes(view) ? sectionHelp(view, catalog) : null;
+
+  if (view === "overview") {
+    return (
+      <ControlloDashboard
+        state={state}
+        catalog={catalog}
+        form={form}
+        patchForm={(patch) => setForm({ ...form, ...patch })}
+        linkDir={linkDir}
+        setLinkDir={setLinkDir}
+        setFolderFiles={setFolderFiles}
+        busy={busy}
+        working={working}
+        shownError={shownError}
+        scan={scan}
+        run={run}
+        hasFolder={hasFolder}
+        scanned={scanned}
+        k={k}
+        onOpenSection={(id) => setView(id)}
+        onOpenDocs={() => setView("docs")}
+      />
+    );
+  }
 
   return (
     <div className="space-y-lg">
-      {/* ─── Header ─── */}
-      <header className="flex items-start justify-between gap-lg">
-        <div>
-          <h1 className="text-headline-lg text-ink-primary">Controllo Contabile</h1>
-          <p className="mt-xs text-body-md text-ink-secondary">
-            SA Italia 250B · Verifica art. 2409-ter c.c.
-          </p>
-        </div>
-        <a
-          href="/api/export/xlsx"
-          className="inline-flex items-center gap-sm px-base py-sm rounded bg-ink-primary text-white text-label-md hover:bg-ink-primary/90 transition-colors-fast"
-        >
-          <Icon name="download" size="sm" />
-          Esporta Excel
-        </a>
-      </header>
+      <button
+        type="button"
+        onClick={() => setView("overview")}
+        className="inline-flex items-center gap-1.5 text-[13px] text-ink-secondary hover:text-ink-primary"
+      >
+        <Icon name="arrow_back" size="sm" />
+        Torna alla panoramica
+      </button>
 
-      {/* ─── Error banner ─── */}
-      {shownError && <ErrorBanner err={shownError} />}
-
-      {/* ─── Setup form + KPIs ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-base">
-        {/* Form card */}
-        <Card className="lg:col-span-2" padding="lg">
-          <CardHeader>Configurazione pratica</CardHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
-            <Field label="Cliente" value={form.client} onChange={(v) => setForm({ ...form, client: v })} />
-            <PeriodSelect period={form.period} onChange={(v) => setForm({ ...form, period: v })} />
-            <Field
-              label="Cartella documenti"
-              value={linkDir}
-              onChange={(v) => {
-                setLinkDir(v);
-                if (v) setFolderFiles([]);
-              }}
-              placeholder="/Volumes/…/documenti"
-              className="sm:col-span-2"
-            />
-          </div>
-
-          <div className="mt-md pt-md border-t border-border-muted">
-            <p className="text-body-sm text-ink-secondary mb-md">{nextStep}</p>
-            <div className="flex gap-sm">
-              <button
-                type="button"
-                onClick={scan}
-                disabled={busy || !hasFolder || !form.client.trim()}
-                className="flex-1 inline-flex items-center justify-center gap-sm px-base py-sm rounded border border-border-subtle bg-surface-card text-label-md text-ink-primary hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors-fast"
-              >
-                <Icon name="document_scanner" size="sm" />
-                Scansiona
-              </button>
-              <button
-                type="button"
-                onClick={run}
-                disabled={busy || state?.running || !scanned}
-                className="flex-1 inline-flex items-center justify-center gap-sm px-base py-sm rounded bg-ink-primary text-label-md text-white hover:bg-ink-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors-fast"
-              >
-                <Icon name="play_arrow" size="sm" />
-                {state?.running || busy ? "In corso…" : "Avvia"}
-              </button>
-            </div>
-          </div>
-        </Card>
-
-        {/* KPIs */}
-        <div className="space-y-sm">
-          <KpiCard title="File in cartella" value={k.files} />
-          <KpiCard title="Classificati" value={k.classified} />
-          <KpiCard title="Mancanti" value={k.missing} variant={k.missing > 0 ? "warning" : "default"} />
-          <KpiCard title="Sezioni chiuse" value={`${k.sections_done}/9`} />
-        </div>
-      </div>
-
-      {/* ─── Progress indicator ─── */}
-      {working && (
-        <Card padding="base">
-          <div className="flex items-center justify-between gap-md mb-sm">
-            <div>
-              <div className="text-label-md text-ink-primary">{state?.job_label || "Elaborazione..."}</div>
-              <div className="text-body-sm text-ink-secondary">
-                {state?.job_step && state?.job_total
-                  ? `Passo ${state.job_step} di ${state.job_total}`
-                  : ""}
-              </div>
-            </div>
-            <div className="text-label-md text-ink-secondary font-mono">
-              {Math.round(state?.progress || 0)}%
-            </div>
-          </div>
-          <div className="h-1.5 rounded-full bg-surface-recessed overflow-hidden">
-            <div
-              className="h-full bg-ink-primary rounded-full work-bar-fill"
-              style={{ width: `${Math.max(4, state?.progress || 0)}%` }}
-            />
-          </div>
-        </Card>
-      )}
-
-      {/* ─── Sub-navigation tabs ─── */}
       <div className="flex items-center gap-xs border-b border-border-muted overflow-x-auto pb-px">
         {nav.map((n) => (
           <button
@@ -856,26 +787,11 @@ function ControlloContabileSection(props: ControlloContabileSectionProps) {
             `}
           >
             {n.label}
-            {n.id.length === 1 && state?.sections.find((s) => s.id === n.id)?.status && (
-              <span className="ml-sm">
-                <StatusBadge
-                  variant={mapStatusToVariant(state.sections.find((s) => s.id === n.id)!.status)}
-                  showDot={false}
-                >
-                  {state.sections.find((s) => s.id === n.id)!.status}
-                </StatusBadge>
-              </span>
-            )}
           </button>
         ))}
       </div>
 
-      {/* ─── Content based on view ─── */}
       <div className="bg-surface-card rounded-lg border border-border-subtle">
-        {view === "overview" && (
-          <OverviewContent state={state} catalog={catalog} working={working} setView={setView} />
-        )}
-
         {view === "docs" && (
           <DocsContent
             filteredDocs={filteredDocs}
@@ -891,10 +807,10 @@ function ControlloContabileSection(props: ControlloContabileSectionProps) {
           <RichiestaContent catalog={catalog} state={state} setState={setState} />
         )}
 
-        {activeSection && (
+        {activeSectionHelp && (
           <SectionContent
             view={view}
-            activeSection={activeSection}
+            activeSection={activeSectionHelp}
             state={state}
             setPicked={setPicked}
           />
