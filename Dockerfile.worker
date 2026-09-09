@@ -1,0 +1,70 @@
+# Quadra Worker - Dockerfile
+# Per task Celery (OCR, JET Analysis, Export)
+
+# ============================================
+# Stage 1: Builder
+# ============================================
+FROM python:3.12-slim as builder
+
+WORKDIR /app
+
+# Installa dipendenze di build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copia requirements e installa dipendenze
+COPY requirements.txt .
+# Worker ha bisogno anche di celery
+RUN pip install --no-cache-dir --user -r requirements.txt celery[redis]
+
+# ============================================
+# Stage 2: Runtime
+# ============================================
+FROM python:3.12-slim as runtime
+
+# Metadata
+LABEL org.opencontainers.image.title="Quadra Worker"
+LABEL org.opencontainers.image.description="Celery worker per task asincroni"
+
+# Non-root user per sicurezza
+RUN groupadd -r quadra && useradd -r -g quadra quadra
+
+WORKDIR /app
+
+# Dipendenze runtime (incluse quelle per OCR)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copia dipendenze Python dal builder
+COPY --from=builder /root/.local /home/quadra/.local
+ENV PATH=/home/quadra/.local/bin:$PATH
+
+# Copia codice applicazione
+COPY --chown=quadra:quadra backend/ ./backend/
+COPY --chown=quadra:quadra regole/ ./regole/
+
+# Switch a non-root user
+USER quadra
+
+# Variabili d'ambiente di default
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    ENVIRONMENT=production \
+    C_FORCE_ROOT=false
+
+# Comando di avvio Celery
+# -Q specifica le code da processare
+# --concurrency limita i worker paralleli
+CMD ["celery", "-A", "backend.tasks", "worker", \
+     "-Q", "default,ocr,jet,export", \
+     "--loglevel=info", \
+     "--concurrency=2"]

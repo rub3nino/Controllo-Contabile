@@ -1,0 +1,93 @@
+# ===========================================
+# Docker Ignore - Quadra
+# ===========================================
+# File/cartelle da escludere dal build context
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Documentation
+docs/_build/
+
+# Local data
+*.db
+*.sqlite
+storage/
+backups/
+data/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (UI)
+ui/node_modules/
+ui/.next/
+ui/dist/
+ui/build/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.docker/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Misc
+*.md
+LICENSE
+Makefile
