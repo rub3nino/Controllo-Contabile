@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from decimal import Decimal
 
 from backend.jet.models import EsitoRigaJet, ParametriClienteJet, RigaGiornale
 
-__all__ = ["valuta_riga"]
+__all__ = ["calcola_frequenza_conti", "valuta_riga"]
+
+
+def calcola_frequenza_conti(righe: list[RigaGiornale]) -> dict[str, int]:
+    """Conta l'uso dei conti presenti, ignorando le righe senza codifica."""
+    return dict(
+        Counter(
+            riga.conto_contabile
+            for riga in righe
+            if riga.conto_contabile is not None
+        )
+    )
 
 
 def valuta_riga(
     riga: RigaGiornale,
     parametri: ParametriClienteJet,
+    frequenze_conto: dict[str, int] | None = None,
 ) -> EsitoRigaJet:
     """Valuta una riga replicando gli undici criteri di ``Calcs1``.
 
@@ -92,6 +105,28 @@ def valuta_riga(
     )
     flag_descrizione_vuota = not descrizione
 
+    if frequenze_conto is None or riga.conto_contabile is None:
+        frequenza_utilizzo_conto = None
+        flag_conto_insolito_raro = None
+    else:
+        frequenza_utilizzo_conto = frequenze_conto.get(riga.conto_contabile, 0)
+        flag_conto_insolito_raro = (
+            frequenza_utilizzo_conto < parametri.soglia_frequenza_insolita
+            if parametri.soglia_frequenza_insolita is not None
+            else None
+        )
+
+    if (
+        parametri.conti_infragruppo_parte_correlata is None
+        or riga.conto_contabile is None
+    ):
+        flag_conto_infragruppo_parte_correlata = None
+    else:
+        flag_conto_infragruppo_parte_correlata = (
+            riga.conto_contabile
+            in parametri.conti_infragruppo_parte_correlata
+        )
+
     flag_e_pesi = (
         (flag_profit_impact, parametri.punteggio_profit_impact),
         (flag_oltre_dieci_volte_media, parametri.punteggio_oltre_dieci_volte_media),
@@ -104,8 +139,15 @@ def valuta_riga(
         (flag_staff_non_autorizzato, parametri.punteggio_staff_non_autorizzato),
         (flag_parte_correlata, parametri.punteggio_parte_correlata),
         (flag_descrizione_vuota, parametri.punteggio_descrizione_vuota),
+        (flag_conto_insolito_raro, parametri.punteggio_conto_insolito_raro),
+        (
+            flag_conto_infragruppo_parte_correlata,
+            parametri.punteggio_conto_infragruppo_parte_correlata,
+        ),
     )
-    punteggio_totale = sum(peso for flag, peso in flag_e_pesi if flag is True)
+    punteggio_totale = sum(
+        peso for flag, peso in flag_e_pesi if flag is True and peso is not None
+    )
 
     return EsitoRigaJet(
         identificativo_registrazione=riga.identificativo_registrazione,
@@ -122,7 +164,7 @@ def valuta_riga(
         flag_descrizione_vuota=flag_descrizione_vuota,
         punteggio_totale=punteggio_totale,
         da_investigare=punteggio_totale >= parametri.soglia_da_investigare,
-        frequenza_utilizzo_conto=None,
-        flag_conto_insolito_raro=None,
-        flag_conto_infragruppo_parte_correlata=None,
+        frequenza_utilizzo_conto=frequenza_utilizzo_conto,
+        flag_conto_insolito_raro=flag_conto_insolito_raro,
+        flag_conto_infragruppo_parte_correlata=flag_conto_infragruppo_parte_correlata,
     )

@@ -14,6 +14,7 @@ from openpyxl import load_workbook
 
 from backend.jet import (
     ParametriClienteJet,
+    calcola_frequenza_conti,
     leggi_righe_xlsx,
     mappa_righe_giornale,
     valuta_riga,
@@ -45,6 +46,24 @@ def _liste_cliente(percorso: Path) -> tuple[list[str], list[str], None]:
         workbook.close()
 
 
+def _conti_original_data(percorso: Path) -> list[str | None]:
+    """Legge solo il conto scelto esplicitamente nella Fase 2."""
+    workbook = load_workbook(percorso, read_only=True, data_only=True)
+    try:
+        foglio = workbook["Original data"]
+        intestazioni = next(foglio.iter_rows(values_only=True))
+        indice = intestazioni.index("Conto contabile")
+        return [
+            None if riga[indice] in (None, "") else str(riga[indice]).strip()
+            for riga in foglio.iter_rows(min_row=2, values_only=True)
+            # Le ultime colonne contengono formule trascinate anche oltre i
+            # dati sorgente: una riga esiste solo se A:N contiene un valore.
+            if any(valore not in (None, "") for valore in riga[:14])
+        ]
+    finally:
+        workbook.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("workbook", type=Path)
@@ -65,6 +84,17 @@ def main() -> None:
             "utente": "UserId",
         },
     )
+    conti = _conti_original_data(args.workbook)
+    if len(conti) != len(righe):
+        raise ValueError(
+            "Original data e Data Input non hanno lo stesso numero di righe: "
+            "non è sicuro associare i conti per posizione"
+        )
+    righe = [
+        riga.model_copy(update={"conto_contabile": conto})
+        for riga, conto in zip(righe, conti)
+    ]
+    frequenze_conti = calcola_frequenza_conti(righe)
     parametri = ParametriClienteJet(
         materialita_bilancio=Decimal("1050000"),
         performance_materiality=Decimal("735000"),
@@ -78,6 +108,8 @@ def main() -> None:
         staff_autorizzato=staff,
         utenti_di_sistema=["BATCHJOB", "BANKBATCH"],
         parole_chiave_parti_correlate=parole,
+        soglia_frequenza_insolita=None,
+        conti_infragruppo_parte_correlata=None,
         soglia_da_investigare=4,
         punteggio_profit_impact=1,
         punteggio_oltre_dieci_volte_media=1,
@@ -90,8 +122,10 @@ def main() -> None:
         punteggio_staff_non_autorizzato=4,
         punteggio_parte_correlata=4,
         punteggio_descrizione_vuota=4,
+        punteggio_conto_insolito_raro=None,
+        punteggio_conto_infragruppo_parte_correlata=None,
     )
-    esiti = [valuta_riga(riga, parametri) for riga in righe]
+    esiti = [valuta_riga(riga, parametri, frequenze_conti) for riga in righe]
     sequenza = verifica_sequenza(righe)
 
     print(f"righe={len(righe)}")
@@ -112,6 +146,27 @@ def main() -> None:
     print(f"sopra_pm={sum(esito.flag_sopra_performance_materiality for esito in esiti)}")
     print(f"cifra_tonda={sum(esito.flag_importo_cifra_tonda for esito in esiti)}")
     print(f"buchi_sequenza={len(sequenza)}")
+    print(f"conti_distinti={len(frequenze_conti)}")
+    print(
+        "conti_frequenza_1="
+        f"{sum(frequenza == 1 for frequenza in frequenze_conti.values())}"
+    )
+    print(
+        "conti_frequenza_sotto_10="
+        f"{sum(frequenza < 10 for frequenza in frequenze_conti.values())}"
+    )
+    print(
+        "conti_frequenza_sotto_5="
+        f"{sum(frequenza < 5 for frequenza in frequenze_conti.values())}"
+    )
+    print(
+        "righe_su_conti_frequenza_sotto_5="
+        f"{sum(frequenza for frequenza in frequenze_conti.values() if frequenza < 5)}"
+    )
+    print(
+        "conti_frequenza_sopra_1000="
+        f"{sum(frequenza > 1000 for frequenza in frequenze_conti.values())}"
+    )
 
 
 if __name__ == "__main__":

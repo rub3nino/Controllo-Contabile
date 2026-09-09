@@ -95,6 +95,8 @@ class ParametriClienteJet(BaseModel):
         ),
     )
     parole_chiave_parti_correlate: list[str] | None = None
+    soglia_frequenza_insolita: int | None = Field(default=None, ge=0)
+    conti_infragruppo_parte_correlata: list[str] | None = None
     soglia_da_investigare: int = Field(ge=0)
 
     punteggio_profit_impact: int = Field(ge=0)
@@ -108,6 +110,10 @@ class ParametriClienteJet(BaseModel):
     punteggio_staff_non_autorizzato: int = Field(ge=0)
     punteggio_parte_correlata: int = Field(ge=0)
     punteggio_descrizione_vuota: int = Field(ge=0)
+    punteggio_conto_insolito_raro: int | None = Field(default=None, ge=0)
+    punteggio_conto_infragruppo_parte_correlata: int | None = Field(
+        default=None, ge=0
+    )
 
 
 class EsitoRigaJet(BaseModel):

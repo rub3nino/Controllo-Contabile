@@ -7,7 +7,7 @@ from backend.jet.models import (
     RigaGiornale,
 )
 from backend.jet.ingest import leggi_righe_xlsx, mappa_righe_giornale
-from backend.jet.criteri import valuta_riga
+from backend.jet.criteri import calcola_frequenza_conti, valuta_riga
 from backend.jet.sequenza import verifica_sequenza
 
 __all__ = [
@@ -18,5 +18,6 @@ __all__ = [
     "leggi_righe_xlsx",
     "mappa_righe_giornale",
     "valuta_riga",
+    "calcola_frequenza_conti",
     "verifica_sequenza",
 ]
