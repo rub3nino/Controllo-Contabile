@@ -122,9 +122,9 @@ class EsitoRigaJet(BaseModel):
     flag_importo_cifra_tonda: bool
     flag_weekend: bool
     flag_festivita: bool
-    flag_fuori_orario: bool
-    flag_backdated: bool
-    flag_staff_non_autorizzato: bool
+    flag_fuori_orario: bool | None
+    flag_backdated: bool | None
+    flag_staff_non_autorizzato: bool | None
     flag_parte_correlata: bool
     flag_descrizione_vuota: bool
     punteggio_totale: int = Field(ge=0)

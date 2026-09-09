@@ -89,3 +89,26 @@ def test_lista_opzionale_non_fornita_resta_none():
     parametri = ParametriClienteJet.model_validate(dati)
 
     assert parametri.festivita is None
+
+
+def test_esito_accetta_flag_non_calcolabili_espliciti():
+    esito = EsitoRigaJet(
+        identificativo_registrazione="RIGA-NON-CALCOLABILE",
+        flag_profit_impact=False,
+        flag_oltre_dieci_volte_media=False,
+        flag_sopra_performance_materiality=False,
+        flag_importo_cifra_tonda=False,
+        flag_weekend=False,
+        flag_festivita=False,
+        flag_fuori_orario=None,
+        flag_backdated=None,
+        flag_staff_non_autorizzato=None,
+        flag_parte_correlata=False,
+        flag_descrizione_vuota=False,
+        punteggio_totale=0,
+        da_investigare=False,
+    )
+
+    assert esito.flag_fuori_orario is None
+    assert esito.flag_backdated is None
+    assert esito.flag_staff_non_autorizzato is None
