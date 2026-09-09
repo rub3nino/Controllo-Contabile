@@ -46,20 +46,27 @@ def _liste_cliente(percorso: Path) -> tuple[list[str], list[str], None]:
         workbook.close()
 
 
-def _conti_original_data(percorso: Path) -> list[str | None]:
-    """Legge solo il conto scelto esplicitamente nella Fase 2."""
+def _conti_original_data(percorso: Path) -> tuple[list[str | None], int]:
+    """Legge il codice conto verificato sull'intera popolazione Nordson."""
     workbook = load_workbook(percorso, read_only=True, data_only=True)
     try:
         foglio = workbook["Original data"]
         intestazioni = next(foglio.iter_rows(values_only=True))
-        indice = intestazioni.index("Conto contabile")
-        return [
-            None if riga[indice] in (None, "") else str(riga[indice]).strip()
+        indice = intestazioni.index("Conto n.")
+        conti = [
+            None
+            if riga[indice] in (None, "")
+            else (
+                str(int(riga[indice]))
+                if isinstance(riga[indice], float) and riga[indice].is_integer()
+                else str(riga[indice]).strip()
+            )
             for riga in foglio.iter_rows(min_row=2, values_only=True)
             # Le ultime colonne contengono formule trascinate anche oltre i
             # dati sorgente: una riga esiste solo se A:N contiene un valore.
             if any(valore not in (None, "") for valore in riga[:14])
         ]
+        return conti, indice
     finally:
         workbook.close()
 
@@ -84,7 +91,7 @@ def main() -> None:
             "utente": "UserId",
         },
     )
-    conti = _conti_original_data(args.workbook)
+    conti, indice_conto = _conti_original_data(args.workbook)
     if len(conti) != len(righe):
         raise ValueError(
             "Original data e Data Input non hanno lo stesso numero di righe: "
@@ -167,6 +174,16 @@ def main() -> None:
         "conti_frequenza_sopra_1000="
         f"{sum(frequenza > 1000 for frequenza in frequenze_conti.values())}"
     )
+    print(f"conto_frequenza_massima={max(frequenze_conti.values(), default=0)}")
+    totale_conti = len(conti)
+    conti_vuoti = sum(conto is None for conto in conti)
+    conti_numerici = sum(conto is not None and conto.isdigit() for conto in conti)
+    conti_testuali = totale_conti - conti_vuoti - conti_numerici
+    print(f"diagnostica_conto_colonna=Conto n. indice={indice_conto + 1}")
+    print(f"diagnostica_conto_numerici_pct={conti_numerici / totale_conti:.4%}")
+    print(f"diagnostica_conto_testuali_pct={conti_testuali / totale_conti:.4%}")
+    print(f"diagnostica_conto_vuoti_pct={conti_vuoti / totale_conti:.4%}")
+    print(f"diagnostica_conto_valori_distinti={len(frequenze_conti)}")
 
 
 if __name__ == "__main__":
