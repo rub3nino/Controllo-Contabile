@@ -37,28 +37,28 @@ def valuta_riga(
     flag_profit_impact = (
         importo > Decimal("0.10") * abs(parametri.utile_netto_dopo_imposte)
         if parametri.utile_netto_dopo_imposte is not None
-        else False
+        else None
     )
     flag_oltre_dieci_volte_media = (
         importo > Decimal(10) * abs(parametri.valore_medio_registrazione)
         if parametri.valore_medio_registrazione is not None
-        else False
+        else None
     )
     flag_sopra_performance_materiality = (
         importo > abs(parametri.performance_materiality)
         if parametri.performance_materiality is not None
-        else False
+        else None
     )
     flag_importo_cifra_tonda = importo % Decimal(10) == 0
     flag_weekend = (
         riga.data_effettiva.weekday() in parametri.giorni_weekend
         if parametri.giorni_weekend is not None
-        else False
+        else None
     )
     flag_festivita = (
         riga.data_effettiva in parametri.festivita
         if parametri.festivita is not None
-        else False
+        else None
     )
 
     if (
@@ -101,7 +101,7 @@ def valuta_riga(
             if parola.strip()
         )
         if parametri.parole_chiave_parti_correlate is not None
-        else False
+        else None
     )
     flag_descrizione_vuota = not descrizione
 

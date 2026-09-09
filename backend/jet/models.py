@@ -131,16 +131,16 @@ class EsitoRigaJet(BaseModel):
     """
 
     identificativo_registrazione: str
-    flag_profit_impact: bool
-    flag_oltre_dieci_volte_media: bool
-    flag_sopra_performance_materiality: bool
+    flag_profit_impact: bool | None
+    flag_oltre_dieci_volte_media: bool | None
+    flag_sopra_performance_materiality: bool | None
     flag_importo_cifra_tonda: bool
-    flag_weekend: bool
-    flag_festivita: bool
+    flag_weekend: bool | None
+    flag_festivita: bool | None
     flag_fuori_orario: bool | None
     flag_backdated: bool | None
     flag_staff_non_autorizzato: bool | None
-    flag_parte_correlata: bool
+    flag_parte_correlata: bool | None
     flag_descrizione_vuota: bool
     punteggio_totale: int = Field(ge=0)
     da_investigare: bool

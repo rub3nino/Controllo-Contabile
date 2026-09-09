@@ -133,7 +133,7 @@ def main() -> None:
         punteggio_conto_infragruppo_parte_correlata=None,
     )
     esiti = [valuta_riga(riga, parametri, frequenze_conti) for riga in righe]
-    sequenza = verifica_sequenza(righe)
+    sequenza, intervalli_sequenza_non_enumerati = verifica_sequenza(righe)
 
     print(f"righe={len(righe)}")
     print(f"staff={len(staff)} parole_chiave={len(parole)} festivita=non_disponibili")
@@ -153,6 +153,10 @@ def main() -> None:
     print(f"sopra_pm={sum(esito.flag_sopra_performance_materiality for esito in esiti)}")
     print(f"cifra_tonda={sum(esito.flag_importo_cifra_tonda for esito in esiti)}")
     print(f"buchi_sequenza={len(sequenza)}")
+    print(
+        "intervalli_sequenza_non_enumerati="
+        f"{len(intervalli_sequenza_non_enumerati)}"
+    )
     print(f"conti_distinti={len(frequenze_conti)}")
     print(
         "conti_frequenza_1="

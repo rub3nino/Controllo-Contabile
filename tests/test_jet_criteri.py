@@ -90,6 +90,24 @@ def test_flag_non_calcolabili_restano_none_e_non_danno_punti():
     assert esito.punteggio_totale == 0
 
 
+@pytest.mark.parametrize(
+    ("parametro", "campo_esito"),
+    [
+        ("utile_netto_dopo_imposte", "flag_profit_impact"),
+        ("valore_medio_registrazione", "flag_oltre_dieci_volte_media"),
+        ("performance_materiality", "flag_sopra_performance_materiality"),
+        ("giorni_weekend", "flag_weekend"),
+        ("festivita", "flag_festivita"),
+        ("parole_chiave_parti_correlate", "flag_parte_correlata"),
+    ],
+)
+def test_parametro_non_configurato_resta_non_calcolabile(parametro, campo_esito):
+    esito = valuta_riga(_riga(), _parametri(**{parametro: None}))
+
+    assert getattr(esito, campo_esito) is None
+    assert esito.punteggio_totale == 0
+
+
 def test_utente_di_sistema_rende_il_criterio_staff_non_applicabile():
     esito = valuta_riga(
         _riga(utente="BATCH_SINTETICO"),
