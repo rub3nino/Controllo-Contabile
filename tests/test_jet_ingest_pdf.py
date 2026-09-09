@@ -46,7 +46,7 @@ def test_pdf_preserva_layout_e_riusa_lo_stesso_profilo_txt():
     assert righe_pdf[0].importo_netto == Decimal("100.50")
 
 
-def test_pdf_senza_testo_richiede_ocr_fase_d():
+def test_pdf_senza_testo_indica_i_formati_supportati():
     with pytest.raises(ValueError, match="PDF scansionato") as errore:
         estrai_righe_pdf(FIXTURE_SCANSIONE)
     assert str(errore.value) == ERRORE_PDF_SCANSIONATO

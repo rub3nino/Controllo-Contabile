@@ -1,4 +1,9 @@
-"""Estrazione layout-aware di giornali da PDF con testo nativo."""
+"""Estrazione layout-aware di giornali da PDF con testo nativo.
+
+I PDF scansionati restano non supportati per scelta: un test preliminare ha
+mostrato un allineamento OCR instabile. Il lavoro potrà riprendere con un
+approccio a bounding box e griglia editabile, da validare su volumi reali.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +17,8 @@ from backend.jet.profilo import ProfiloEstrazione
 
 ERRORE_PDF_SCANSIONATO = (
     "Questo file sembra un PDF scansionato: l'estrazione testuale non è "
-    "supportata, serve l'OCR della Fase D"
+    "supportata. Carica invece un export Excel, TXT o PDF con testo reale "
+    "dello stesso giornale."
 )
 
 

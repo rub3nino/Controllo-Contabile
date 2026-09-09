@@ -57,10 +57,10 @@ def test_pdf_riconosce_e_applica_il_profilo_creato_dal_txt(client):
     assert analizzato.json()["numero_registrazioni"] == 10
 
 
-def test_upload_pdf_senza_testo_restituisce_errore_ocr_chiaro(client):
+def test_upload_pdf_senza_testo_indica_i_formati_supportati(client):
     pratica_id = _crea_pratica(client, "Scansione")
     risposta = _upload(client, pratica_id, FIXTURE_SCANSIONE)
 
     assert risposta.status_code == 400
     assert "PDF scansionato" in risposta.json()["detail"]
-    assert "OCR della Fase D" in risposta.json()["detail"]
+    assert "export Excel, TXT o PDF con testo reale" in risposta.json()["detail"]
