@@ -18,3 +18,9 @@ __extract/
 .pytest_cache/
 fixtures/docs/output/
 Template GF*.xlsx
+.env
+graphify-out/
+Claude outputs/
+_verifica_scratch/
+data/
+*.tar.gz
