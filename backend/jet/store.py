@@ -8,6 +8,7 @@ from pathlib import Path
 
 from backend.jet.models import EsitoRigaJet, EsitoSequenzaJet, RigaGiornale
 from backend.jet.pratica import IntervalloSequenzaJet, PraticaJet, RisultatoJet
+from backend.jet.profilo import ProfiloEstrazione
 
 
 class JetStore:
@@ -30,6 +31,17 @@ class JetStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_pratica_jet_created
                     ON pratica_jet(created_at DESC);
+                CREATE TABLE IF NOT EXISTS profilo_estrazione_jet (
+                    id TEXT PRIMARY KEY,
+                    nome TEXT NOT NULL,
+                    intestazione_riferimento TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    data TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_profilo_estrazione_intestazione
+                    ON profilo_estrazione_jet(intestazione_riferimento);
+                CREATE INDEX IF NOT EXISTS idx_profilo_estrazione_created
+                    ON profilo_estrazione_jet(created_at DESC);
                 CREATE TABLE IF NOT EXISTS risultato_jet (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     pratica_id TEXT NOT NULL,
@@ -79,6 +91,52 @@ class JetStore:
                 "SELECT data FROM pratica_jet ORDER BY created_at DESC, rowid DESC"
             ).fetchall()
         return [PraticaJet.model_validate_json(row["data"]) for row in rows]
+
+    def save_profilo(self, profilo: ProfiloEstrazione) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO profilo_estrazione_jet "
+                "(id, nome, intestazione_riferimento, created_at, data) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    profilo.id, profilo.nome, profilo.intestazione_riferimento,
+                    profilo.created_at, profilo.model_dump_json(),
+                ),
+            )
+
+    def get_profilo(self, profilo_id: str) -> ProfiloEstrazione | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT data FROM profilo_estrazione_jet WHERE id = ?", (profilo_id,)
+            ).fetchone()
+        return ProfiloEstrazione.model_validate_json(row["data"]) if row else None
+
+    def list_profili(self) -> list[ProfiloEstrazione]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT data FROM profilo_estrazione_jet "
+                "ORDER BY created_at DESC, rowid DESC"
+            ).fetchall()
+        return [ProfiloEstrazione.model_validate_json(row["data"]) for row in rows]
+
+    def find_profilo_by_intestazione(
+        self, intestazione: str
+    ) -> ProfiloEstrazione | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT data FROM profilo_estrazione_jet "
+                "WHERE intestazione_riferimento = ? "
+                "ORDER BY created_at DESC, rowid DESC LIMIT 1",
+                (intestazione.strip(),),
+            ).fetchone()
+        return ProfiloEstrazione.model_validate_json(row["data"]) if row else None
+
+    def delete_profilo(self, profilo_id: str) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM profilo_estrazione_jet WHERE id = ?", (profilo_id,)
+            )
+        return cursor.rowcount > 0
 
     @staticmethod
     def _record(riga: RigaGiornale, esito: EsitoRigaJet) -> tuple[int, str | None, int, str]:

@@ -22,7 +22,18 @@ export type JetPractice = {
   id: string; client: string; period: string; status: JetStatus; created_at: string;
   parametri: JetParams | null; file_originale_nome: string | null;
   mappatura: Record<string, string> | null; analizzato_at: string | null;
+  profilo_estrazione_id: string | null;
   numero_registrazioni: number; numero_da_investigare: number;
+};
+export type ExtractionProfile = {
+  id: string; nome: string; riga_intestazione: number;
+  intestazione_riferimento: string; posizioni: Record<string, [number, number]>;
+  created_at: string;
+};
+export type FileInspection = {
+  pratica: JetPractice; intestazioni?: string[]; intestazione?: string;
+  riga_intestazione?: number; righe_esempio?: string[]; codifica?: string;
+  profilo?: ExtractionProfile | null;
 };
 export type JournalRow = { data_effettiva: string; data_creazione: string | null; ora_creazione: string | null; identificativo_registrazione: string; numero_documento: string | null; importo_netto: string; descrizione: string | null; utente: string | null; conto_contabile: string | null };
 export type RowOutcome = Record<string, boolean | number | string | null> & { identificativo_registrazione: string; punteggio_totale: number; da_investigare: boolean };
@@ -39,14 +50,18 @@ async function upload(practiceId: string, file: File) {
   const body = new FormData(); body.append("file", file);
   const response = await fetch(`/api/jet/pratiche/${encodeURIComponent(practiceId)}/file`, { method: "POST", body });
   if (!response.ok) throw new Error((await response.json()).detail || "Caricamento non riuscito");
-  return response.json() as Promise<{ pratica: JetPractice; intestazioni: string[] }>;
+  return response.json() as Promise<FileInspection>;
 }
 export const jetApi = {
   list: () => j<JetPractice[]>("/api/jet/pratiche"),
   create: (client: string, period: string) => j<JetPractice>("/api/jet/pratiche", { method: "POST", body: JSON.stringify({ client, period }) }),
   parameters: (id: string, body: JetParams) => j<JetPractice>(`/api/jet/pratiche/${encodeURIComponent(id)}/parametri`, { method: "PUT", body: JSON.stringify(body) }),
   upload,
-  headers: (id: string) => j<{ intestazioni: string[] }>(`/api/jet/pratiche/${encodeURIComponent(id)}/intestazioni`),
+  headers: (id: string) => j<Omit<FileInspection, "pratica">>(`/api/jet/pratiche/${encodeURIComponent(id)}/intestazioni`),
+  profiles: () => j<ExtractionProfile[]>("/api/jet/profili"),
+  profile: (id: string) => j<ExtractionProfile>(`/api/jet/profili/${encodeURIComponent(id)}`),
+  applyProfile: (practiceId: string, profileId: string) => j<JetPractice>(`/api/jet/pratiche/${encodeURIComponent(practiceId)}/profilo/${encodeURIComponent(profileId)}`, { method: "PUT" }),
+  createProfile: (practiceId: string, nome: string, posizioni: Record<string, [number, number]>) => j<JetPractice>(`/api/jet/pratiche/${encodeURIComponent(practiceId)}/profilo`, { method: "POST", body: JSON.stringify({ nome, posizioni }) }),
   mapping: (id: string, mappatura: Record<string, string>) => j<JetPractice>(`/api/jet/pratiche/${encodeURIComponent(id)}/mappatura`, { method: "PUT", body: JSON.stringify({ mappatura }) }),
   analyze: (id: string) => j<JetPractice>(`/api/jet/pratiche/${encodeURIComponent(id)}/analizza`, { method: "POST" }),
   results: (id: string, filters: ResultFilters, page: number) => j<ResultPage>(`/api/jet/pratiche/${encodeURIComponent(id)}/risultati?${query({ ...filters, page, page_size: 50 })}`),

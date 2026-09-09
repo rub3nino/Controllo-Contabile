@@ -1,0 +1,11 @@
+ID      DATA      CONTO            IMPORTODESCRIZIONE         UTENTE    |
+1       01/01/2026C1                100,50Caffè e forniture   USER1     |
+2       02/01/2026C2                -50,00Registrazione 2     USER0     |
+3       03/01/2026C0                300,50Registrazione 3     USER1     |
+4       04/01/2026C1               -100,00Registrazione 4               |
+5       05/01/2026C2                500,50Registrazione 5     USER1     |
+6       06/01/2026C0               -150,00Registrazione 6     USER0     |
+7       07/01/2026C1                700,50Registrazione 7     USER1     |
+8       08/01/2026C2               -200,00Registrazione 8     USER0     |
+9       09/01/2026C0                900,50Registrazione 9     USER1     |
+10      10/01/2026C1               -250,00Registrazione 10    USER0     |

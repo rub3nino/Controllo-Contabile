@@ -16,14 +16,21 @@ from openpyxl import load_workbook
 
 from backend.jet.models import RigaGiornale
 
-__all__ = ["leggi_righe_xlsx", "mappa_righe_giornale"]
+__all__ = [
+    "data_o_none",
+    "decimale_o_none",
+    "leggi_righe_xlsx",
+    "mappa_righe_giornale",
+    "ora_o_none",
+    "testo_o_none",
+]
 
 
 def _vuoto(valore: Any) -> bool:
     return valore is None or (isinstance(valore, str) and not valore.strip())
 
 
-def _testo_o_none(valore: Any) -> str | None:
+def testo_o_none(valore: Any) -> str | None:
     """Normalizza celle identificative senza trasformare un assente in ``''``."""
     if _vuoto(valore):
         return None
@@ -32,7 +39,7 @@ def _testo_o_none(valore: Any) -> str | None:
     return str(valore).strip()
 
 
-def _data_o_none(valore: Any) -> date | None:
+def data_o_none(valore: Any) -> date | None:
     if _vuoto(valore):
         return None
     if isinstance(valore, datetime):
@@ -48,7 +55,7 @@ def _data_o_none(valore: Any) -> date | None:
     raise ValueError(f"Data non riconosciuta: {valore!r}")
 
 
-def _ora_o_none(valore: Any) -> time | None:
+def ora_o_none(valore: Any) -> time | None:
     if _vuoto(valore):
         return None
     if isinstance(valore, datetime):
@@ -64,7 +71,7 @@ def _ora_o_none(valore: Any) -> time | None:
     raise ValueError(f"Ora non riconosciuta: {valore!r}")
 
 
-def _decimale_o_none(valore: Any) -> Decimal | None:
+def decimale_o_none(valore: Any) -> Decimal | None:
     if _vuoto(valore):
         return None
     if isinstance(valore, Decimal):
@@ -102,27 +109,27 @@ def mappa_righe_giornale(
 
     for riga in righe:
         if usa_dare_avere:
-            dare = _decimale_o_none(_valore(riga, mappatura, "importo_dare"))
-            avere = _decimale_o_none(_valore(riga, mappatura, "importo_avere"))
+            dare = decimale_o_none(_valore(riga, mappatura, "importo_dare"))
+            avere = decimale_o_none(_valore(riga, mappatura, "importo_avere"))
             importo_netto = (dare or Decimal(0)) - (avere or Decimal(0))
         else:
-            importo_netto = _decimale_o_none(_valore(riga, mappatura, "importo_netto"))
+            importo_netto = decimale_o_none(_valore(riga, mappatura, "importo_netto"))
 
         risultato.append(
             RigaGiornale(
-                data_effettiva=_data_o_none(_valore(riga, mappatura, "data_effettiva")),
-                data_creazione=_data_o_none(_valore(riga, mappatura, "data_creazione")),
-                ora_creazione=_ora_o_none(_valore(riga, mappatura, "ora_creazione")),
-                identificativo_registrazione=_testo_o_none(
+                data_effettiva=data_o_none(_valore(riga, mappatura, "data_effettiva")),
+                data_creazione=data_o_none(_valore(riga, mappatura, "data_creazione")),
+                ora_creazione=ora_o_none(_valore(riga, mappatura, "ora_creazione")),
+                identificativo_registrazione=testo_o_none(
                     _valore(riga, mappatura, "identificativo_registrazione")
                 ),
-                numero_documento=_testo_o_none(
+                numero_documento=testo_o_none(
                     _valore(riga, mappatura, "numero_documento")
                 ),
                 importo_netto=importo_netto,
-                descrizione=_testo_o_none(_valore(riga, mappatura, "descrizione")),
-                utente=_testo_o_none(_valore(riga, mappatura, "utente")),
-                conto_contabile=_testo_o_none(
+                descrizione=testo_o_none(_valore(riga, mappatura, "descrizione")),
+                utente=testo_o_none(_valore(riga, mappatura, "utente")),
+                conto_contabile=testo_o_none(
                     _valore(riga, mappatura, "conto_contabile")
                 ),
             )
@@ -135,7 +142,7 @@ def _intestazioni_univoche(valori: Iterable[Any]) -> list[str]:
     conteggi: dict[str, int] = {}
     risultato: list[str] = []
     for indice, valore in enumerate(valori, start=1):
-        base = _testo_o_none(valore) or f"Colonna {indice}"
+        base = testo_o_none(valore) or f"Colonna {indice}"
         conteggi[base] = conteggi.get(base, 0) + 1
         occorrenza = conteggi[base]
         risultato.append(base if occorrenza == 1 else f"{base} [{occorrenza}]")

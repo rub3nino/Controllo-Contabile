@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from pathlib import Path
-import re
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
@@ -13,10 +13,21 @@ from openpyxl.styles import Font, PatternFill
 
 from backend.jet.criteri import calcola_frequenza_conti, valuta_riga
 from backend.jet.ingest import leggi_righe_xlsx, mappa_righe_giornale
+from backend.jet.ingest_txt import (
+    AnteprimaTxt,
+    ispeziona_txt,
+    mappa_righe_txt,
+    normalizza_intestazione,
+)
 from backend.jet.models import ParametriClienteJet, RigaGiornale
 from backend.jet.pratica import (
-    CreaPraticaJet, IntervalloSequenzaJet, MappaturaJet, PaginaRisultatiJet, PraticaJet,
+    CreaPraticaJet,
+    IntervalloSequenzaJet,
+    MappaturaJet,
+    PaginaRisultatiJet,
+    PraticaJet,
 )
+from backend.jet.profilo import CreaProfiloEstrazione, ProfiloEstrazione
 from backend.jet.sequenza import verifica_sequenza
 from backend.jet.store import JetStore
 from backend.workspace import output_dir, storage_root, write_inbox_file
@@ -42,6 +53,18 @@ def _file_path(pratica: PraticaJet) -> Path:
 
 
 def _raw_rows(pratica: PraticaJet) -> list[dict]:
+    if Path(pratica.file_originale_nome or "").suffix.lower() == ".txt":
+        if not pratica.profilo_estrazione_id:
+            raise HTTPException(
+                status_code=409, detail="Applica prima un profilo di estrazione TXT"
+            )
+        profilo = _store().get_profilo(pratica.profilo_estrazione_id)
+        if profilo is None:
+            raise HTTPException(status_code=409, detail="Profilo di estrazione TXT non trovato")
+        try:
+            return mappa_righe_txt(_file_path(pratica), profilo)
+        except (OSError, ValueError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail=f"File TXT non leggibile: {exc}") from exc
     try:
         return leggi_righe_xlsx(_file_path(pratica))
     except (OSError, ValueError, KeyError) as exc:
@@ -58,6 +81,19 @@ def create_pratica(body: CreaPraticaJet):
 @router.get("/pratiche", response_model=list[PraticaJet])
 def list_pratiche():
     return _store().list_pratiche()
+
+
+@router.get("/profili", response_model=list[ProfiloEstrazione])
+def list_profili():
+    return _store().list_profili()
+
+
+@router.get("/profili/{profilo_id}", response_model=ProfiloEstrazione)
+def get_profilo(profilo_id: str):
+    profilo = _store().get_profilo(profilo_id)
+    if profilo is None:
+        raise HTTPException(status_code=404, detail="Profilo di estrazione non trovato")
+    return profilo
 
 
 @router.get("/pratiche/{pratica_id}", response_model=PraticaJet)
@@ -81,9 +117,33 @@ def put_parametri(pratica_id: str, body: ParametriClienteJet):
 async def upload_file(pratica_id: str, file: UploadFile = File(...)):
     pratica = _pratica_or_404(pratica_id)
     filename = Path(file.filename or "giornale.xlsx").name
-    if Path(filename).suffix.lower() != ".xlsx":
-        raise HTTPException(status_code=400, detail="In questa fase è accettato solo un file .xlsx")
+    suffix = Path(filename).suffix.lower()
+    if suffix not in {".xlsx", ".txt"}:
+        raise HTTPException(status_code=400, detail="Sono accettati solo file .xlsx o .txt")
     path = write_inbox_file(pratica.id, filename, await file.read())
+    if suffix == ".txt":
+        try:
+            anteprima = ispeziona_txt(path)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=f"File TXT non leggibile: {exc}") from exc
+        profilo = _store().find_profilo_by_intestazione(
+            normalizza_intestazione(anteprima.intestazione)
+        )
+        pratica = pratica.model_copy(update={
+            "file_originale_nome": filename, "mappatura": None,
+            "profilo_estrazione_id": None, "status": "file_caricato",
+            "analizzato_at": None, "numero_registrazioni": 0,
+            "numero_da_investigare": 0,
+        })
+        _store().save_pratica(pratica)
+        return {
+            "pratica": pratica,
+            "intestazione": anteprima.intestazione,
+            "riga_intestazione": anteprima.riga_intestazione,
+            "righe_esempio": anteprima.righe_esempio,
+            "codifica": anteprima.codifica,
+            "profilo": profilo,
+        }
     try:
         rows = leggi_righe_xlsx(path)
     except Exception as exc:
@@ -92,7 +152,8 @@ async def upload_file(pratica_id: str, file: UploadFile = File(...)):
     if not headers:
         raise HTTPException(status_code=400, detail="Il file Excel non contiene intestazioni e righe dati")
     pratica = pratica.model_copy(update={
-        "file_originale_nome": filename, "mappatura": None, "status": "file_caricato",
+        "file_originale_nome": filename, "mappatura": None,
+        "profilo_estrazione_id": None, "status": "file_caricato",
         "analizzato_at": None, "numero_registrazioni": 0, "numero_da_investigare": 0,
     })
     _store().save_pratica(pratica)
@@ -102,8 +163,78 @@ async def upload_file(pratica_id: str, file: UploadFile = File(...)):
 @router.get("/pratiche/{pratica_id}/intestazioni")
 def get_headers(pratica_id: str):
     pratica = _pratica_or_404(pratica_id)
+    if Path(pratica.file_originale_nome or "").suffix.lower() == ".txt":
+        try:
+            anteprima = ispeziona_txt(_file_path(pratica))
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=f"File TXT non leggibile: {exc}") from exc
+        return {
+            "intestazioni": [], "intestazione": anteprima.intestazione,
+            "riga_intestazione": anteprima.riga_intestazione,
+            "righe_esempio": anteprima.righe_esempio,
+            "codifica": anteprima.codifica,
+            "profilo": _store().find_profilo_by_intestazione(
+                normalizza_intestazione(anteprima.intestazione)
+            ),
+        }
     rows = _raw_rows(pratica)
     return {"intestazioni": list(rows[0]) if rows else []}
+
+
+def _valida_posizioni_profilo(posizioni: dict[str, tuple[int, int]]) -> None:
+    required = {"identificativo_registrazione", "data_effettiva"}
+    if not required <= posizioni.keys():
+        raise HTTPException(
+            status_code=400,
+            detail="Il profilo richiede identificativo_registrazione e data_effettiva",
+        )
+    if not ({"importo_netto", "importo_dare", "importo_avere"} & posizioni.keys()):
+        raise HTTPException(
+            status_code=400,
+            detail="Mappare importo_netto oppure almeno una posizione Dare/Avere",
+        )
+
+
+def _pratica_txt_or_400(pratica_id: str) -> tuple[PraticaJet, AnteprimaTxt]:
+    pratica = _pratica_or_404(pratica_id)
+    if Path(pratica.file_originale_nome or "").suffix.lower() != ".txt":
+        raise HTTPException(status_code=400, detail="La pratica non contiene un file TXT")
+    try:
+        anteprima = ispeziona_txt(_file_path(pratica))
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"File TXT non leggibile: {exc}") from exc
+    return pratica, anteprima
+
+
+@router.put("/pratiche/{pratica_id}/profilo/{profilo_id}", response_model=PraticaJet)
+def apply_profilo(pratica_id: str, profilo_id: str):
+    pratica, anteprima = _pratica_txt_or_400(pratica_id)
+    profilo = _store().get_profilo(profilo_id)
+    if profilo is None:
+        raise HTTPException(status_code=404, detail="Profilo di estrazione non trovato")
+    if profilo.intestazione_riferimento != normalizza_intestazione(anteprima.intestazione):
+        raise HTTPException(
+            status_code=400, detail="Il profilo non corrisponde all'intestazione del file TXT"
+        )
+    _valida_posizioni_profilo(profilo.posizioni)
+    pratica = pratica.model_copy(update={"profilo_estrazione_id": profilo.id})
+    _store().save_pratica(pratica)
+    return pratica
+
+
+@router.post("/pratiche/{pratica_id}/profilo", response_model=PraticaJet, status_code=201)
+def create_and_apply_profilo(pratica_id: str, body: CreaProfiloEstrazione):
+    pratica, anteprima = _pratica_txt_or_400(pratica_id)
+    _valida_posizioni_profilo(body.posizioni)
+    profilo = ProfiloEstrazione(
+        nome=body.nome.strip(), riga_intestazione=anteprima.riga_intestazione,
+        intestazione_riferimento=normalizza_intestazione(anteprima.intestazione),
+        posizioni=body.posizioni,
+    )
+    _store().save_profilo(profilo)
+    pratica = pratica.model_copy(update={"profilo_estrazione_id": profilo.id})
+    _store().save_pratica(pratica)
+    return pratica
 
 
 @router.put("/pratiche/{pratica_id}/mappatura", response_model=PraticaJet)
@@ -136,12 +267,20 @@ def analyze(pratica_id: str):
     pratica = _pratica_or_404(pratica_id)
     missing = []
     if pratica.parametri is None: missing.append("parametri")
-    if pratica.file_originale_nome is None: missing.append("file Excel")
-    if pratica.mappatura is None: missing.append("mappatura colonne")
+    if pratica.file_originale_nome is None:
+        missing.append("file Excel")
+    elif Path(pratica.file_originale_nome).suffix.lower() == ".txt":
+        if pratica.profilo_estrazione_id is None:
+            missing.append("profilo di estrazione TXT")
+    elif pratica.mappatura is None:
+        missing.append("mappatura colonne")
     if missing:
         raise HTTPException(status_code=409, detail=f"Prima di analizzare completa: {', '.join(missing)}")
     try:
-        righe = mappa_righe_giornale(_raw_rows(pratica), pratica.mappatura)
+        if Path(pratica.file_originale_nome or "").suffix.lower() == ".txt":
+            righe = _raw_rows(pratica)
+        else:
+            righe = mappa_righe_giornale(_raw_rows(pratica), pratica.mappatura)
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=400, detail=f"Errore nella mappatura dei dati: {exc}") from exc
     frequenze = calcola_frequenza_conti(righe)

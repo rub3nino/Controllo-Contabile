@@ -26,6 +26,7 @@ class PraticaJet(BaseModel):
     parametri: ParametriClienteJet | None = None
     file_originale_nome: str | None = None
     mappatura: dict[str, str] | None = None
+    profilo_estrazione_id: str | None = None
     analizzato_at: str | None = None
     numero_registrazioni: int = Field(default=0, ge=0)
     numero_da_investigare: int = Field(default=0, ge=0)
