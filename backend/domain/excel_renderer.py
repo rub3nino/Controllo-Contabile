@@ -92,9 +92,17 @@ def _fill_domain_sources(workbook, verifiche: dict[str, VerificationResult], fin
             if not evidence.found or evidence.id in seen:
                 continue
             seen.add(evidence.id)
+            detail = evidence.source_path or evidence.excerpt
+            if evidence.fields:
+                fields = " · ".join(
+                    f"{field.kind.replace('_', ' ')}: {field.value}"
+                    f"{' ' + field.unit if field.unit else ''}"
+                    for field in evidence.fields
+                )
+                detail = f"{detail}\n{fields}" if detail else fields
             sheet.append([
                 result.section, result.status, "Evidenza", evidence.item_id,
-                evidence.source_name or "Fonte non disponibile", evidence.source_path or evidence.excerpt,
+                evidence.source_name or "Fonte non disponibile", detail,
             ])
         for item_id in result.missing_items:
             sheet.append([

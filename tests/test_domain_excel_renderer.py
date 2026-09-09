@@ -5,7 +5,14 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 from backend.catalog import MASTER_XLSX, checklist_items
-from backend.domain import PraticaRecord, documents_to_evidence, evaluate_pratica
+from backend.domain import (
+    Evidence,
+    ExtractedField,
+    PraticaRecord,
+    VerificationResult,
+    documents_to_evidence,
+    evaluate_pratica,
+)
 from backend.domain.client_config_loader import load_client_config
 from backend.domain.client_classify import scan_folder_for_client
 from backend.domain.excel_renderer import INDEX_CELLS, render_domain_workbook
@@ -55,3 +62,44 @@ def test_renderer_writes_domain_results_and_preserves_datasnipper_sheets(tmp_pat
     assert workbook["Richiesta doc"][f"Q{rows['A.1']}"].value == "wip"
     assert "DOMINIO" in workbook.sheetnames
     assert "**A.1**" in (tmp_path / "mancanti.md").read_text(encoding="utf-8")
+
+
+def test_renderer_includes_extracted_fields_in_domain_detail(tmp_path: Path):
+    pratica = PraticaRecord(
+        id="fields-test",
+        client_id="demo",
+        client="Cliente Demo",
+        period="Aprile - Giugno 2026",
+        documents_dir="/documenti",
+    )
+    evidence = Evidence(
+        pratica_id=pratica.id,
+        item_id="E.1",
+        source_name="F24_aprile_2026.txt",
+        source_path="/documenti/F24_aprile_2026.txt",
+        method="txt",
+        fields=[
+            ExtractedField(kind="importo", value="35616.68", unit="EUR"),
+            ExtractedField(kind="data_versamento", value="16/04/2026"),
+        ],
+    )
+    verifiche = {
+        "C": VerificationResult(
+            pratica_id=pratica.id,
+            client=pratica.client,
+            period=pratica.period,
+            section="C",
+            status="wip",
+            reasoning="Evidenza parziale.",
+            evidence=[evidence],
+        )
+    }
+
+    output = render_domain_workbook(pratica, verifiche, [], tmp_path)
+    sheet = load_workbook(output)["DOMINIO"]
+    evidence_row = next(row for row in sheet.iter_rows(min_row=2) if row[2].value == "Evidenza")
+
+    assert evidence_row[5].value == (
+        "/documenti/F24_aprile_2026.txt\n"
+        "importo: 35616.68 EUR · data versamento: 16/04/2026"
+    )

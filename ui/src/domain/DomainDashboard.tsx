@@ -138,7 +138,21 @@ export function DomainDashboard({ onShowExcel }: { onShowExcel: () => void }) {
                         ))}
                       </List>
                       <List title="Evidenze trovate" empty="Nessuna evidenza trovata">
-                        {found.map((evidence) => <li key={evidence.id} className="rounded-lg border border-line px-2.5 py-2"><span className="font-medium">{evidence.item_id}</span><span className="mt-0.5 block break-anywhere text-xs text-muted">{evidence.source_name || "Fonte non disponibile"}</span></li>)}
+                        {found.map((evidence) => (
+                          <li key={evidence.id} className="rounded-lg border border-line px-2.5 py-2">
+                            <span className="font-medium">{evidence.item_id}</span>
+                            <span className="mt-0.5 block break-anywhere text-xs text-muted">{evidence.source_name || "Fonte non disponibile"}</span>
+                            {evidence.fields.length ? (
+                              <ul className="mt-1 space-y-0.5 border-l border-line pl-2 text-[11px] leading-4 text-muted">
+                                {evidence.fields.map((field, index) => (
+                                  <li key={`${field.kind}-${index}`}>
+                                    <span className="font-medium">{field.kind.replaceAll("_", " ")}</span>: {field.value}{field.unit ? ` ${field.unit}` : ""}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </li>
+                        ))}
                       </List>
                     </div>
 
