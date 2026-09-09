@@ -257,12 +257,148 @@ body {
   background-color: rgba(255, 255, 255, 0.03);
 }
 
+.dark .data-table th {
+  color: #a3a3a0;
+  border-color: #333332;
+}
+
+.dark .data-table td {
+  color: #e8e8e6;
+  border-color: #2a2a29;
+}
+
 .dark ::-webkit-scrollbar-thumb {
   background: #444443;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #555554;
+}
+
+/* Header/Top bar */
+.dark header {
+  background-color: rgba(25, 25, 24, 0.8) !important;
+  border-color: #2a2a29 !important;
+}
+
+/* Cards and surfaces */
+.dark .card,
+.dark [class*="bg-surface-card"] {
+  background-color: #242423;
+  border-color: #333332;
+}
+
+.dark [class*="bg-surface/80"] {
+  background-color: rgba(25, 25, 24, 0.8);
+}
+
+/* Input fields */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1f1f1e;
+  border-color: #333332;
+  color: #e8e8e6;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #6b6b68;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: #555554;
+}
+
+/* Buttons */
+.dark button {
+  color: #e8e8e6;
+}
+
+.dark [class*="bg-ink-primary"] {
+  background-color: #e8e8e6;
+  color: #191918;
+}
+
+/* Sidebar specific */
+.dark .nav-item {
+  color: #a3a3a0;
+}
+
+/* Dropdown menus */
+.dark [class*="shadow-dropdown"] {
+  background-color: #242423;
+  border-color: #333332;
+}
+
+/* Status badges - keep their colors but ensure text is visible */
+.dark .bg-status-green-bg { background-color: rgba(19, 115, 51, 0.2); }
+.dark .bg-status-red-bg { background-color: rgba(197, 34, 31, 0.2); }
+.dark .bg-status-yellow-bg { background-color: rgba(176, 96, 0, 0.2); }
+
+.dark .bg-tint-blue-bg { background-color: rgba(43, 89, 102, 0.2); }
+.dark .bg-tint-green-bg { background-color: rgba(43, 89, 63, 0.2); }
+.dark .bg-tint-yellow-bg { background-color: rgba(120, 94, 7, 0.2); }
+.dark .bg-tint-orange-bg { background-color: rgba(143, 71, 26, 0.2); }
+.dark .bg-tint-red-bg { background-color: rgba(147, 48, 56, 0.2); }
+.dark .bg-tint-gray-bg { background-color: rgba(69, 68, 67, 0.3); }
+
+/* kbd elements */
+.dark kbd {
+  background-color: #2a2a29;
+  border-color: #333332;
+  color: #a3a3a0;
+}
+
+/* Modal backdrops */
+.dark [class*="backdrop-blur"] {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Sidebar specific dark mode */
+.dark [class*="bg-surface-sidebar-hover"],
+.dark .bg-surface-sidebar-hover {
+  background-color: #2a2a29;
+}
+
+/* Search button in header */
+.dark [class*="bg-surface-card"][class*="border"] {
+  background-color: #242423;
+  border-color: #333332;
+}
+
+/* Fix text colors that might be using inline bg colors */
+.dark .text-white {
+  color: #ffffff;
+}
+
+.dark .text-surface {
+  color: #191918;
+}
+
+/* Ensure proper contrast for all text */
+.dark p, .dark span, .dark div, .dark li, .dark label {
+  color: inherit;
+}
+
+/* Fix any remaining white backgrounds */
+.dark [style*="background"] {
+  /* Let CSS handle it */
+}
+
+/* Explicitly set sidebar colors */
+.dark aside[class*="bg-surface-sidebar"] {
+  background-color: #1f1f1e;
+}
+
+/* Toast notifications */
+.dark [class*="bg-status-green-bg"],
+.dark [class*="bg-status-red-bg"],
+.dark [class*="bg-status-yellow-bg"],
+.dark [class*="bg-tint-blue-bg"] {
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
