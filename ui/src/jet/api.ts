@@ -207,7 +207,9 @@ export const jetApi = {
       { method: "PUT", body },
     );
     if (!response.ok) {
-      throw new Error((await response.json()).detail || "Sostituzione non riuscita");
+      throw new Error(
+        (await response.json()).detail || "Sostituzione non riuscita",
+      );
     }
     return response.json() as Promise<FileInspection & { fonte: JetSource }>;
   },

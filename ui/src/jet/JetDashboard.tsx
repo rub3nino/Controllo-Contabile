@@ -613,7 +613,10 @@ export function JetDashboard() {
                         {source.nome_originale}
                       </span>
                       <span className="text-body-sm text-ink-secondary">
-                        {source.formato.toUpperCase()} · {source.numero_righe.toLocaleString("it-IT")} righe · {source.stato.replaceAll("_", " ")}
+                        {source.formato.toUpperCase()} ·{" "}
+                        {source.numero_righe.toLocaleString("it-IT")} righe ·
+                        {" "}
+                        {source.stato.replaceAll("_", " ")}
                       </span>
                     </button>
                     <label className="flex items-center gap-xs text-body-sm">
@@ -623,7 +626,11 @@ export function JetDashboard() {
                         onChange={async (event) => {
                           if (!active) return;
                           await refreshConfiguredSource(
-                            await jetApi.configureSource(active.id, source.id, event.target.checked),
+                            await jetApi.configureSource(
+                              active.id,
+                              source.id,
+                              event.target.checked,
+                            ),
                           );
                         }}
                       />
@@ -640,9 +647,15 @@ export function JetDashboard() {
                           if (!active || !file) return;
                           setBusy(true);
                           try {
-                            await jetApi.replaceSource(active.id, source.id, file);
+                            await jetApi.replaceSource(
+                              active.id,
+                              source.id,
+                              file,
+                            );
                             await reloadSources(active.id, source.id);
-                            const updated = (await jetApi.list()).find((item) => item.id === active.id);
+                            const updated = (await jetApi.list()).find((item) =>
+                              item.id === active.id
+                            );
                             if (updated) setActive(updated);
                           } catch (cause) {
                             setError(asUserError(cause).title);
@@ -656,10 +669,15 @@ export function JetDashboard() {
                       type="button"
                       className="px-sm py-xs rounded border border-border-subtle text-label-sm"
                       onClick={async () => {
-                        if (!active || !window.confirm(`Eliminare ${source.nome_originale}?`)) return;
+                        if (
+                          !active ||
+                          !window.confirm(`Eliminare ${source.nome_originale}?`)
+                        ) return;
                         await jetApi.deleteSource(active.id, source.id);
                         await reloadSources(active.id);
-                        const updated = (await jetApi.list()).find((item) => item.id === active.id);
+                        const updated = (await jetApi.list()).find((item) =>
+                          item.id === active.id
+                        );
                         if (updated) setActive(updated);
                       }}
                     >
@@ -671,14 +689,22 @@ export function JetDashboard() {
               <Field label="Gestione righe identiche tra fonti">
                 <select
                   value={active.strategia_duplicati}
-                  onChange={(event) => run(() => jetApi.duplicates(
-                    active.id,
-                    event.target.value as JetPractice["strategia_duplicati"],
-                  ))}
+                  onChange={(event) =>
+                    run(() =>
+                      jetApi.duplicates(
+                        active.id,
+                        event.target
+                          .value as JetPractice["strategia_duplicati"],
+                      )
+                    )}
                   className={inputClass}
                 >
-                  <option value="mantieni_tutti">Mantieni tutte le righe</option>
-                  <option value="scarta_identiche">Scarta duplicati identici</option>
+                  <option value="mantieni_tutti">
+                    Mantieni tutte le righe
+                  </option>
+                  <option value="scarta_identiche">
+                    Scarta duplicati identici
+                  </option>
                 </select>
               </Field>
               {!isProfileFile && headers.length > 0 && (
@@ -711,7 +737,11 @@ export function JetDashboard() {
                       setBusy(true);
                       try {
                         await refreshConfiguredSource(
-                          await jetApi.sourceMapping(active.id, selectedSource.id, mapping),
+                          await jetApi.sourceMapping(
+                            active.id,
+                            selectedSource.id,
+                            mapping,
+                          ),
                         );
                       } catch (cause) {
                         setError(asUserError(cause).title);

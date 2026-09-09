@@ -338,7 +338,9 @@ def configure_fonte(pratica_id: str, fonte_id: str, body: ConfigurazioneFonteJet
     pratica = _pratica_or_404(pratica_id)
     fonte = _fonte_or_404(pratica_id, fonte_id)
     if body.attiva:
-        configurata = fonte.mappatura is not None or fonte.profilo_estrazione_id is not None
+        configurata = (
+            fonte.mappatura is not None or fonte.profilo_estrazione_id is not None
+        )
         stato = "pronta" if fonte.numero_righe or configurata else "da_configurare"
     else:
         stato = "esclusa"
