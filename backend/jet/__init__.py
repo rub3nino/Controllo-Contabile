@@ -6,10 +6,13 @@ from backend.jet.models import (
     ParametriClienteJet,
     RigaGiornale,
 )
+from backend.jet.ingest import leggi_righe_xlsx, mappa_righe_giornale
 
 __all__ = [
     "RigaGiornale",
     "ParametriClienteJet",
     "EsitoRigaJet",
     "EsitoSequenzaJet",
+    "leggi_righe_xlsx",
+    "mappa_righe_giornale",
 ]
