@@ -85,6 +85,15 @@ class ParametriClienteJet(BaseModel):
     soglia_backdating_giorni: int | None = Field(default=None, ge=0)
     festivita: list[date] | None = None
     staff_autorizzato: list[str] | None = None
+    utenti_di_sistema: list[str] | None = Field(
+        default=None,
+        description=(
+            "Account di interfacce automatiche o processi batch, esclusi dal criterio "
+            "'staff non autorizzato' perché l'autorizzazione individuale non è pertinente "
+            "a un processo; non sono per questo considerati preparatori autorizzati. "
+            "None = nessuna esclusione implicita."
+        ),
+    )
     parole_chiave_parti_correlate: list[str] | None = None
     soglia_da_investigare: int = Field(ge=0)
 

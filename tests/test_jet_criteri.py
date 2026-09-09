@@ -90,6 +90,24 @@ def test_flag_non_calcolabili_restano_none_e_non_danno_punti():
     assert esito.punteggio_totale == 0
 
 
+def test_utente_di_sistema_rende_il_criterio_staff_non_applicabile():
+    esito = valuta_riga(
+        _riga(utente="BATCH_SINTETICO"),
+        _parametri(utenti_di_sistema=["BATCH_SINTETICO"]),
+    )
+
+    assert "BATCH_SINTETICO" not in _parametri().staff_autorizzato
+    assert esito.flag_staff_non_autorizzato is None
+
+
+def test_senza_lista_utenti_di_sistema_non_esclude_implicitamente():
+    parametri = _parametri(utenti_di_sistema=None)
+    esito = valuta_riga(_riga(utente="BATCH_SINTETICO"), parametri)
+
+    assert esito.flag_staff_non_autorizzato is True
+    assert esito.punteggio_totale == parametri.punteggio_staff_non_autorizzato
+
+
 def test_verdetto_usa_somma_pesata_e_non_un_dodicesimo_peso():
     esito = valuta_riga(
         _riga(importo_netto=Decimal("121"), utente="ESTERNO"),

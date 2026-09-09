@@ -68,7 +68,14 @@ def valuta_riga(
             riga.data_creazione - riga.data_effettiva
         ).days >= parametri.soglia_backdating_giorni
 
-    if parametri.staff_autorizzato is None or riga.utente is None:
+    if (
+        parametri.staff_autorizzato is None
+        or riga.utente is None
+        or (
+            parametri.utenti_di_sistema is not None
+            and riga.utente in parametri.utenti_di_sistema
+        )
+    ):
         flag_staff_non_autorizzato = None
     else:
         flag_staff_non_autorizzato = riga.utente not in parametri.staff_autorizzato

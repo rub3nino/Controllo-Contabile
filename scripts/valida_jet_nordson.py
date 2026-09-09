@@ -76,6 +76,7 @@ def main() -> None:
         soglia_backdating_giorni=60,
         festivita=festivita,
         staff_autorizzato=staff,
+        utenti_di_sistema=["BATCHJOB", "BANKBATCH"],
         parole_chiave_parti_correlate=parole,
         soglia_da_investigare=4,
         punteggio_profit_impact=1,
@@ -103,6 +104,10 @@ def main() -> None:
         for esito in esiti
     )
     print(f"da_investigare_senza_punti_staff={senza_staff}")
+    print(
+        "utenti_di_sistema_esclusi="
+        f"{sum(riga.utente in {'BATCHJOB', 'BANKBATCH'} for riga in righe)}"
+    )
     print(f"staff_non_autorizzato={sum(esito.flag_staff_non_autorizzato is True for esito in esiti)}")
     print(f"sopra_pm={sum(esito.flag_sopra_performance_materiality for esito in esiti)}")
     print(f"cifra_tonda={sum(esito.flag_importo_cifra_tonda for esito in esiti)}")
