@@ -10,12 +10,14 @@ from fastapi.staticfiles import StaticFiles
 
 from .catalog import DOCUMENT_NEED, ITEM_LABELS, SECTION_HELP, SECTION_TITLES, checklist_items
 from .domain.api import router as domain_router
+from .jet.api import router as jet_router
 from .errors import UserError, from_exception
 from .models import DocumentPatch, ItemPatch, LinkFolderIn, PraticaIn
 from .pipeline import engine
 
 app = FastAPI(title="Quadra", version="0.2.0")
 app.include_router(domain_router)
+app.include_router(jet_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
