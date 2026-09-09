@@ -1,3 +1,10 @@
+/**
+ * App.tsx — Shell principale Quadra con sidebar Atelier Document System
+ *
+ * Mantiene tutta la logica applicativa esistente (fetch, stato, pratiche)
+ * ma usa la nuova struttura visiva con sidebar fissa.
+ */
+
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ApiError,
@@ -9,11 +16,15 @@ import {
   type ProvenanceRow,
   type UserFacingError,
 } from "./api";
-import { Logo } from "./Logo";
+import { Sidebar, PlaceholderSection, Icon, StatusBadge, Card, CardHeader, mapStatusToVariant } from "./components";
+import type { SectionId } from "./components/Sidebar";
 import { DomainDashboard } from "./domain/DomainDashboard";
-import { WorkspaceTabs } from "./domain/WorkspaceTabs";
+import { JetPage } from "./pages";
 import { ALL_SECTIONS, sectionHelp } from "./sectionHelp";
-import { pill } from "./statusPill";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
 
 function buildNav(catalog: Catalog | null) {
   return [
@@ -48,27 +59,54 @@ function splitPeriod(period: string): { q: string; year: string } {
   return { q: "q2", year };
 }
 
-const btn =
-  "cursor-pointer rounded-xl transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+// ─────────────────────────────────────────────────────────────────────────────
+// Breadcrumb mapping
+// ─────────────────────────────────────────────────────────────────────────────
 
-function IconMenu({ open }: { open: boolean }) {
-  return (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      {open ? (
-        <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-      ) : (
-        <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
-      )}
-    </svg>
-  );
+function getBreadcrumb(section: SectionId, clientName?: string): string[] {
+  const base = clientName ? ["Clienti", clientName] : ["Quadra"];
+
+  switch (section) {
+    case "controllo-contabile":
+      return [...base, "Controllo Contabile"];
+    case "jet":
+      return [...base, "JET (ISA 240)"];
+    case "sezione-3":
+      return [...base, "Sezione 3"];
+    case "sezione-4":
+      return [...base, "Sezione 4"];
+    case "sezione-5":
+      return [...base, "Sezione 5"];
+    default:
+      return base;
+  }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Main App Component
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
-  const [workspace, setWorkspace] = useState<"excel" | "domain">("excel");
+  // ─── Sidebar state ───
+  const [activeSection, setActiveSection] = useState<SectionId>("controllo-contabile");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("quadra-sidebar-collapsed") === "true";
+  });
+
+  // Sync sidebar collapsed state
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const current = localStorage.getItem("quadra-sidebar-collapsed") === "true";
+      if (current !== sidebarCollapsed) setSidebarCollapsed(current);
+    }, 200);
+    return () => clearInterval(interval);
+  }, [sidebarCollapsed]);
+
+  // ─── App state (from existing App.tsx) ───
   const [state, setState] = useState<AppState | null>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [view, setView] = useState("overview");
-  const [navOpen, setNavOpen] = useState(false);
   const [form, setForm] = useState({
     client: "",
     period: "Aprile - Giugno 2026",
@@ -85,6 +123,7 @@ export default function App() {
   const [err, setErr] = useState<UserFacingError | null>(null);
   const [picked, setPicked] = useState<ProvenanceRow | null>(null);
 
+  // ─── Error handling ───
   function fail(e: unknown) {
     setErr(asUserError(e));
     setState((prev) =>
@@ -99,46 +138,36 @@ export default function App() {
           }
         : prev
     );
-    go("overview");
+    setView("overview");
   }
 
   function readyError(action: "scan" | "run"): UserFacingError | null {
     if (!form.client.trim()) {
       return {
         title: "Manca il nome del cliente",
-        detail:
-          "Senza il cliente Quadra non sa come intestare il foglio INDICE. Scrivilo nel campo Cliente a sinistra.",
+        detail: "Senza il cliente Quadra non sa come intestare il foglio INDICE. Scrivilo nel campo Cliente.",
         missing: ["Campo Cliente"],
       };
     }
-    const hasFolder =
-      folderFiles.length > 0 ||
-      Boolean(linkDir.trim()) ||
-      Boolean(state?.pratica?.documents_dir);
+    const hasFolder = folderFiles.length > 0 || Boolean(linkDir.trim()) || Boolean(state?.pratica?.documents_dir);
     if (action === "scan" && !hasFolder) {
       return {
         title: "Nessuna cartella documenti",
-        detail:
-          "Non hai ancora scelto i file. Usa «Scegli cartella» (funziona da Mac e da Windows) oppure collega un percorso che il server può leggere.",
+        detail: "Non hai ancora scelto i file. Usa «Scegli cartella» oppure collega un percorso.",
         missing: ["Cartella documenti"],
       };
     }
     if (action === "run" && !(state?.documents || []).length) {
       return {
         title: "Non posso compilare: manca la scansione",
-        detail:
-          "Prima scegli la cartella e premi 1 · Scansiona. Solo dopo Quadra sa quali F24, e/c e mastrini usare. Avvia è il passo 2.",
-        missing: ["1 · Scansiona"],
+        detail: "Prima scegli la cartella e premi Scansiona.",
+        missing: ["Scansiona"],
       };
     }
     return null;
   }
 
-  function go(id: string) {
-    setView(id);
-    setNavOpen(false);
-  }
-
+  // ─── Data fetching ───
   async function refresh() {
     const s = await api.state();
     setState(s);
@@ -189,12 +218,12 @@ export default function App() {
     const local = readyError("scan");
     if (local) {
       setErr(local);
-      go("overview");
+      setView("overview");
       return;
     }
     setErr(null);
     setBusy(true);
-    go("overview");
+    setView("overview");
     setState((prev) =>
       prev
         ? {
@@ -203,7 +232,7 @@ export default function App() {
             current_section: "Documenti",
             job_step: 1,
             job_total: 2,
-            job_label: "Lettura nomi e cartelle (senza copia, senza OCR)",
+            job_label: "Lettura nomi e cartelle",
             progress: 8,
           }
         : prev
@@ -215,13 +244,13 @@ export default function App() {
         setState({
           ...ingested,
           running: true,
-          job_label: "Lettura nomi e cartelle (senza copia, senza OCR)",
+          job_label: "Lettura nomi e cartelle",
           progress: 18,
         });
       }
       const scanned = await api.scan();
       setState(scanned);
-      go("docs");
+      setView("docs");
     } catch (e) {
       fail(e);
     } finally {
@@ -233,12 +262,12 @@ export default function App() {
     const local = readyError("run");
     if (local) {
       setErr(local);
-      go("overview");
+      setView("overview");
       return;
     }
     setErr(null);
     setBusy(true);
-    go("overview");
+    setView("overview");
     setState((prev) =>
       prev
         ? {
@@ -293,6 +322,7 @@ export default function App() {
     }
   }
 
+  // ─── Derived state ───
   const filteredDocs = useMemo(() => {
     const docs = state?.documents || [];
     const s = q.trim().toLowerCase();
@@ -317,585 +347,408 @@ export default function App() {
         }
       : null);
   const nav = buildNav(catalog);
-  const viewLabel = nav.find((n) => n.id === view)?.label || view;
-  const activeSection = ALL_SECTIONS.includes(view) ? sectionHelp(view, catalog) : null;
-  const hasFolder =
-    folderFiles.length > 0 || Boolean(linkDir.trim()) || Boolean(state?.pratica?.documents_dir);
+  const hasFolder = folderFiles.length > 0 || Boolean(linkDir.trim()) || Boolean(state?.pratica?.documents_dir);
   const scanned = (state?.documents || []).length > 0;
-  const nextStep = !form.client.trim()
-    ? "Prima scrivi il nome del cliente."
-    : !hasFolder
-      ? "Poi scegli la cartella dei documenti."
-      : !scanned
-        ? "Adesso premi 1 · Scansiona. Quadra legge i file e li mette sulla voce giusta."
-        : "Controlla Documenti, poi premi 2 · Avvia per compilare l’Excel.";
 
-  if (workspace === "domain") {
-    return <DomainDashboard onShowExcel={() => setWorkspace("excel")} />;
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const breadcrumb = getBreadcrumb(activeSection, state?.pratica?.client);
 
   return (
-    <div className="flex h-dvh min-h-0 overflow-hidden bg-paper">
-      {navOpen && (
-        <button
-          type="button"
-          aria-label="Chiudi menu"
-          className="fixed inset-0 z-40 cursor-pointer bg-ink/50 lg:hidden"
-          onClick={() => setNavOpen(false)}
-        />
-      )}
+    <div className="flex h-dvh min-h-0 overflow-hidden bg-surface">
+      {/* ─── Sidebar ─── */}
+      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
 
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[min(20rem,88vw)] shrink-0 flex-col border-r border-line bg-white transition-transform duration-200 ease-out lg:static lg:z-0 lg:w-80 lg:translate-x-0 ${
-          navOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+      {/* ─── Main content area ─── */}
+      <main
+        className={`
+          flex-1 flex flex-col min-h-0 min-w-0
+          transition-[margin] duration-200 ease-out
+          ${sidebarCollapsed ? "ml-sidebar-collapsed" : "ml-sidebar-expanded"}
+        `}
       >
-        <div className="flex items-center gap-3 px-5 py-5">
-          <Logo className="h-9 w-9 shrink-0 text-ink" />
-          <div className="min-w-0">
-            <div className="text-base font-semibold tracking-tight">Quadra</div>
-            <div className="text-xs text-muted">Controllo contabile · SA 250B</div>
+        {/* ─── Top bar with breadcrumb ─── */}
+        <header className="h-11 flex items-center px-lg border-b border-border-muted bg-surface/80 backdrop-blur-sm flex-shrink-0">
+          <nav className="flex items-center gap-xs text-body-sm">
+            {breadcrumb.map((item, index) => (
+              <span key={index} className="flex items-center gap-xs">
+                {index > 0 && <span className="text-ink-tertiary">/</span>}
+                <span className={index === breadcrumb.length - 1 ? "text-ink-primary" : "text-ink-secondary"}>
+                  {item}
+                </span>
+              </span>
+            ))}
+          </nav>
+        </header>
+
+        {/* ─── Content ─── */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-content-wide mx-auto px-2xl py-lg">
+            {activeSection === "controllo-contabile" && (
+              <ControlloContabileSection
+                state={state}
+                setState={setState}
+                catalog={catalog}
+                form={form}
+                setForm={setForm}
+                folderFiles={folderFiles}
+                setFolderFiles={setFolderFiles}
+                linkDir={linkDir}
+                setLinkDir={setLinkDir}
+                busy={busy}
+                working={working}
+                shownError={shownError}
+                scan={scan}
+                run={run}
+                hasFolder={hasFolder}
+                scanned={scanned}
+                view={view}
+                setView={setView}
+                nav={nav}
+                filteredDocs={filteredDocs}
+                q={q}
+                setQ={setQ}
+                k={k}
+                picked={picked}
+                setPicked={setPicked}
+              />
+            )}
+
+            {activeSection === "jet" && <JetPage />}
+
+            {activeSection === "sezione-3" && (
+              <PlaceholderSection
+                title="Sezione 3"
+                icon="inventory_2"
+                description="Questa sezione sarà dedicata a procedure di audit aggiuntive. Il contenuto sarà definito nelle prossime versioni."
+              />
+            )}
+
+            {activeSection === "sezione-4" && (
+              <PlaceholderSection
+                title="Sezione 4"
+                icon="folder_supervised"
+                description="Area riservata a controlli documentali avanzati. Funzionalità in fase di definizione."
+              />
+            )}
+
+            {activeSection === "sezione-5" && (
+              <PlaceholderSection
+                title="Sezione 5"
+                icon="history_edu"
+                description="Storico e archivio delle pratiche completate. Sarà disponibile in una versione futura."
+              />
+            )}
           </div>
         </div>
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-3">
-          <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted">Pratica</p>
-          <Field label="Cliente" value={form.client} onChange={(v) => setForm({ ...form, client: v })} />
-          <PeriodSelect
-            period={form.period}
-            onChange={(v) => setForm({ ...form, period: v })}
-          />
-          <Field
-            label="Cartella sul Mac (lettura diretta)"
-            value={linkDir}
-            onChange={(v) => {
-              setLinkDir(v);
-              if (v) setFolderFiles([]);
-            }}
-            placeholder="/Volumes/…/II Trimestre 2026"
-          />
-          <p className="px-1 text-[11px] leading-snug text-muted">
-            Quadra gira su questo computer: incolla il percorso e i file restano dove sono. Non si caricano su nessun server.
+      </main>
+
+      {/* ─── Provenance detail panel ─── */}
+      {picked && (
+        <ProvenancePanel picked={picked} onClose={() => setPicked(null)} />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controllo Contabile Section (migrated from original App.tsx)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface PraticaForm {
+  client: string;
+  period: string;
+  done_by: string;
+  reviewed_by: string;
+  request_date: string;
+  activity_date: string;
+  skip_sections: string[];
+}
+
+interface ControlloContabileSectionProps {
+  state: AppState | null;
+  setState: React.Dispatch<React.SetStateAction<AppState | null>>;
+  catalog: Catalog | null;
+  form: PraticaForm;
+  setForm: React.Dispatch<React.SetStateAction<PraticaForm>>;
+  folderFiles: File[];
+  setFolderFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  linkDir: string;
+  setLinkDir: React.Dispatch<React.SetStateAction<string>>;
+  busy: boolean;
+  working: boolean;
+  shownError: UserFacingError | null;
+  scan: () => Promise<void>;
+  run: () => Promise<void>;
+  hasFolder: boolean;
+  scanned: boolean;
+  view: string;
+  setView: React.Dispatch<React.SetStateAction<string>>;
+  nav: { id: string; label: string }[];
+  filteredDocs: AppState["documents"];
+  q: string;
+  setQ: React.Dispatch<React.SetStateAction<string>>;
+  k: { files: number; classified: number; missing: number; sections_done: number };
+  picked: ProvenanceRow | null;
+  setPicked: React.Dispatch<React.SetStateAction<ProvenanceRow | null>>;
+}
+
+function ControlloContabileSection(props: ControlloContabileSectionProps) {
+  const {
+    state,
+    setState,
+    catalog,
+    form,
+    setForm,
+    folderFiles,
+    setFolderFiles,
+    linkDir,
+    setLinkDir,
+    busy,
+    working,
+    shownError,
+    scan,
+    run,
+    hasFolder,
+    scanned,
+    view,
+    setView,
+    nav,
+    filteredDocs,
+    q,
+    setQ,
+    k,
+    setPicked,
+  } = props;
+
+  const activeSection = ALL_SECTIONS.includes(view) ? sectionHelp(view, catalog) : null;
+  const nextStep = !form.client.trim()
+    ? "Inserisci il nome del cliente per iniziare."
+    : !hasFolder
+      ? "Seleziona la cartella dei documenti."
+      : !scanned
+        ? "Premi Scansiona per leggere i file."
+        : "Controlla i documenti, poi premi Avvia per compilare.";
+
+  return (
+    <div className="space-y-lg">
+      {/* ─── Header ─── */}
+      <header className="flex items-start justify-between gap-lg">
+        <div>
+          <h1 className="text-headline-lg text-ink-primary">Controllo Contabile</h1>
+          <p className="mt-xs text-body-md text-ink-secondary">
+            SA Italia 250B · Verifica art. 2409-ter c.c.
           </p>
-          {state?.pratica?.ingest_kind === "link" ? (
-            <p className="break-anywhere px-1 text-[11px] text-emerald-800">{state.pratica.documents_dir}</p>
-          ) : null}
-          <details className="rounded-lg border border-line bg-paper/60 px-2.5 py-2">
-            <summary className="cursor-pointer text-[11px] font-medium text-muted">
-              Invece copia i file (lento, solo se Quadra è su un altro PC)
-            </summary>
-            <div className="pt-2">
-              <FolderPicker
-                count={folderFiles.length}
-                ingestKind={state?.pratica?.ingest_kind || ""}
-                onPick={(files) => {
-                  setFolderFiles(files);
-                  if (files.length) setLinkDir("");
-                }}
-              />
-            </div>
-          </details>
-          <div>
-            <p className="mb-1 text-[11px] font-medium text-muted">Sezioni da svolgere (A–I)</p>
-            <p className="mb-2 text-[11px] leading-snug text-muted">
-              Ogni lettera è una carta del controllo. Lascia spuntate quelle da fare; togli la spunta solo se questo trimestre non servono (andranno ✗ sull’INDICE).
-            </p>
-            <div className="space-y-0.5">
-              {ALL_SECTIONS.map((id) => {
-                const on = !form.skip_sections.includes(id);
-                const meta = sectionHelp(id, catalog);
-                return (
-                  <label
-                    key={id}
-                    className={`flex min-h-11 cursor-pointer items-start gap-2 rounded-lg px-1.5 py-1.5 text-sm hover:bg-paper ${on ? "" : "opacity-60"}`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-1 shrink-0"
-                      checked={on}
-                      onChange={() =>
-                        setForm({
-                          ...form,
-                          skip_sections: on
-                            ? [...form.skip_sections, id]
-                            : form.skip_sections.filter((x) => x !== id),
-                        })
-                      }
-                    />
-                    <span className="min-w-0">
-                      <span className="flex items-baseline gap-1.5">
-                        <span className="w-4 shrink-0 font-semibold tabular-nums">{id}</span>
-                        <span className="min-w-0 font-medium leading-snug">{meta.title}</span>
-                      </span>
-                      <span className="mt-0.5 block pl-5 text-[11px] leading-snug text-muted">{meta.blurb}</span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
+        </div>
+        <a
+          href="/api/export/xlsx"
+          className="inline-flex items-center gap-sm px-base py-sm rounded bg-ink-primary text-white text-label-md hover:bg-ink-primary/90 transition-colors-fast"
+        >
+          <Icon name="download" size="sm" />
+          Esporta Excel
+        </a>
+      </header>
+
+      {/* ─── Error banner ─── */}
+      {shownError && <ErrorBanner err={shownError} />}
+
+      {/* ─── Setup form + KPIs ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-base">
+        {/* Form card */}
+        <Card className="lg:col-span-2" padding="lg">
+          <CardHeader>Configurazione pratica</CardHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
+            <Field label="Cliente" value={form.client} onChange={(v) => setForm({ ...form, client: v })} />
+            <PeriodSelect period={form.period} onChange={(v) => setForm({ ...form, period: v })} />
+            <Field
+              label="Cartella documenti"
+              value={linkDir}
+              onChange={(v) => {
+                setLinkDir(v);
+                if (v) setFolderFiles([]);
+              }}
+              placeholder="/Volumes/…/documenti"
+              className="sm:col-span-2"
+            />
           </div>
-          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
-            <Field label="Fatto da" value={form.done_by} onChange={(v) => setForm({ ...form, done_by: v })} />
-            <Field label="Rivisto da" value={form.reviewed_by} onChange={(v) => setForm({ ...form, reviewed_by: v })} />
-          </div>
-          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
-            <Field label="Invio rich." value={form.request_date} onChange={(v) => setForm({ ...form, request_date: v })} placeholder="YYYY-MM-DD" />
-            <Field label="Svolgimento" value={form.activity_date} onChange={(v) => setForm({ ...form, activity_date: v })} placeholder="YYYY-MM-DD" />
-          </div>
-          <div className="space-y-2 pt-1">
-            <p className="text-[11px] font-medium text-muted">Ordine dei due tasti</p>
-            <ol className="list-decimal space-y-1 pl-4 text-[11px] leading-snug text-muted">
-              <li>
-                <span className="font-medium text-ink">Scansiona</span> — legge la cartella e classifica i file (F24, estratti, mastrini…). Poi controlla la pagina Documenti.
-              </li>
-              <li>
-                <span className="font-medium text-ink">Avvia</span> — solo dopo la scansione: compila l’Excel. Non schiacciarlo per primo.
-              </li>
-            </ol>
-            <p className="text-[11px] leading-snug text-muted">{nextStep}</p>
-            <div className="flex flex-col gap-2">
+
+          <div className="mt-md pt-md border-t border-border-muted">
+            <p className="text-body-sm text-ink-secondary mb-md">{nextStep}</p>
+            <div className="flex gap-sm">
               <button
                 type="button"
                 onClick={scan}
                 disabled={busy || !hasFolder || !form.client.trim()}
-                title={
-                  !form.client.trim()
-                    ? "Scrivi prima il nome del cliente"
-                    : !hasFolder
-                      ? "Scegli prima la cartella documenti"
-                      : "Passo 1: leggi e classifica i file"
-                }
-                className={`${btn} min-h-11 w-full border border-line bg-white px-3 py-2 text-sm font-medium hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50`}
+                className="flex-1 inline-flex items-center justify-center gap-sm px-base py-sm rounded border border-border-subtle bg-surface-card text-label-md text-ink-primary hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors-fast"
               >
-                {busy && !state?.running ? "Carico…" : "1 · Scansiona"}
+                <Icon name="document_scanner" size="sm" />
+                Scansiona
               </button>
               <button
                 type="button"
                 onClick={run}
                 disabled={busy || state?.running || !scanned}
-                title={!scanned ? "Prima premi Scansiona" : "Passo 2: compila l’Excel"}
-                className={`${btn} min-h-11 w-full bg-ink px-3 py-2 text-sm font-medium text-white hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-50`}
+                className="flex-1 inline-flex items-center justify-center gap-sm px-base py-sm rounded bg-ink-primary text-label-md text-white hover:bg-ink-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors-fast"
               >
-                {state?.running || busy ? "In corso…" : "2 · Avvia"}
+                <Icon name="play_arrow" size="sm" />
+                {state?.running || busy ? "In corso…" : "Avvia"}
               </button>
             </div>
           </div>
-        </div>
-        <nav className="max-h-[42%] overflow-y-auto border-t border-line px-3 py-3" aria-label="Sezioni">
-          {nav.map((n) => (
-            <button
-              type="button"
-              key={n.id}
-              onClick={() => go(n.id)}
-              className={`${btn} mb-0.5 flex min-h-11 w-full min-w-0 items-center justify-between gap-2 px-3 py-1.5 text-left text-sm ${
-                view === n.id ? "bg-paper font-medium" : "text-muted hover:bg-paper/70"
-              }`}
-            >
-              <span className="min-w-0 break-anywhere">{n.label}</span>
-              {n.id.length === 1 && state?.sections.find((s) => s.id === n.id)?.status
-                ? pill(state.sections.find((s) => s.id === n.id)!.status)
-                : null}
-            </button>
-          ))}
-        </nav>
-      </aside>
+        </Card>
 
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex flex-wrap items-center gap-3 border-b border-line bg-white px-4 py-3 sm:px-6">
-          <button
-            type="button"
-            className={`${btn} inline-flex min-h-11 min-w-11 items-center justify-center border border-line hover:bg-paper lg:hidden`}
-            aria-label={navOpen ? "Chiudi menu" : "Apri menu"}
-            aria-expanded={navOpen}
-            onClick={() => setNavOpen((v) => !v)}
-          >
-            <IconMenu open={navOpen} />
-          </button>
-          <div className="flex min-w-0 items-center gap-2">
-            <Logo className="h-7 w-7 shrink-0 text-ink lg:hidden" />
-            <div className="min-w-0 text-sm text-muted">
-              <span className="font-semibold text-ink">Quadra</span>
-              <span className="hidden text-ink/40 sm:inline"> / </span>
-              <span className="hidden break-anywhere font-medium text-ink sm:inline">{viewLabel}</span>
+        {/* KPIs */}
+        <div className="space-y-sm">
+          <KpiCard title="File in cartella" value={k.files} />
+          <KpiCard title="Classificati" value={k.classified} />
+          <KpiCard title="Mancanti" value={k.missing} variant={k.missing > 0 ? "warning" : "default"} />
+          <KpiCard title="Sezioni chiuse" value={`${k.sections_done}/9`} />
+        </div>
+      </div>
+
+      {/* ─── Progress indicator ─── */}
+      {working && (
+        <Card padding="base">
+          <div className="flex items-center justify-between gap-md mb-sm">
+            <div>
+              <div className="text-label-md text-ink-primary">{state?.job_label || "Elaborazione..."}</div>
+              <div className="text-body-sm text-ink-secondary">
+                {state?.job_step && state?.job_total
+                  ? `Passo ${state.job_step} di ${state.job_total}`
+                  : ""}
+              </div>
+            </div>
+            <div className="text-label-md text-ink-secondary font-mono">
+              {Math.round(state?.progress || 0)}%
             </div>
           </div>
-          <div className="order-last min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-64">
-            <label className="sr-only" htmlFor="doc-search">
-              Cerca documenti
-            </label>
-            <input
-              id="doc-search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Cerca documenti…"
-              className="h-11 w-full min-w-0 rounded-full border border-line bg-paper px-4 py-2 text-sm outline-none focus:border-ink/30"
+          <div className="h-1.5 rounded-full bg-surface-recessed overflow-hidden">
+            <div
+              className="h-full bg-ink-primary rounded-full work-bar-fill"
+              style={{ width: `${Math.max(4, state?.progress || 0)}%` }}
             />
           </div>
-          <WorkspaceTabs active="excel" onChange={setWorkspace} />
-          <a href="/api/export/xlsx" className={`${btn} ml-auto inline-flex min-h-11 shrink-0 items-center bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-ink/90 sm:ml-0`}>
-            Esporta Excel
-          </a>
-        </header>
-
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
-          {shownError && <ErrorBanner err={shownError} />}
-
-          <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Kpi title="File in cartella" value={k.files} hint="documenti letti" />
-            <Kpi title="Classificati" value={k.classified} hint="voci checklist" />
-            <Kpi title="Mancanti" value={k.missing} hint="status wip" />
-            <Kpi title="Sezioni chiuse" value={`${k.sections_done}/9`} hint="semaforo INDICE" />
-          </div>
-
-          {view === "overview" && (
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-              <section className="min-w-0 overflow-hidden rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5 xl:col-span-2">
-                <WorkPanel state={state} catalog={catalog} working={working} errored={Boolean(shownError)} />
-                {(state?.missing || []).length > 0 && !working && (
-                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-3">
-                    <p className="text-xs font-semibold text-amber-950">Cosa manca ancora</p>
-                    <ul className="mt-2 space-y-2">
-                      {(state?.missing || []).slice(0, 4).map((m) => (
-                        <li key={m.id} className="text-xs text-amber-950">
-                          <span className="font-medium">{m.id}</span> — {m.need || m.label}
-                        </li>
-                      ))}
-                    </ul>
-                    {(state?.missing || []).length > 4 ? (
-                      <button type="button" className={`${btn} mt-2 text-xs font-medium text-amber-950 underline`} onClick={() => go("mancanti")}>
-                        Vedi tutti i {(state?.missing || []).length} mancanti
-                      </button>
-                    ) : null}
-                  </div>
-                )}
-                <LogList logs={state?.logs || []} working={working} />
-              </section>
-              <section className="min-w-0 rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5">
-                <h2 className="text-sm font-semibold">Carte di lavoro A–I</h2>
-                <p className="mt-1 text-[11px] text-muted">Clicca una sezione per vederla. Lo stato è il semaforo dell’INDICE.</p>
-                <ul className="mt-3 space-y-3">
-                  {(state?.sections || []).map((s) => {
-                    const meta = sectionHelp(s.id, catalog);
-                    return (
-                      <li key={s.id} className="flex min-w-0 items-start justify-between gap-3 text-sm">
-                        <button type="button" className={`${btn} min-w-0 flex-1 rounded-lg px-1 py-1 text-left hover:bg-paper`} onClick={() => go(s.id)}>
-                          <span className="block break-anywhere font-medium">
-                            {s.id} — {meta.title}
-                          </span>
-                          <span className="mt-0.5 block text-[11px] leading-snug text-muted">{meta.blurb}</span>
-                        </button>
-                        {pill(s.status)}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            </div>
-          )}
-
-          {view === "docs" && (
-            <TableCard title="Documenti classificati">
-              <div className="md:hidden">
-                {filteredDocs.length === 0 && <p className="px-4 py-6 text-sm text-muted">Nessun documento.</p>}
-                {filteredDocs.map((d) => (
-                  <article key={d.id} className="space-y-3 border-t border-line px-4 py-4">
-                    <div className="min-w-0">
-                      <div className="break-anywhere font-medium">{d.name}</div>
-                      {d.rel ? <div className="mt-1 break-anywhere text-xs text-muted">{d.rel}</div> : null}
-                      {d.excerpt && d.excerpt !== d.rel ? <div className="mt-1 break-anywhere text-xs text-muted">{d.excerpt}</div> : null}
-                    </div>
-                    <label className="block">
-                      <span className="mb-1 block text-[11px] font-medium text-muted">Voce</span>
-                      <DocSelect
-                        value={d.item_id || ""}
-                        items={catalog?.items || []}
-                        onChange={async (v) => setState(await api.patchDoc(d.id, { item_id: v }))}
-                      />
-                    </label>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-sm tabular-nums text-muted">{d.confidence ? `${Math.round(d.confidence * 100)}%` : "—"}</span>
-                      {pill(d.skip ? "✗" : d.item_id ? "✓" : "wip")}
-                      <button
-                        type="button"
-                        className={`${btn} min-h-11 rounded-lg border border-line px-3 py-1 text-xs hover:bg-paper`}
-                        onClick={async () => setState(await api.patchDoc(d.id, { skip: !d.skip }))}
-                      >
-                        {d.skip ? "Reincludi" : "Skip"}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-              <div className="hidden min-w-0 max-w-full overflow-x-auto md:block">
-                <table className="w-full table-fixed text-left text-sm">
-                  <colgroup>
-                    <col className="w-[32%]" />
-                    <col className="w-[30%]" />
-                    <col className="w-[10%]" />
-                    <col className="w-[14%]" />
-                    <col className="w-[14%]" />
-                  </colgroup>
-                  <thead className="text-xs uppercase tracking-wide text-muted">
-                    <tr>
-                      <Th>File</Th>
-                      <Th>Voce</Th>
-                      <Th>Conf.</Th>
-                      <Th>Stato</Th>
-                      <Th>Azioni</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDocs.map((d) => (
-                      <tr key={d.id} className="border-t border-line">
-                        <Td>
-                          <div className="break-anywhere font-medium">{d.name}</div>
-                          {d.rel ? <div className="mt-0.5 break-anywhere text-xs text-muted">{d.rel}</div> : null}
-                        </Td>
-                        <Td>
-                          <DocSelect
-                            value={d.item_id || ""}
-                            items={catalog?.items || []}
-                            onChange={async (v) => setState(await api.patchDoc(d.id, { item_id: v }))}
-                          />
-                        </Td>
-                        <Td className="tabular-nums">{d.confidence ? `${Math.round(d.confidence * 100)}%` : "—"}</Td>
-                        <Td>{pill(d.skip ? "✗" : d.item_id ? "✓" : "wip")}</Td>
-                        <Td>
-                          <button
-                            type="button"
-                            className={`${btn} min-h-9 rounded-lg border border-line px-2 py-1 text-xs hover:bg-paper`}
-                            onClick={async () => setState(await api.patchDoc(d.id, { skip: !d.skip }))}
-                          >
-                            {d.skip ? "Reincludi" : "Skip"}
-                          </button>
-                        </Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </TableCard>
-          )}
-
-          {view === "richiesta" && (
-            <TableCard title="Checklist richiesta documenti">
-              <div className="md:hidden">
-                {(catalog?.items || []).map((it) => {
-                  const st = state?.checklist[it.id] || "";
-                  const files = (state?.documents || []).filter((d) => d.item_id === it.id);
-                  const override = itemOverride(state, it.id);
-                  return (
-                    <article key={it.id} className="space-y-3 border-t border-line px-4 py-4">
-                      <div className="flex min-w-0 items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-medium">{it.id}</div>
-                          <div className="mt-1 break-anywhere text-sm">{it.label}</div>
-                          {it.need && (st === "wip" || st === "") ? (
-                            <div className="mt-1 break-anywhere text-[11px] leading-snug text-amber-900">{it.need}</div>
-                          ) : null}
-                        </div>
-                        {pill(st)}
-                      </div>
-                      <label className="block">
-                        <span className="mb-1 block text-[11px] font-medium text-muted">Override</span>
-                        <OverrideSelect value={override} onChange={async (v) => setState(await api.patchItem(it.id, v))} />
-                      </label>
-                      <p className="break-anywhere text-xs text-muted">{files.map((f) => f.name).join(", ") || "—"}</p>
-                    </article>
-                  );
-                })}
-              </div>
-              <div className="hidden min-w-0 max-w-full overflow-x-auto md:block">
-                <table className="w-full table-fixed text-left text-sm">
-                  <colgroup>
-                    <col className="w-[10%]" />
-                    <col className="w-[36%]" />
-                    <col className="w-[12%]" />
-                    <col className="w-[18%]" />
-                    <col className="w-[24%]" />
-                  </colgroup>
-                  <thead className="text-xs uppercase tracking-wide text-muted">
-                    <tr>
-                      <Th>Voce</Th>
-                      <Th>Descrizione</Th>
-                      <Th>Status</Th>
-                      <Th>Override</Th>
-                      <Th>File</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(catalog?.items || []).map((it) => {
-                      const st = state?.checklist[it.id] || "";
-                      const files = (state?.documents || []).filter((d) => d.item_id === it.id);
-                      const override = itemOverride(state, it.id);
-                      return (
-                        <tr key={it.id} className="border-t border-line">
-                          <Td className="font-medium">{it.id}</Td>
-                          <Td>
-                            <div>{it.label}</div>
-                            {it.need && (st === "wip" || st === "") ? (
-                              <div className="mt-1 text-[11px] leading-snug text-amber-900">{it.need}</div>
-                            ) : null}
-                          </Td>
-                          <Td>{pill(st)}</Td>
-                          <Td>
-                            <OverrideSelect value={override} onChange={async (v) => setState(await api.patchItem(it.id, v))} />
-                          </Td>
-                          <Td className="text-xs text-muted">{files.map((f) => f.name).join(", ") || "—"}</Td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </TableCard>
-          )}
-
-          {activeSection && (
-            <section className="min-w-0 rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-sm font-semibold">
-                    {view} — {activeSection.title}
-                  </h2>
-                  <p className="mt-1 max-w-prose text-sm text-muted">{activeSection.blurb}</p>
-                  {activeSection.look_for ? (
-                    <p className="mt-1 max-w-prose text-[11px] leading-snug text-muted">
-                      Cosa cerchiamo: {activeSection.look_for}
-                    </p>
-                  ) : null}
-                </div>
-                {pill(state?.sections.find((s) => s.id === view)?.status || "")}
-              </div>
-              <p className="mb-4 max-w-prose text-sm text-muted">Dati scritti in questa sezione, con fonte. Clicca una riga per il dettaglio.</p>
-              <ProvTable
-                rows={(state?.provenance || []).filter((r) => r.sheet === view || (view === "A" && r.sheet === "A"))}
-                onPick={setPicked}
-              />
-            </section>
-          )}
-
-          {view === "mancanti" && (
-            <TableCard title="Documenti mancanti (wip)">
-              <ul className="divide-y divide-line text-sm">
-                {(state?.missing || []).length === 0 && (
-                  <li className="px-4 py-6 text-muted">Nessun mancante, oppure la compilazione non è ancora partita.</li>
-                )}
-                {(state?.missing || []).map((m) => (
-                  <li key={m.id} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <span className="min-w-0 break-anywhere">
-                      <span className="font-medium">{m.id}</span> {m.label}
-                      {m.need ? <span className="mt-1 block text-xs leading-snug text-muted">{m.need}</span> : null}
-                    </span>
-                    {pill("wip")}
-                  </li>
-                ))}
-              </ul>
-            </TableCard>
-          )}
-
-          {view === "prov" && (
-            <section className="min-w-0 rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5">
-              <h2 className="mb-3 text-sm font-semibold">Master provenienza</h2>
-              <ProvTable rows={state?.provenance || []} onPick={setPicked} />
-            </section>
-          )}
-        </div>
-      </main>
-
-      {picked && (
-        <div className="fixed inset-0 z-[100] flex items-stretch justify-end bg-ink/50" onClick={() => setPicked(null)}>
-          <aside className="h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-card sm:p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold">Fonte del dato</h3>
-              <button type="button" onClick={() => setPicked(null)} className={`${btn} min-h-11 px-3 text-sm text-muted hover:text-ink`}>
-                Chiudi
-              </button>
-            </div>
-            <Dl k="Cella" v={`${picked.sheet}!${picked.cell}`} />
-            <Dl k="Valore" v={picked.value} />
-            <Dl k="Voce" v={picked.item_id || "—"} />
-            <Dl k="File" v={picked.source_name} />
-            <Dl k="Percorso" v={picked.source_rel || picked.source_path || "—"} />
-            <Dl k="Pagina" v={picked.page || "—"} />
-            <Dl k="Metodo" v={picked.method} />
-            <Dl k="Confidenza" v={`${Math.round(picked.confidence * 100)}%`} />
-            <Dl k="Stralcio" v={picked.excerpt || "—"} />
-            <Dl k="Timestamp" v={picked.ts} />
-          </aside>
-        </div>
+        </Card>
       )}
+
+      {/* ─── Sub-navigation tabs ─── */}
+      <div className="flex items-center gap-xs border-b border-border-muted overflow-x-auto pb-px">
+        {nav.map((n) => (
+          <button
+            key={n.id}
+            type="button"
+            onClick={() => setView(n.id)}
+            className={`
+              px-md py-sm text-label-md whitespace-nowrap rounded-t transition-colors-fast
+              ${
+                view === n.id
+                  ? "text-ink-primary bg-surface-card border border-border-subtle border-b-surface-card -mb-px"
+                  : "text-ink-secondary hover:text-ink-primary hover:bg-surface-hover"
+              }
+            `}
+          >
+            {n.label}
+            {n.id.length === 1 && state?.sections.find((s) => s.id === n.id)?.status && (
+              <span className="ml-sm">
+                <StatusBadge
+                  variant={mapStatusToVariant(state.sections.find((s) => s.id === n.id)!.status)}
+                  showDot={false}
+                >
+                  {state.sections.find((s) => s.id === n.id)!.status}
+                </StatusBadge>
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ─── Content based on view ─── */}
+      <div className="bg-surface-card rounded-lg border border-border-subtle">
+        {view === "overview" && (
+          <OverviewContent state={state} catalog={catalog} working={working} setView={setView} />
+        )}
+
+        {view === "docs" && (
+          <DocsContent
+            filteredDocs={filteredDocs}
+            catalog={catalog}
+            state={state}
+            setState={setState}
+            q={q}
+            setQ={setQ}
+          />
+        )}
+
+        {view === "richiesta" && (
+          <RichiestaContent catalog={catalog} state={state} setState={setState} />
+        )}
+
+        {activeSection && (
+          <SectionContent
+            view={view}
+            activeSection={activeSection}
+            state={state}
+            setPicked={setPicked}
+          />
+        )}
+
+        {view === "mancanti" && <MancantiContent state={state} />}
+
+        {view === "prov" && <ProvenanceContent state={state} setPicked={setPicked} />}
+      </div>
     </div>
   );
 }
 
-function itemOverride(state: AppState | null, id: string): "✗" | "N/A" | "" {
-  if (state?.pratica?.skip_items.includes(id)) return "✗";
-  if (state?.pratica?.na_items.includes(id)) return "N/A";
-  return "";
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-components
+// ─────────────────────────────────────────────────────────────────────────────
 
-function PeriodSelect({ period, onChange }: { period: string; onChange: (v: string) => void }) {
-  const { q, year } = splitPeriod(period || "Aprile - Giugno 2026");
+function ErrorBanner({ err }: { err: UserFacingError }) {
   return (
-    <div className="grid min-w-0 grid-cols-3 gap-2">
-      <label className="col-span-2 block min-w-0">
-        <span className="mb-1 block text-[11px] font-medium text-muted">Trimestre</span>
-        <select
-          value={q}
-          onChange={(e) => onChange(composePeriod(e.target.value, year))}
-          className="h-11 w-full min-w-0 rounded-lg border border-line bg-paper px-2.5 text-sm outline-none focus:border-ink/30"
-        >
-          {QUARTER_OPTS.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block min-w-0">
-        <span className="mb-1 block text-[11px] font-medium text-muted">Anno</span>
-        <input
-          value={year}
-          onChange={(e) => onChange(composePeriod(q, e.target.value.replace(/\D/g, "").slice(0, 4)))}
-          inputMode="numeric"
-          className="h-11 w-full min-w-0 rounded-lg border border-line bg-paper px-2.5 text-sm outline-none focus:border-ink/30"
-        />
-      </label>
+    <div className="rounded-lg border border-status-red-bg bg-status-red-bg/30 px-base py-md">
+      <div className="flex items-start gap-md">
+        <Icon name="error" size="md" className="text-status-red-text flex-shrink-0 mt-xxs" />
+        <div>
+          <p className="text-label-md text-status-red-text font-medium">{err.title}</p>
+          {err.detail && <p className="mt-xs text-body-sm text-status-red-text/80">{err.detail}</p>}
+          {err.missing.length > 0 && (
+            <ul className="mt-sm space-y-xs">
+              {err.missing.map((item) => (
+                <li key={item} className="text-body-sm text-status-red-text/80">• {item}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-function FolderPicker({
-  count,
-  ingestKind,
-  onPick,
+function KpiCard({
+  title,
+  value,
+  variant = "default",
 }: {
-  count: number;
-  ingestKind: string;
-  onPick: (files: File[]) => void;
+  title: string;
+  value: number | string;
+  variant?: "default" | "warning";
 }) {
   return (
-    <label className="block min-w-0">
-      <span className="mb-1 block text-[11px] font-medium text-muted">Documenti</span>
-      <input
-        type="file"
-        className="sr-only"
-        multiple
-        webkitdirectory=""
-        directory=""
-        onChange={(e) => onPick(Array.from(e.target.files || []))}
-      />
-      <span className={`${btn} flex h-11 w-full min-w-0 items-center rounded-lg border border-line bg-paper px-2.5 text-sm hover:bg-white`}>
-        <span className="min-w-0 truncate">
-          {count ? `${count} file da caricare` : "Scegli cartella (Mac o Windows)"}
-        </span>
-      </span>
-      {ingestKind === "upload" ? (
-        <span className="mt-1 block text-[11px] text-amber-900">I file verranno copiati. Su questo Mac è inutile: usa il percorso sopra.</span>
-      ) : (
-        <span className="mt-1 block text-[11px] text-muted">Il browser non può mandare il path /Volumes. Per quello serve il campo percorso.</span>
-      )}
-    </label>
+    <Card padding="base">
+      <div className="text-body-sm text-ink-secondary">{title}</div>
+      <div
+        className={`text-headline-md font-mono mt-xxs ${
+          variant === "warning" && typeof value === "number" && value > 0
+            ? "text-status-yellow-text"
+            : "text-ink-primary"
+        }`}
+      >
+        {value}
+      </div>
+    </Card>
   );
 }
 
@@ -904,270 +757,480 @@ function Field({
   value,
   onChange,
   placeholder,
+  className = "",
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  className?: string;
 }) {
   return (
-    <label className="block min-w-0">
-      <span className="mb-1 block text-[11px] font-medium text-muted">{label}</span>
+    <label className={`block ${className}`}>
+      <span className="block text-label-sm text-ink-secondary mb-xs">{label}</span>
       <input
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full min-w-0 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-ink/30"
+        className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary placeholder:text-ink-tertiary outline-none focus:border-ink-secondary transition-colors"
       />
     </label>
   );
 }
 
-function Kpi({ title, value, hint }: { title: string; value: number | string; hint: string }) {
+function PeriodSelect({ period, onChange }: { period: string; onChange: (v: string) => void }) {
+  const { q, year } = splitPeriod(period || "Aprile - Giugno 2026");
   return (
-    <div className="min-w-0 rounded-2xl border border-line bg-white p-4 shadow-card">
-      <div className="break-anywhere text-xs text-muted">{title}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
-      <div className="mt-1 break-anywhere text-[11px] text-emerald-700">{hint}</div>
+    <div className="grid grid-cols-3 gap-sm">
+      <label className="col-span-2 block">
+        <span className="block text-label-sm text-ink-secondary mb-xs">Trimestre</span>
+        <select
+          value={q}
+          onChange={(e) => onChange(composePeriod(e.target.value, year))}
+          className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary"
+        >
+          {QUARTER_OPTS.map((opt) => (
+            <option key={opt.id} value={opt.id}>{opt.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="block">
+        <span className="block text-label-sm text-ink-secondary mb-xs">Anno</span>
+        <input
+          value={year}
+          onChange={(e) => onChange(composePeriod(q, e.target.value.replace(/\D/g, "").slice(0, 4)))}
+          inputMode="numeric"
+          className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary"
+        />
+      </label>
     </div>
   );
 }
 
-function ErrorBanner({ err }: { err: UserFacingError }) {
-  return (
-    <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-950">
-      <p className="font-semibold">{err.title}</p>
-      {err.detail ? <p className="mt-1 break-anywhere leading-snug text-rose-900">{err.detail}</p> : null}
-      {err.missing.length > 0 ? (
-        <div className="mt-2">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-rose-800">Cosa manca</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4">
-            {err.missing.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </div>
-  );
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Content Views
+// ─────────────────────────────────────────────────────────────────────────────
 
-function workTime(ts: string) {
-  const part = ts.includes("T") ? ts.split("T")[1] : ts;
-  return part.replace("Z", "").slice(0, 8);
-}
-
-function WorkPanel({
+function OverviewContent({
   state,
   catalog,
   working,
-  errored,
+  setView,
 }: {
   state: AppState | null;
   catalog: Catalog | null;
   working: boolean;
-  errored: boolean;
+  setView: (v: string) => void;
 }) {
-  const target = Math.max(0, Math.min(100, state?.progress || 0));
-  const step = state?.job_step || 0;
-  const total = state?.job_total || 0;
-  const stopped = errored || Boolean(state?.error);
-  const finished = !working && !stopped && target >= 100;
-  const remaining = total > 0 ? Math.max(0, total - step) : 0;
-  const barPct = working ? Math.max(6, target) : stopped ? 0 : target;
-
-  let subtitle = "Niente in corso. Quando sei pronto: 1 · Scansiona, poi 2 · Avvia.";
-  if (working) subtitle = state?.job_label || "Elaborazione in corso";
-  else if (stopped) subtitle = "Fermato. Correggi il problema sopra e riprova.";
-  else if (finished) {
-    subtitle = state?.job_label || "Completato";
-    if (state?.current_section && ALL_SECTIONS.includes(state.current_section)) {
-      subtitle = `${state.current_section} — ${sectionHelp(state.current_section, catalog).title}`;
-    }
-  } else if (state?.current_section && state.current_section !== "Documenti") {
-    subtitle = ALL_SECTIONS.includes(state.current_section)
-      ? `${state.current_section} — ${sectionHelp(state.current_section, catalog).title}`
-      : state.current_section;
-  }
-
   return (
-    <div className="min-w-0">
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold">Lavoro in corso</h2>
-          <p className={`mt-1 max-w-prose text-xs leading-5 ${working ? "text-ink" : "text-muted"}`}>{subtitle}</p>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-sm tabular-nums text-muted">{Math.round(barPct)}%</p>
-          {working && total > 0 ? (
-            <p className="mt-0.5 text-[11px] leading-4 tabular-nums text-muted">
-              passo {step}/{total}
-              {remaining ? ` · restano ${remaining}` : ""}
-            </p>
-          ) : null}
-        </div>
+    <div className="p-lg">
+      <h3 className="text-headline-sm text-ink-primary mb-md">Carte di lavoro A–I</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-sm">
+        {(state?.sections || []).map((s) => {
+          const meta = sectionHelp(s.id, catalog);
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setView(s.id)}
+              className="flex items-start justify-between gap-md p-md rounded-lg border border-border-muted hover:bg-surface-hover transition-colors-fast text-left"
+            >
+              <div className="min-w-0">
+                <div className="text-label-md text-ink-primary font-medium">
+                  {s.id} — {meta.title}
+                </div>
+                <div className="text-body-sm text-ink-secondary mt-xxs line-clamp-2">
+                  {meta.blurb}
+                </div>
+              </div>
+              <StatusBadge variant={mapStatusToVariant(s.status)}>{s.status}</StatusBadge>
+            </button>
+          );
+        })}
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-neutral-200" aria-hidden>
-        <div
-          className={`h-full rounded-full bg-ink ${working ? "work-bar-fill" : ""}`}
-          style={{ width: `${barPct}%`, transition: "width 280ms ease-out" }}
+
+      {(state?.missing || []).length > 0 && !working && (
+        <div className="mt-lg p-md rounded-lg bg-status-yellow-bg/30 border border-status-yellow-bg">
+          <div className="flex items-center gap-sm mb-sm">
+            <Icon name="warning" size="sm" className="text-status-yellow-text" />
+            <span className="text-label-md text-status-yellow-text font-medium">Documenti mancanti</span>
+          </div>
+          <ul className="space-y-xs">
+            {(state?.missing || []).slice(0, 4).map((m) => (
+              <li key={m.id} className="text-body-sm text-status-yellow-text">
+                <span className="font-medium">{m.id}</span> — {m.need || m.label}
+              </li>
+            ))}
+          </ul>
+          {(state?.missing || []).length > 4 && (
+            <button
+              type="button"
+              onClick={() => setView("mancanti")}
+              className="mt-sm text-body-sm text-status-yellow-text underline"
+            >
+              Vedi tutti i {(state?.missing || []).length} mancanti
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DocsContent({
+  filteredDocs,
+  catalog,
+  state,
+  setState,
+  q,
+  setQ,
+}: {
+  filteredDocs: AppState["documents"];
+  catalog: Catalog | null;
+  state: AppState | null;
+  setState: React.Dispatch<React.SetStateAction<AppState | null>>;
+  q: string;
+  setQ: React.Dispatch<React.SetStateAction<string>>;
+}) {
+  return (
+    <div>
+      <div className="p-md border-b border-border-muted">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Cerca documenti…"
+          className="w-full max-w-md h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary placeholder:text-ink-tertiary outline-none focus:border-ink-secondary"
         />
+      </div>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th style={{ width: "35%" }}>File</th>
+              <th style={{ width: "30%" }}>Voce</th>
+              <th style={{ width: "10%" }}>Conf.</th>
+              <th style={{ width: "12%" }}>Stato</th>
+              <th style={{ width: "13%" }}>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredDocs.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center text-ink-tertiary py-lg">
+                  Nessun documento.
+                </td>
+              </tr>
+            ) : (
+              filteredDocs.map((d) => (
+                <tr key={d.id}>
+                  <td>
+                    <div className="text-ink-primary font-medium truncate">{d.name}</div>
+                    {d.rel && <div className="text-body-sm text-ink-tertiary truncate mt-xxs">{d.rel}</div>}
+                  </td>
+                  <td>
+                    <select
+                      value={d.item_id || ""}
+                      onChange={async (e) => setState(await api.patchDoc(d.id, { item_id: e.target.value }))}
+                      className="w-full h-9 px-sm rounded border border-border-subtle bg-surface text-body-sm"
+                    >
+                      <option value="">—</option>
+                      {(catalog?.items || []).map((it) => (
+                        <option key={it.id} value={it.id}>{it.id} {it.label}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="font-mono text-body-sm">
+                    {d.confidence ? `${Math.round(d.confidence * 100)}%` : "—"}
+                  </td>
+                  <td>
+                    <StatusBadge variant={mapStatusToVariant(d.skip ? "✗" : d.item_id ? "✓" : "wip")}>
+                      {d.skip ? "Skip" : d.item_id ? "OK" : "wip"}
+                    </StatusBadge>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      onClick={async () => setState(await api.patchDoc(d.id, { skip: !d.skip }))}
+                      className="text-body-sm text-ink-secondary hover:text-ink-primary underline"
+                    >
+                      {d.skip ? "Reincludi" : "Skip"}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
 
-function LogList({ logs, working }: { logs: AppState["logs"]; working?: boolean }) {
-  const last = logs.slice(-12).reverse();
+function RichiestaContent({
+  catalog,
+  state,
+  setState,
+}: {
+  catalog: Catalog | null;
+  state: AppState | null;
+  setState: React.Dispatch<React.SetStateAction<AppState | null>>;
+}) {
+  function itemOverride(st: AppState | null, id: string): "✗" | "N/A" | "" {
+    if (st?.pratica?.skip_items.includes(id)) return "✗";
+    if (st?.pratica?.na_items.includes(id)) return "N/A";
+    return "";
+  }
+
   return (
-    <ul className="mt-5 min-w-0 divide-y divide-line border-t border-line">
-      {last.length === 0 && (
-        <li className="pt-3 text-sm leading-5 text-muted">
-          {working
-            ? "Avvio in corso…"
-            : "Ordine: cartella documenti → 1 Scansiona → controlla Documenti → 2 Avvia."}
-        </li>
+    <div className="overflow-x-auto">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th style={{ width: "10%" }}>Voce</th>
+            <th style={{ width: "38%" }}>Descrizione</th>
+            <th style={{ width: "12%" }}>Status</th>
+            <th style={{ width: "15%" }}>Override</th>
+            <th style={{ width: "25%" }}>File</th>
+          </tr>
+        </thead>
+        <tbody>
+          {(catalog?.items || []).map((it) => {
+            const st = state?.checklist[it.id] || "";
+            const files = (state?.documents || []).filter((d) => d.item_id === it.id);
+            const override = itemOverride(state, it.id);
+            return (
+              <tr key={it.id}>
+                <td className="font-medium font-mono">{it.id}</td>
+                <td>
+                  <div>{it.label}</div>
+                  {it.need && (st === "wip" || st === "") && (
+                    <div className="text-body-sm text-status-yellow-text mt-xxs">{it.need}</div>
+                  )}
+                </td>
+                <td>
+                  <StatusBadge variant={mapStatusToVariant(st || "wip")}>{st || "wip"}</StatusBadge>
+                </td>
+                <td>
+                  <select
+                    value={override}
+                    onChange={async (e) => setState(await api.patchItem(it.id, e.target.value as "✗" | "N/A" | ""))}
+                    className="w-full h-9 px-sm rounded border border-border-subtle bg-surface text-body-sm"
+                  >
+                    <option value="">Automatico</option>
+                    <option value="✗">Skip (✗)</option>
+                    <option value="N/A">N/A</option>
+                  </select>
+                </td>
+                <td className="text-body-sm text-ink-tertiary truncate">
+                  {files.map((f) => f.name).join(", ") || "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SectionContent({
+  view,
+  activeSection,
+  state,
+  setPicked,
+}: {
+  view: string;
+  activeSection: { title: string; blurb: string; look_for?: string };
+  state: AppState | null;
+  setPicked: React.Dispatch<React.SetStateAction<ProvenanceRow | null>>;
+}) {
+  const rows = (state?.provenance || []).filter((r) => r.sheet === view || (view === "A" && r.sheet === "A"));
+
+  return (
+    <div className="p-lg">
+      <div className="flex items-start justify-between gap-md mb-lg">
+        <div>
+          <h3 className="text-headline-sm text-ink-primary">{view} — {activeSection.title}</h3>
+          <p className="text-body-md text-ink-secondary mt-xs">{activeSection.blurb}</p>
+          {activeSection.look_for && (
+            <p className="text-body-sm text-ink-tertiary mt-xs">Cosa cerchiamo: {activeSection.look_for}</p>
+          )}
+        </div>
+        {state?.sections.find((s) => s.id === view)?.status && (
+          <StatusBadge variant={mapStatusToVariant(state.sections.find((s) => s.id === view)!.status)}>
+            {state.sections.find((s) => s.id === view)!.status}
+          </StatusBadge>
+        )}
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-body-md text-ink-tertiary">Nessun dato scritto in questa sezione.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th style={{ width: "15%" }}>Cella</th>
+                <th style={{ width: "35%" }}>Valore</th>
+                <th style={{ width: "30%" }}>Fonte</th>
+                <th style={{ width: "20%" }}>Metodo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="cursor-pointer" onClick={() => setPicked(r)}>
+                  <td className="font-mono">{r.sheet}!{r.cell}</td>
+                  <td className="truncate">{r.value}</td>
+                  <td className="text-ink-tertiary truncate">{r.source_name}</td>
+                  <td>{r.method}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-      {last.map((l, i) => (
-        <li key={`${l.ts}-${l.section}-${i}`} className="min-w-0 py-3">
-          <div className="flex min-w-0 items-baseline justify-between gap-3 text-[11px] leading-4 text-muted">
-            <span className="min-w-0 truncate font-medium" title={l.section || undefined}>
-              {l.section || "Attività"}
-            </span>
-            <span className="shrink-0 tabular-nums">{workTime(l.ts)}</span>
-          </div>
-          <p
-            className={`mt-1 min-w-0 break-anywhere text-sm leading-5 ${
-              l.level === "error" ? "text-rose-700" : l.level === "warn" ? "text-amber-800" : "text-ink"
-            }`}
-          >
-            {l.message}
-          </p>
-        </li>
-      ))}
-    </ul>
+    </div>
   );
 }
 
-function TableCard({ title, children }: { title: string; children: ReactNode }) {
+function MancantiContent({ state }: { state: AppState | null }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-      <div className="break-anywhere border-b border-line px-4 py-3 text-sm font-semibold sm:px-5">{title}</div>
-      <div className="min-w-0">{children}</div>
-    </section>
+    <div className="p-lg">
+      <h3 className="text-headline-sm text-ink-primary mb-md">Documenti mancanti</h3>
+      {(state?.missing || []).length === 0 ? (
+        <p className="text-body-md text-ink-tertiary">
+          Nessun mancante, oppure la compilazione non è ancora partita.
+        </p>
+      ) : (
+        <ul className="space-y-sm">
+          {(state?.missing || []).map((m) => (
+            <li key={m.id} className="flex items-start justify-between gap-md p-md rounded-lg border border-border-muted">
+              <div>
+                <span className="text-label-md text-ink-primary font-medium">{m.id}</span>
+                <span className="text-body-md text-ink-secondary ml-sm">{m.label}</span>
+                {m.need && <p className="text-body-sm text-ink-tertiary mt-xs">{m.need}</p>}
+              </div>
+              <StatusBadge variant="warning">wip</StatusBadge>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
-function Th({ children }: { children: ReactNode }) {
-  return <th className="cell px-3 py-2 font-medium sm:px-4">{children}</th>;
-}
-
-function Td({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <td className={`cell break-anywhere px-3 py-2.5 sm:px-4 ${className}`}>{children}</td>;
-}
-
-function selectClass() {
-  return "h-11 w-full min-w-0 max-w-full rounded-lg border border-line bg-paper px-2 py-1 text-xs";
-}
-
-function DocSelect({
-  value,
-  items,
-  onChange,
+function ProvenanceContent({
+  state,
+  setPicked,
 }: {
-  value: string;
-  items: { id: string; label: string }[];
-  onChange: (v: string) => void | Promise<void>;
+  state: AppState | null;
+  setPicked: React.Dispatch<React.SetStateAction<ProvenanceRow | null>>;
+}) {
+  const rows = state?.provenance || [];
+
+  return (
+    <div className="p-lg">
+      <h3 className="text-headline-sm text-ink-primary mb-md">Master provenienza</h3>
+      {rows.length === 0 ? (
+        <p className="text-body-md text-ink-tertiary">Nessun dato disponibile.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th style={{ width: "15%" }}>Cella</th>
+                <th style={{ width: "35%" }}>Valore</th>
+                <th style={{ width: "30%" }}>Fonte</th>
+                <th style={{ width: "20%" }}>Metodo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="cursor-pointer" onClick={() => setPicked(r)}>
+                  <td className="font-mono">{r.sheet}!{r.cell}</td>
+                  <td className="truncate">{r.value}</td>
+                  <td className="text-ink-tertiary truncate">{r.source_name}</td>
+                  <td>{r.method}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProvenancePanel({
+  picked,
+  onClose,
+}: {
+  picked: ProvenanceRow;
+  onClose: () => void;
 }) {
   return (
-    <select className={selectClass()} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">—</option>
-      {items.map((it) => (
-        <option key={it.id} value={it.id}>
-          {it.id} {it.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function OverrideSelect({
-  value,
-  onChange,
-}: {
-  value: "✗" | "N/A" | "";
-  onChange: (v: "✗" | "N/A" | "") => void | Promise<void>;
-}) {
-  return (
-    <select className={selectClass()} value={value} onChange={(e) => onChange((e.target.value || "") as "✗" | "N/A" | "")}>
-      <option value="">Automatico</option>
-      <option value="✗">Skip (✗)</option>
-      <option value="N/A">N/A</option>
-    </select>
-  );
-}
-
-function ProvTable({ rows, onPick }: { rows: ProvenanceRow[]; onPick: (r: ProvenanceRow) => void }) {
-  if (!rows.length) return <p className="px-1 py-6 text-sm text-muted">Nessun dato scritto in questa vista.</p>;
-  return (
-    <>
-      <div className="md:hidden">
-        {rows.map((r) => (
+    <div className="fixed inset-0 z-50 flex items-stretch justify-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-ink-primary/18 backdrop-blur-modal" />
+      <aside
+        className="relative h-full w-full max-w-md bg-surface-card border-l border-border-subtle p-lg overflow-y-auto shadow-dropdown"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-md mb-lg">
+          <h3 className="text-headline-sm text-ink-primary">Fonte del dato</h3>
           <button
             type="button"
-            key={r.id}
-            className={`${btn} flex w-full min-w-0 flex-col items-start gap-1 border-t border-line px-1 py-3 text-left hover:bg-paper`}
-            onClick={() => onPick(r)}
+            onClick={onClose}
+            className="p-sm rounded hover:bg-surface-hover transition-colors-fast"
           >
-            <span className="text-xs font-medium text-muted">
-              {r.sheet}!{r.cell}
-            </span>
-            <span className="w-full break-anywhere text-sm">{r.value}</span>
-            <span className="w-full break-anywhere text-xs text-muted">
-              {r.source_name} · {r.method}
-            </span>
+            <Icon name="close" size="md" className="text-ink-secondary" />
           </button>
-        ))}
-      </div>
-      <div className="hidden min-w-0 max-w-full overflow-x-auto md:block">
-        <table className="w-full table-fixed text-left text-sm">
-          <colgroup>
-            <col className="w-[16%]" />
-            <col className="w-[34%]" />
-            <col className="w-[32%]" />
-            <col className="w-[18%]" />
-          </colgroup>
-          <thead className="text-xs uppercase tracking-wide text-muted">
-            <tr>
-              <Th>Cella</Th>
-              <Th>Valore</Th>
-              <Th>Fonte</Th>
-              <Th>Metodo</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="cursor-pointer border-t border-line hover:bg-paper" onClick={() => onPick(r)}>
-                <Td className="font-medium">
-                  {r.sheet}!{r.cell}
-                </Td>
-                <Td>{r.value}</Td>
-                <Td className="text-muted">{r.source_name}</Td>
-                <Td>{r.method}</Td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
-}
+        </div>
 
-function Dl({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="mb-3 min-w-0">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted">{k}</div>
-      <div className="break-anywhere text-sm">{v}</div>
+        <dl className="space-y-md">
+          <div>
+            <dt className="text-label-sm text-ink-tertiary uppercase tracking-wide">Cella</dt>
+            <dd className="text-body-md text-ink-primary font-mono mt-xxs">{picked.sheet}!{picked.cell}</dd>
+          </div>
+          <div>
+            <dt className="text-label-sm text-ink-tertiary uppercase tracking-wide">Valore</dt>
+            <dd className="text-body-md text-ink-primary mt-xxs">{picked.value}</dd>
+          </div>
+          <div>
+            <dt className="text-label-sm text-ink-tertiary uppercase tracking-wide">Voce</dt>
+            <dd className="text-body-md text-ink-primary mt-xxs">{picked.item_id || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-label-sm text-ink-tertiary uppercase tracking-wide">File</dt>
+            <dd className="text-body-md text-ink-primary mt-xxs break-all">{picked.source_name}</dd>
+          </div>
+          <div>
+            <dt className="text-label-sm text-ink-tertiary uppercase tracking-wide">Percorso</dt>
+            <dd className="text-body-md text-ink-primary mt-xxs break-all">{picked.source_rel || picked.source_path || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-label-sm text-ink-tertiary uppercase tracking-wide">Pagina</dt>
+            <dd className="text-body-md text-ink-primary mt-xxs">{picked.page || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-label-sm text-ink-tertiary uppercase tracking-wide">Metodo</dt>
+            <dd className="text-body-md text-ink-primary mt-xxs">{picked.method}</dd>
+          </div>
+          <div>
+            <dt className="text-label-sm text-ink-tertiary uppercase tracking-wide">Confidenza</dt>
+            <dd className="text-body-md text-ink-primary mt-xxs">{Math.round(picked.confidence * 100)}%</dd>
+          </div>
+          {picked.excerpt && (
+            <div>
+              <dt className="text-label-sm text-ink-tertiary uppercase tracking-wide">Stralcio</dt>
+              <dd className="text-body-md text-ink-primary mt-xxs">{picked.excerpt}</dd>
+            </div>
+          )}
+          <div>
+            <dt className="text-label-sm text-ink-tertiary uppercase tracking-wide">Timestamp</dt>
+            <dd className="text-body-md text-ink-primary font-mono mt-xxs">{picked.ts}</dd>
+          </div>
+        </dl>
+      </aside>
     </div>
   );
 }

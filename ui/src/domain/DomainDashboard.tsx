@@ -1,14 +1,18 @@
+/**
+ * DomainDashboard.tsx — Dashboard verifiche SA 250B
+ * Migrato al design system Atelier Document System.
+ */
+
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { asUserError, type UserFacingError } from "../api";
-import { Logo } from "../Logo";
+import { Icon, Card, CardHeader, StatusBadge, mapStatusToVariant } from "../components";
 import { ALL_SECTIONS, SECTION_HELP } from "../sectionHelp";
-import { pill } from "../statusPill";
 import { domainApi, type ClientSummary, type OverrideRequest, type Section, type VerificheResponse } from "./api";
-import { WorkspaceTabs } from "./WorkspaceTabs";
 
-const fieldClass = "h-11 w-full rounded-lg border border-line bg-paper px-3 text-sm outline-none focus:border-ink/30";
-const buttonClass = "min-h-11 rounded-xl px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function DomainDashboard({ onShowExcel }: { onShowExcel: () => void }) {
   const [clients, setClients] = useState<ClientSummary[]>([]);
@@ -67,132 +71,330 @@ export function DomainDashboard({ onShowExcel }: { onShowExcel: () => void }) {
   }
 
   return (
-    <div className="h-dvh overflow-y-auto bg-paper text-ink">
-      <header className="sticky top-0 z-20 border-b border-line bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3">
-          <Logo className="h-8 w-8" />
-          <div className="mr-auto">
-            <p className="font-semibold">Quadra</p>
-            <p className="text-xs text-muted">Dashboard verifiche · SA 250B</p>
-          </div>
-          <WorkspaceTabs active="domain" onChange={(value) => value === "excel" && onShowExcel()} />
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6">
-        {error ? (
-          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-950">
-            <p className="font-semibold">{error.title}</p>
-            {error.detail ? <p className="mt-1">{error.detail}</p> : null}
-          </div>
-        ) : null}
-
-        <section className="rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5">
-          <div className="mb-4">
-            <h1 className="text-lg font-semibold">Avvia o riprendi una pratica</h1>
-            <p className="mt-1 text-sm text-muted">Scansiona la cartella e calcola lo stato delle nove carte di lavoro.</p>
-          </div>
-          <form onSubmit={scan} className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <Field label="Cliente">
-              <select required value={form.client_id} onChange={(event) => setForm({ ...form, client_id: event.target.value })} className={fieldClass}>
-                <option value="">Seleziona…</option>
-                {clients.map((client) => <option key={client.id} value={client.id}>{client.display_name}</option>)}
-              </select>
-            </Field>
-            <Field label="Periodo"><input required value={form.period} onChange={(event) => setForm({ ...form, period: event.target.value })} className={fieldClass} /></Field>
-            <Field label="Cartella documenti"><input required value={form.documents_dir} onChange={(event) => setForm({ ...form, documents_dir: event.target.value })} placeholder="/Volumes/…/documenti" className={fieldClass} /></Field>
-            <Field label="ID pratica (opzionale)"><input value={form.pratica_id} onChange={(event) => setForm({ ...form, pratica_id: event.target.value })} placeholder="Generato automaticamente" className={fieldClass} /></Field>
-            <button disabled={busy || !form.client_id} className={`${buttonClass} bg-ink text-white hover:bg-ink/90 md:col-span-2 xl:col-span-4`}>
-              {busy ? "Elaborazione…" : "Scansiona e calcola verifiche"}
-            </button>
-          </form>
-        </section>
-
-        {data ? (
-          <>
-            <section className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5">
-              <div><p className="text-xs uppercase tracking-wide text-muted">Pratica {data.pratica.id}</p><h2 className="mt-1 text-lg font-semibold">{data.pratica.client}</h2><p className="text-sm text-muted">{data.pratica.period}</p></div>
-              <p className="max-w-xl break-anywhere text-xs text-muted">{data.pratica.documents_dir}</p>
-            </section>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              {ALL_SECTIONS.map((id) => {
-                const result = data.verifiche[id as Section];
-                const meta = SECTION_HELP[id];
-                const found = result.evidence.filter((evidence) => evidence.found);
-                return (
-                  <section key={id} data-testid={`section-${id}`} className="rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div><p className="text-xs font-semibold text-muted">SEZIONE {id}</p><h2 className="mt-1 font-semibold">{meta.title}</h2><p className="mt-1 text-xs leading-5 text-muted">{meta.blurb}</p></div>
-                      {pill(result.status)}
-                    </div>
-                    <p className="mt-4 rounded-xl bg-paper px-3 py-2 text-sm leading-6">{result.reasoning}</p>
-
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      <List title="Mancanti" empty="Nessuna voce mancante">
-                        {result.missing_items.map((item) => (
-                          <li key={item} className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">
-                            <span className="font-medium">{item}</span>
-                            <button type="button" onClick={() => prepareOverride("item", item)} className="text-xs font-medium underline">Segna saltata</button>
-                          </li>
-                        ))}
-                      </List>
-                      <List title="Evidenze trovate" empty="Nessuna evidenza trovata">
-                        {found.map((evidence) => (
-                          <li key={evidence.id} className="rounded-lg border border-line px-2.5 py-2">
-                            <span className="font-medium">{evidence.item_id}</span>
-                            <span className="mt-0.5 block break-anywhere text-xs text-muted">{evidence.source_name || "Fonte non disponibile"}</span>
-                            {evidence.fields.length ? (
-                              <ul className="mt-1 space-y-0.5 border-l border-line pl-2 text-[11px] leading-4 text-muted">
-                                {evidence.fields.map((field, index) => (
-                                  <li key={`${field.kind}-${index}`}>
-                                    <span className="font-medium">{field.kind.replaceAll("_", " ")}</span>: {field.value}{field.unit ? ` ${field.unit}` : ""}
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : null}
-                          </li>
-                        ))}
-                      </List>
-                    </div>
-
-                    {result.anomalies.length ? <div className="mt-4"><h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Anomalie</h3><ul className="mt-2 space-y-2">{result.anomalies.map((anomaly, index) => <li key={`${anomaly.kind}-${index}`} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm"><span className="font-medium">{anomaly.kind}</span> — {anomaly.description}</li>)}</ul></div> : null}
-                    <button type="button" onClick={() => prepareOverride("section", id)} className={`${buttonClass} mt-4 border border-line bg-white hover:bg-paper`}>Registra override sezione</button>
-                  </section>
-                );
-              })}
+    <div className="space-y-lg">
+      {/* ─── Error Banner ─── */}
+      {error && (
+        <div className="rounded-lg border border-status-red-bg bg-status-red-bg/30 px-base py-md">
+          <div className="flex items-start gap-md">
+            <Icon name="error" size="md" className="text-status-red-text flex-shrink-0 mt-xxs" />
+            <div>
+              <p className="text-label-md text-status-red-text font-medium">{error.title}</p>
+              {error.detail && <p className="mt-xs text-body-sm text-status-red-text/80">{error.detail}</p>}
             </div>
+          </div>
+        </div>
+      )}
 
-            <section className="rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5">
-              <h2 className="font-semibold">Finding aperti</h2>
-              <p className="mt-1 text-sm text-muted">Carenze ed errori riportati dai trimestri precedenti (verifiche 11/12).</p>
-              {data.open_findings.length ? <ul className="mt-3 divide-y divide-line">{data.open_findings.map((finding) => <li key={finding.id} className="py-3 text-sm"><span className="font-medium">{finding.section} · {finding.kind.replaceAll("_", " ")}</span><p className="mt-1">{finding.description}</p><p className="mt-1 text-xs text-muted">Prima segnalazione: {finding.first_raised.period}</p></li>)}</ul> : <p className="mt-3 text-sm text-muted">Nessun finding aperto.</p>}
-            </section>
+      {/* ─── Setup Form ─── */}
+      <Card padding="lg">
+        <CardHeader>Avvia o riprendi una pratica</CardHeader>
+        <p className="text-body-md text-ink-secondary mb-md">
+          Scansiona la cartella e calcola lo stato delle nove carte di lavoro.
+        </p>
+        <form onSubmit={scan} className="grid gap-md md:grid-cols-2 xl:grid-cols-4">
+          <FormField label="Cliente">
+            <select
+              required
+              value={form.client_id}
+              onChange={(e) => setForm({ ...form, client_id: e.target.value })}
+              className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary"
+            >
+              <option value="">Seleziona…</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>{client.display_name}</option>
+              ))}
+            </select>
+          </FormField>
 
-            <section id="domain-override" className="rounded-2xl border border-line bg-white p-4 shadow-card sm:p-5">
-              <h2 className="font-semibold">Registra una decisione umana</h2>
-              <p className="mt-1 text-sm text-muted">L'override vale soltanto per la pratica corrente. Dopo il salvataggio le verifiche vengono ricalcolate.</p>
-              <form onSubmit={saveOverride} className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                <Field label="Ambito"><select value={override.scope} onChange={(event) => setOverride({ ...override, scope: event.target.value as OverrideRequest["scope"] })} className={fieldClass}><option value="section">Sezione</option><option value="item">Voce</option></select></Field>
-                <Field label="Target"><input required value={override.target} onChange={(event) => setOverride({ ...override, target: event.target.value })} className={fieldClass} /></Field>
-                <Field label="Decisione"><select value={override.decision} onChange={(event) => setOverride({ ...override, decision: event.target.value as OverrideRequest["decision"] })} className={fieldClass}><option value="✗">Skip (✗)</option><option value="N/A">N/A</option></select></Field>
-                <Field label="Deciso da"><input value={override.decided_by || ""} onChange={(event) => setOverride({ ...override, decided_by: event.target.value })} className={fieldClass} /></Field>
-                <Field label="Nota"><input required value={override.note} onChange={(event) => setOverride({ ...override, note: event.target.value })} placeholder="Motivazione della decisione" className={fieldClass} /></Field>
-                <button disabled={busy} className={`${buttonClass} bg-ink text-white hover:bg-ink/90 md:col-span-2 xl:col-span-5`}>Salva override e ricalcola</button>
-              </form>
-            </section>
-          </>
-        ) : <div className="rounded-2xl border border-dashed border-line bg-white/60 px-5 py-12 text-center text-sm text-muted">Seleziona cliente e cartella per vedere lo stato delle verifiche.</div>}
-      </main>
+          <FormField label="Periodo">
+            <input
+              required
+              value={form.period}
+              onChange={(e) => setForm({ ...form, period: e.target.value })}
+              className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary"
+            />
+          </FormField>
+
+          <FormField label="Cartella documenti">
+            <input
+              required
+              value={form.documents_dir}
+              onChange={(e) => setForm({ ...form, documents_dir: e.target.value })}
+              placeholder="/Volumes/…/documenti"
+              className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary placeholder:text-ink-tertiary outline-none focus:border-ink-secondary"
+            />
+          </FormField>
+
+          <FormField label="ID pratica (opzionale)">
+            <input
+              value={form.pratica_id}
+              onChange={(e) => setForm({ ...form, pratica_id: e.target.value })}
+              placeholder="Generato automaticamente"
+              className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary placeholder:text-ink-tertiary outline-none focus:border-ink-secondary"
+            />
+          </FormField>
+
+          <button
+            disabled={busy || !form.client_id}
+            className="md:col-span-2 xl:col-span-4 inline-flex items-center justify-center gap-sm px-base py-sm rounded bg-ink-primary text-label-md text-white hover:bg-ink-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors-fast"
+          >
+            <Icon name="document_scanner" size="sm" />
+            {busy ? "Elaborazione…" : "Scansiona e calcola verifiche"}
+          </button>
+        </form>
+      </Card>
+
+      {/* ─── Results ─── */}
+      {data ? (
+        <>
+          {/* Pratica Info */}
+          <Card padding="lg">
+            <div className="flex flex-wrap items-start justify-between gap-md">
+              <div>
+                <p className="text-label-sm text-ink-tertiary uppercase tracking-wide">
+                  Pratica {data.pratica.id}
+                </p>
+                <h2 className="text-headline-md text-ink-primary mt-xs">{data.pratica.client}</h2>
+                <p className="text-body-md text-ink-secondary">{data.pratica.period}</p>
+              </div>
+              <p className="text-body-sm text-ink-tertiary break-all max-w-md">
+                {data.pratica.documents_dir}
+              </p>
+            </div>
+          </Card>
+
+          {/* Sections Grid */}
+          <div className="grid gap-base lg:grid-cols-2">
+            {ALL_SECTIONS.map((id) => {
+              const result = data.verifiche[id as Section];
+              const meta = SECTION_HELP[id];
+              const found = result.evidence.filter((evidence) => evidence.found);
+
+              return (
+                <Card key={id} padding="lg">
+                  <div className="flex items-start justify-between gap-md mb-md">
+                    <div>
+                      <p className="text-label-sm text-ink-tertiary uppercase tracking-wide">
+                        Sezione {id}
+                      </p>
+                      <h3 className="text-headline-sm text-ink-primary mt-xs">{meta.title}</h3>
+                      <p className="text-body-sm text-ink-secondary mt-xs">{meta.blurb}</p>
+                    </div>
+                    <StatusBadge variant={mapStatusToVariant(result.status)}>{result.status}</StatusBadge>
+                  </div>
+
+                  <p className="p-md rounded-lg bg-surface-sidebar text-body-md text-ink-primary mb-md">
+                    {result.reasoning}
+                  </p>
+
+                  <div className="grid gap-md sm:grid-cols-2">
+                    {/* Missing items */}
+                    <div>
+                      <h4 className="text-label-sm text-ink-tertiary uppercase tracking-wide mb-sm">
+                        Mancanti
+                      </h4>
+                      {result.missing_items.length === 0 ? (
+                        <p className="text-body-sm text-ink-tertiary">Nessuna voce mancante</p>
+                      ) : (
+                        <ul className="space-y-xs">
+                          {result.missing_items.map((item) => (
+                            <li
+                              key={item}
+                              className="flex items-center justify-between gap-sm rounded-lg border border-status-yellow-bg bg-status-yellow-bg/30 px-md py-sm"
+                            >
+                              <span className="text-body-sm text-status-yellow-text font-medium">{item}</span>
+                              <button
+                                type="button"
+                                onClick={() => prepareOverride("item", item)}
+                                className="text-body-sm text-status-yellow-text underline"
+                              >
+                                Segna saltata
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* Evidence found */}
+                    <div>
+                      <h4 className="text-label-sm text-ink-tertiary uppercase tracking-wide mb-sm">
+                        Evidenze trovate
+                      </h4>
+                      {found.length === 0 ? (
+                        <p className="text-body-sm text-ink-tertiary">Nessuna evidenza trovata</p>
+                      ) : (
+                        <ul className="space-y-xs">
+                          {found.map((evidence) => (
+                            <li key={evidence.id} className="rounded-lg border border-border-subtle px-md py-sm">
+                              <span className="text-body-sm text-ink-primary font-medium">{evidence.item_id}</span>
+                              <span className="block text-body-sm text-ink-tertiary mt-xxs truncate">
+                                {evidence.source_name || "Fonte non disponibile"}
+                              </span>
+                              {evidence.fields.length > 0 && (
+                                <ul className="mt-sm space-y-xxs border-l-2 border-border-muted pl-sm">
+                                  {evidence.fields.map((field, index) => (
+                                    <li key={`${field.kind}-${index}`} className="text-body-sm text-ink-secondary">
+                                      <span className="font-medium">{field.kind.replaceAll("_", " ")}</span>: {field.value}
+                                      {field.unit ? ` ${field.unit}` : ""}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Anomalies */}
+                  {result.anomalies.length > 0 && (
+                    <div className="mt-md">
+                      <h4 className="text-label-sm text-ink-tertiary uppercase tracking-wide mb-sm">
+                        Anomalie
+                      </h4>
+                      <ul className="space-y-xs">
+                        {result.anomalies.map((anomaly, index) => (
+                          <li
+                            key={`${anomaly.kind}-${index}`}
+                            className="rounded-lg border border-status-red-bg bg-status-red-bg/30 px-md py-sm"
+                          >
+                            <span className="text-body-sm text-status-red-text font-medium">{anomaly.kind}</span>
+                            <span className="text-body-sm text-status-red-text"> — {anomaly.description}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => prepareOverride("section", id)}
+                    className="mt-md inline-flex items-center gap-sm px-base py-sm rounded border border-border-subtle bg-surface-card text-label-md text-ink-primary hover:bg-surface-hover transition-colors-fast"
+                  >
+                    <Icon name="edit_note" size="sm" />
+                    Registra override sezione
+                  </button>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Open Findings */}
+          <Card padding="lg">
+            <CardHeader>Finding aperti</CardHeader>
+            <p className="text-body-md text-ink-secondary mb-md">
+              Carenze ed errori riportati dai trimestri precedenti (verifiche 11/12).
+            </p>
+            {data.open_findings.length === 0 ? (
+              <p className="text-body-md text-ink-tertiary">Nessun finding aperto.</p>
+            ) : (
+              <ul className="divide-y divide-border-muted">
+                {data.open_findings.map((finding) => (
+                  <li key={finding.id} className="py-md">
+                    <span className="text-label-md text-ink-primary font-medium">
+                      {finding.section} · {finding.kind.replaceAll("_", " ")}
+                    </span>
+                    <p className="text-body-md text-ink-secondary mt-xs">{finding.description}</p>
+                    <p className="text-body-sm text-ink-tertiary mt-xs">
+                      Prima segnalazione: {finding.first_raised.period}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          {/* Override Form */}
+          <div id="domain-override">
+          <Card padding="lg">
+            <CardHeader>Registra una decisione umana</CardHeader>
+            <p className="text-body-md text-ink-secondary mb-md">
+              L'override vale soltanto per la pratica corrente. Dopo il salvataggio le verifiche vengono ricalcolate.
+            </p>
+            <form onSubmit={saveOverride} className="grid gap-md md:grid-cols-2 xl:grid-cols-5">
+              <FormField label="Ambito">
+                <select
+                  value={override.scope}
+                  onChange={(e) => setOverride({ ...override, scope: e.target.value as OverrideRequest["scope"] })}
+                  className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary"
+                >
+                  <option value="section">Sezione</option>
+                  <option value="item">Voce</option>
+                </select>
+              </FormField>
+
+              <FormField label="Target">
+                <input
+                  required
+                  value={override.target}
+                  onChange={(e) => setOverride({ ...override, target: e.target.value })}
+                  className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary"
+                />
+              </FormField>
+
+              <FormField label="Decisione">
+                <select
+                  value={override.decision}
+                  onChange={(e) => setOverride({ ...override, decision: e.target.value as OverrideRequest["decision"] })}
+                  className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary"
+                >
+                  <option value="✗">Skip (✗)</option>
+                  <option value="N/A">N/A</option>
+                </select>
+              </FormField>
+
+              <FormField label="Deciso da">
+                <input
+                  value={override.decided_by || ""}
+                  onChange={(e) => setOverride({ ...override, decided_by: e.target.value })}
+                  className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary"
+                />
+              </FormField>
+
+              <FormField label="Nota">
+                <input
+                  required
+                  value={override.note}
+                  onChange={(e) => setOverride({ ...override, note: e.target.value })}
+                  placeholder="Motivazione della decisione"
+                  className="w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary placeholder:text-ink-tertiary outline-none focus:border-ink-secondary"
+                />
+              </FormField>
+
+              <button
+                disabled={busy}
+                className="md:col-span-2 xl:col-span-5 inline-flex items-center justify-center gap-sm px-base py-sm rounded bg-ink-primary text-label-md text-white hover:bg-ink-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors-fast"
+              >
+                <Icon name="save" size="sm" />
+                Salva override e ricalcola
+              </button>
+            </form>
+          </Card>
+          </div>
+        </>
+      ) : (
+        <div className="rounded-lg border border-dashed border-border-subtle bg-surface-card/60 px-lg py-3xl text-center">
+          <Icon name="folder_open" size="xl" className="text-ink-tertiary mb-md mx-auto text-[48px]" />
+          <p className="text-body-md text-ink-tertiary">
+            Seleziona cliente e cartella per vedere lo stato delle verifiche.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="block"><span className="mb-1 block text-xs font-medium text-muted">{label}</span>{children}</label>;
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper Components
+// ─────────────────────────────────────────────────────────────────────────────
 
-function List({ title, empty, children }: { title: string; empty: string; children: ReactNode }) {
-  const count = Array.isArray(children) ? children.length : children ? 1 : 0;
-  return <div><h3 className="text-xs font-semibold uppercase tracking-wide text-muted">{title}</h3>{count ? <ul className="mt-2 space-y-2 text-sm">{children}</ul> : <p className="mt-2 text-sm text-muted">{empty}</p>}</div>;
+function FormField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="block text-label-sm text-ink-secondary mb-xs">{label}</span>
+      {children}
+    </label>
+  );
 }

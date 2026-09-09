@@ -1,26 +1,34 @@
-import type { Status } from "./api";
+/**
+ * statusPill.tsx — Legacy pill renderer (migrato ad Atelier Document System)
+ *
+ * Mantiene la funzione `pill()` per compatibilità con codice esistente,
+ * ma usa internamente i nuovi StatusBadge.
+ */
 
-export function pill(status: Status | string) {
-  const map: Record<string, string> = {
-    "✓": "bg-emerald-100 text-emerald-900",
-    wip: "bg-yellow-300 text-yellow-950",
-    "✗": "bg-rose-100 text-rose-800",
-    "N/A": "bg-neutral-200 text-neutral-600",
-    "": "bg-neutral-50 text-neutral-400",
-  };
-  const label: Record<string, string> = {
-    "✓": "Ricevuto",
-    wip: "Mancante / WIP",
-    "✗": "Skip",
-    "N/A": "N/A",
-    "": "—",
-  };
+import { StatusBadge, mapStatusToVariant } from "./components";
+
+/**
+ * Renderizza un badge di stato inline.
+ * Usare StatusBadge direttamente per nuovo codice.
+ */
+export function pill(status: string) {
+  if (!status) return null;
+
+  const variant = mapStatusToVariant(status);
+  const label = formatStatusLabel(status);
+
   return (
-    <span
-      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${map[status] || map[""]}`}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" aria-hidden />
-      {label[status] || status}
-    </span>
+    <StatusBadge variant={variant} showDot={true}>
+      {label}
+    </StatusBadge>
   );
+}
+
+function formatStatusLabel(status: string): string {
+  const s = status.toLowerCase();
+  if (s === "✓" || s === "done" || s === "completed") return "OK";
+  if (s === "✗" || s === "skip" || s === "skipped") return "Skip";
+  if (s === "wip" || s === "pending") return "wip";
+  if (s === "n/a") return "N/A";
+  return status;
 }
