@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from backend.jet.fonti import StrategiaDuplicatiJet
 from backend.jet.models import EsitoRigaJet, ParametriClienteJet, RigaGiornale
 
 StatoPraticaJet = Literal[
@@ -27,6 +28,8 @@ class PraticaJet(BaseModel):
     file_originale_nome: str | None = None
     mappatura: dict[str, str] | None = None
     profilo_estrazione_id: str | None = None
+    strategia_duplicati: StrategiaDuplicatiJet = "mantieni_tutti"
+    numero_fonti: int = Field(default=0, ge=0)
     analizzato_at: str | None = None
     numero_registrazioni: int = Field(default=0, ge=0)
     numero_da_investigare: int = Field(default=0, ge=0)
@@ -44,6 +47,9 @@ class MappaturaJet(BaseModel):
 class RisultatoJet(BaseModel):
     riga: RigaGiornale
     esito: EsitoRigaJet
+    fonte_id: str | None = None
+    numero_riga_fonte: int | None = Field(default=None, ge=1)
+    hash_riga: str | None = None
 
 
 class PaginaRisultatiJet(BaseModel):

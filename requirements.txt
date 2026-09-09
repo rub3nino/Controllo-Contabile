@@ -1,12 +1,49 @@
-fastapi>=0.115.0
-uvicorn>=0.32.0
-openpyxl>=3.1.5
-pyyaml>=6.0
-pypdf>=5.0.0
-pydantic>=2.0
-python-multipart>=0.0.9
-pymupdf>=1.24.0
+# ===========================================
+# Quadra - Requirements
+# ===========================================
 
-# OCR locale consigliato. PaddleOCR-VL richiede Python 3.9-3.13 e un runtime
-# PaddlePaddle adatto all'hardware; vedere docs/OCR.md prima dell'installazione.
+# ---- Core ----
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.0
+pydantic-settings>=2.0
+python-multipart>=0.0.9
+pyyaml>=6.0
+
+# ---- Database ----
+sqlalchemy[asyncio]>=2.0.0
+asyncpg>=0.29.0           # PostgreSQL async driver
+aiosqlite>=0.20.0         # SQLite async (per sviluppo)
+alembic>=1.13.0           # Migrations
+
+# ---- Cache & Queue ----
+redis>=5.0.0
+celery[redis]>=5.4.0      # Task queue
+
+# ---- HTTP Client ----
+httpx>=0.25.0
+
+# ---- Auth & Security ----
+PyJWT>=2.8.0
+passlib[bcrypt]>=1.7.4    # Password hashing (se servisse)
+python-jose[cryptography]>=3.3.0
+
+# ---- Storage ----
+minio>=7.2.0              # S3-compatible storage
+
+# ---- Documents ----
+openpyxl>=3.1.5           # Excel
+pypdf>=5.0.0              # PDF
+pymupdf>=1.24.0           # PDF rendering
+
+# ---- OCR ----
+# PaddleOCR richiede Python 3.9-3.13 e un runtime
+# PaddlePaddle adatto all'hardware; vedere docs/OCR.md
 paddleocr[doc-parser]>=3.3.0
+
+# ---- Development ----
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+httpx>=0.25.0             # Per test client
+ruff>=0.4.0               # Linting
