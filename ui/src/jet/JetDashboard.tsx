@@ -78,7 +78,7 @@ const OPTIONAL_NUMBERS: [keyof JetParams, string][] = [
   ["performance_materiality", "Performance materiality"],
   ["utile_netto_dopo_imposte", "Utile netto dopo imposte"],
   ["valore_medio_registrazione", "Valore medio registrazione"],
-  ["soglia_backdating_giorni", "Soglia retrodatazione (giorni)"],
+  ["soglia_backdating_giorni", "Soglia retrodatazione (giorni lavorativi)"],
   ["soglia_frequenza_insolita", "Soglia frequenza conto insolito"],
 ];
 const WEIGHTS: [keyof JetParams, string, boolean?][] = [
@@ -130,6 +130,7 @@ const FLAG_NAMES: Record<string, string> = {
   flag_festivita: "Festività",
   flag_fuori_orario: "Fuori orario",
   flag_backdated: "Retrodatata",
+  flag_forward_dating: "Anticipata",
   flag_staff_non_autorizzato: "Staff non autorizzato",
   flag_parte_correlata: "Parte correlata",
   flag_descrizione_vuota: "Descrizione vuota",

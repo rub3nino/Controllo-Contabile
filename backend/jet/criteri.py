@@ -112,6 +112,24 @@ def valuta_riga(
         else None
     )
 
+    festivita_periodo = None
+    if (
+        parametri.paese is not None
+        and riga.data_creazione is not None
+        and riga.data_creazione > riga.data_effettiva
+    ):
+        try:
+            base_periodo = calendari.festivita(
+                parametri.paese, riga.data_effettiva.year, riga.data_creazione.year
+            )
+        except ValueError:
+            # Il dataset copre solo 2024-2030 (scelta di scope della Fase calendari): una
+            # scrittura con date fuori da questo intervallo non deve far crashare l'intera
+            # valutazione, ricade sui giorni di calendario come un Paese senza dati.
+            base_periodo = None
+        if base_periodo or parametri.festivita:
+            festivita_periodo = sorted(set(base_periodo or []) | set(parametri.festivita or []))
+
     if (
         riga.ora_creazione is None
         or parametri.orario_ufficio_inizio is None
@@ -127,10 +145,23 @@ def valuta_riga(
 
     if riga.data_creazione is None or parametri.soglia_backdating_giorni is None:
         flag_backdated = None
+        flag_forward_dating = None
+        metodo_calcolo_backdating = None
+    elif riga.data_creazione < riga.data_effettiva:
+        flag_backdated = False
+        flag_forward_dating = True
+        metodo_calcolo_backdating = None
     else:
-        flag_backdated = (
-            riga.data_creazione - riga.data_effettiva
-        ).days >= parametri.soglia_backdating_giorni
+        if festivita_periodo is not None:
+            scarto = calendari.giorni_lavorativi_tra(
+                riga.data_effettiva, riga.data_creazione, weekend_effettivo, festivita_periodo
+            )
+            metodo_calcolo_backdating = "giorni_lavorativi"
+        else:
+            scarto = (riga.data_creazione - riga.data_effettiva).days
+            metodo_calcolo_backdating = "giorni_calendario"
+        flag_backdated = scarto >= parametri.soglia_backdating_giorni
+        flag_forward_dating = False
 
     if (
         parametri.staff_autorizzato is None
@@ -219,6 +250,8 @@ def valuta_riga(
         flag_festivita=flag_festivita,
         flag_fuori_orario=flag_fuori_orario,
         flag_backdated=flag_backdated,
+        flag_forward_dating=flag_forward_dating,
+        metodo_calcolo_backdating=metodo_calcolo_backdating,
         flag_staff_non_autorizzato=flag_staff_non_autorizzato,
         flag_parte_correlata=flag_parte_correlata,
         flag_descrizione_vuota=flag_descrizione_vuota,

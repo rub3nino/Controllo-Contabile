@@ -153,6 +153,8 @@ class EsitoRigaJet(BaseModel):
     flag_festivita: bool | None
     flag_fuori_orario: bool | None
     flag_backdated: bool | None
+    flag_forward_dating: bool | None = None
+    metodo_calcolo_backdating: str | None = None
     flag_staff_non_autorizzato: bool | None
     flag_parte_correlata: bool | None
     flag_descrizione_vuota: bool

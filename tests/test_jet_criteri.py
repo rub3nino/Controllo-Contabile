@@ -88,8 +88,87 @@ def test_flag_non_calcolabili_restano_none_e_non_danno_punti():
     )
     assert esito.flag_fuori_orario is None
     assert esito.flag_backdated is None
+    assert esito.flag_forward_dating is None
+    assert esito.metodo_calcolo_backdating is None
     assert esito.flag_staff_non_autorizzato is None
     assert esito.punteggio_totale == 0
+
+
+def test_backdating_usa_giorni_lavorativi_con_paese():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 1, 9), data_creazione=date(2026, 1, 12)),
+        _parametri(paese="IT", giorni_weekend=None, festivita=None, soglia_backdating_giorni=2),
+    )
+    assert esito.flag_backdated is False
+    assert esito.flag_forward_dating is False
+    assert esito.metodo_calcolo_backdating == "giorni_lavorativi"
+
+
+def test_forward_dating_non_da_punti():
+    esito = valuta_riga(
+        _riga(data_creazione=date(2026, 1, 6)),
+        _parametri(
+            utile_netto_dopo_imposte=None, valore_medio_registrazione=None,
+            performance_materiality=None, soglia_importo_cifra_tonda=None,
+            orario_ufficio_inizio=None, staff_autorizzato=None,
+            parole_chiave_parti_correlate=None, festivita=None,
+            giorni_weekend=None, punteggio_backdated=999,
+        ),
+    )
+    assert esito.flag_forward_dating is True
+    assert esito.flag_backdated is False
+    assert esito.metodo_calcolo_backdating is None
+    assert esito.punteggio_totale == 0
+
+
+def test_backdating_stessa_data():
+    esito = valuta_riga(_riga(data_creazione=date(2026, 1, 7)), _parametri())
+    assert esito.flag_backdated is False
+    assert esito.flag_forward_dating is False
+    assert esito.metodo_calcolo_backdating == "giorni_calendario"
+
+
+def test_backdating_senza_paese_usa_calendario():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 1, 9), data_creazione=date(2026, 1, 12)),
+        _parametri(paese=None, soglia_backdating_giorni=3),
+    )
+    assert esito.flag_backdated is True
+    assert esito.metodo_calcolo_backdating == "giorni_calendario"
+
+
+def test_backdating_israele_senza_festivita_usa_calendario():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 1, 9), data_creazione=date(2026, 1, 12)),
+        _parametri(paese="IL", giorni_weekend=None, festivita=None, soglia_backdating_giorni=3),
+    )
+    assert esito.flag_backdated is True
+    assert esito.metodo_calcolo_backdating == "giorni_calendario"
+
+
+def test_backdating_cambio_anno_usa_calendario_completo():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 12, 24), data_creazione=date(2027, 1, 4)),
+        _parametri(paese="IT", giorni_weekend=None, festivita=None, soglia_backdating_giorni=6),
+    )
+    assert esito.flag_backdated is False
+    assert esito.metodo_calcolo_backdating == "giorni_lavorativi"
+
+
+def test_backdating_fuori_dataset_usa_calendario_senza_crash():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2030, 12, 30), data_creazione=date(2031, 1, 2)),
+        _parametri(paese="IT", giorni_weekend=None, festivita=None, soglia_backdating_giorni=3),
+    )
+    assert esito.flag_backdated is True
+    assert esito.metodo_calcolo_backdating == "giorni_calendario"
+
+
+def test_backdating_senza_soglia_non_calcolabile():
+    esito = valuta_riga(_riga(), _parametri(soglia_backdating_giorni=None))
+    assert esito.flag_backdated is None
+    assert esito.flag_forward_dating is None
+    assert esito.metodo_calcolo_backdating is None
 
 
 @pytest.mark.parametrize(
