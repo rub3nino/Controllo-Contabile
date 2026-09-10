@@ -1,55 +1,74 @@
-# Quadra — Controllo contabile e Journal Entry Testing
+# Quadra
 
-Quadra è lo strumento interno dello studio per due lavori distinti:
+Strumento interno dello studio per la revisione. Due moduli nello stesso prodotto, contesti separati:
 
-1. **Controllo contabile trimestrale** (art. 2409-ter c.c., principio **SA Italia 250B**): classifica i documenti del cliente, estrae i campi, verifica le aree A–I e produce dashboard + Excel carte di lavoro.
-2. **JET (Journal Entry Testing)** (ISA Italia 240 §A44): analizza il libro giornale (Excel, TXT a colonne fisse, PDF testuale), applica i criteri di rischio e esporta le righe da investigare.
+1. **JET — Journal Entry Testing** (ISA Italia 240 §A44) — **in lavorazione**, è il filo principale.
+2. **Controllo contabile trimestrale** (art. 2409-ter c.c., SA Italia 250B) — **in pausa**.
 
-Non firma, non scrive la conclusione, non decide la materialità: quello resta dell'operatore.
+Non firma, non scrive la conclusione, non decide la materialità: quello resta dell’operatore.
 
-Piano di lavoro operativo (ordine, test, cosa non toccare): [`docs/piano_operativo.md`](docs/piano_operativo.md).
-
-![Schermata di Quadra](docs/screenshot.png)
-
-## Stato attuale
+## Stato
 
 | Modulo | Stato | Note |
 |--------|--------|------|
-| JET motore + UI operativa | In uso locale | Pratiche, più file in staging, parametri, mappatura, profili TXT, PDF testuale, filtri, export |
-| JET PDF scansionato (OCR) | In pausa | Serve conferma umana campo per campo; non mescolare col JET tabellare |
-| Controllo SA 250B | Funzionante in locale | Dashboard + export A–I; generalizzazione oltre il pilota ancora aperta |
-| Consentil (cyber) | Fuori da questo repo | Si riprende dopo Quadra stabile |
-| Produzione / Vercel | Non supportato | Vercel non va: serve processo Python, upload grandi, disco. Locale o VPS+Docker |
+| **JET** motore + UI | Attivo | Pratiche, fonti multiple, matrice dei 15, profili TXT/PDF testuale, analisi, export |
+| **JET** PDF scansionato (OCR) | In pausa | PaddleOCR non allinea le colonne; non mescolare col JET tabellare |
+| **Controllo SA 250B** | **In pausa** | Motore A–I resta nel repo; la dashboard non si evolve finché JET non è chiuso. Il layout di riferimento è sotto |
+| Consentil (cyber) | Fuori da questo repo | Dopo Quadra stabile |
+| Produzione / Vercel | Non supportato | Serve Python, upload grandi, disco. Locale o VPS + Docker |
 
-## Cosa fa
+### Controllo contabile — in pausa
 
-**Controllo**
+Il modulo SA 250B (sezioni A–I, carte di lavoro, ingest documenti, export Excel) **non è il lavoro in corso**. Resta avviabile in locale, ma non va esteso né ridisegnato ora.
 
-1. Classifica i documenti (F24, estratti conto, verbali, libri…)
-2. Estrae date, importi, saldi, protocolli
-3. Calcola lo stato delle sezioni A–I con evidenze e fonti
-4. Export Excel compatibile col template A–I
-5. Traccia ogni dato al documento di origine
+Riferimento visivo (mock / target, non lo stato live da inseguire in questo sprint):
 
-**JET**
+![Mock Controllo contabile — carte di lavoro A–I, KPI, storico documenti](docs/images/controllo-contabile-target.png)
 
-1. Crea una pratica (cliente + periodo)
-2. Carica una o più fonti (xlsx / txt / pdf testuale), con tracciabilità e deduplica configurabile
-3. Mappa le colonne o applica un profilo a larghezza fissa (TXT)
-4. Imposta i parametri cliente; se un parametro manca il criterio è **non calcolabile** (`None`), mai un falso «ok»
-5. Valuta i criteri (importo, weekend, festività, orario, backdating, staff, parti correlate, descrizione, rarità conto, infragruppo, sequenza)
-6. Filtra, pagina ed esporta Excel
+Quando si riprenderà: classificazione documenti, estrazione campi, stati A–I, dashboard e Excel carte di lavoro. Generalizzazione oltre i YAML pilota (Ferrero, SWGI) resta aperta.
+
+## JET — cosa c’è oggi
+
+Flusso operativo:
+
+1. **Catalogo pratiche** — lista cliente / periodo / stato. Si apre un incarico con un click; «Nuova pratica» è un form a parte.
+2. **Workspace incarico** — titolo = cliente, chip di stato, quattro metriche vere (popolazione, scritture sospette, controlli attivi `n/15`, fonti). Niente numeri finti da brochure.
+3. **Sorgente libro giornale** — .xlsx, .txt a colonne fisse, .pdf testuale. Tabella fonti, profilo esistente **oppure** nuovo profilo (non i due insieme). Duplicati solo se ci sono due o più file.
+4. **Matrice dei 15 controlli** — una tabella, non una pagina per criterio. Click sulla riga per i campi; toggle Acceso/Spento. Pesi Baker Tilly visibili. Se manca un parametro il criterio è **non calcolabile**, mai un falso «ok».
+5. **Analisi ed export** — «Avvia analisi» in testa alla pagina; risultati filtrabili ed Excel.
+
+I 15 restano sulla stessa matrice. Non si paginano i controlli.
+
+UI: carta Notion (`code.html` / `ui/src/design/reference.html`), Inter, icone Material Symbols, fondo a puntini **fisso** (non scorre col contenuto). Una sola CTA scura per schermata (`Avvia analisi`).
+
+**Due URL, due cose diverse**
+
+| URL | Cosa vedi |
+|-----|-----------|
+| [http://127.0.0.1:5173/](http://127.0.0.1:5173/) | Vite, codice in `ui/src`, aggiornamento a caldo |
+| [http://127.0.0.1:8000](http://127.0.0.1:8000/) | FastAPI + copia **build** in `ui/dist` (va ricostruita con `cd ui && npm run build`) |
+
+Se l’interfaccia sembra vecchia, stai sul `:8000` con un `dist` datato, oppure la cache del browser. Hard refresh, oppure apri `:5173`.
+
+### Motore (sintesi)
+
+- Isolato in `backend/jet/` (non importare da `backend/domain/`, non usare il prototipo `backend/modules/jet/`).
+- Persistenza SQLite in `storage/` (gitignored).
+- Criteri su importo, weekend, festività, orario, retrodatazione, staff, parti correlate, descrizione, rarità conto, infragruppo, sequenza. Non tutti i 15 Caseware sono nel motore: la matrice UI lo dice (Nel motore / Parziale / Assente).
+- Fuori scope per ora: JET-11 sequenza bollata, JET-13 ri-analisi sui sospetti, OCR visura, moduli Caseware extra.
+
+Dettaglio: [`docs/jet/00_riferimento_tecnico.md`](docs/jet/00_riferimento_tecnico.md), piano sprint [`docs/jet/piano_sprint_15_controlli_2026-09-10.md`](docs/jet/piano_sprint_15_controlli_2026-09-10.md).
 
 ## Avvio in locale
 
-Serve **Python 3.13**, **Node.js**. Per l'OCR del controllo, PaddlePaddle: [`docs/OCR.md`](docs/OCR.md).
+Serve **Python 3.13** e **Node.js**. OCR del controllo (quando si riprenderà): [`docs/OCR.md`](docs/OCR.md).
 
 ```bash
 chmod +x start.sh
 ./start.sh
 ```
 
-- UI: [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
+- UI live: [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
 - API: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 - OpenAPI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 - Windows: `start.bat`
@@ -57,63 +76,58 @@ chmod +x start.sh
 `start.sh` crea `.venv-py313`, installa le dipendenze e alza API + Vite.
 
 ```bash
-# Solo API
+# Solo API (serve anche ui/dist se apri :8000 senza Vite)
 .venv-py313/bin/python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 
 # Solo UI
 cd ui && npm run dev
+
+# Aggiornare la copia servita da :8000
+cd ui && npm run build
 ```
 
-Prove senza dati cliente: `fixtures/docs` (controllo), `fixtures/jet` (JET).
+Prove senza dati cliente: `fixtures/docs` (controllo, fermo), `fixtures/jet` (JET).
 
 ## Architettura
 
 ```
-UI (React + Vite)  —  Controllo + JET
+UI (React + Vite)     shell + JET (attivo) + Controllo (in pausa)
         │
-API FastAPI  —  /api/domain/*  /api/jet/*  /api/*
+API FastAPI           /api/jet/*   /api/domain/*   /api/*
         │
-┌───────────────┬─────────────────┬──────────────────┐
-│ Domain SA 250B│ JET (backend/jet)│ Pipeline legacy  │
-│ verify/export │ criteri, ingest │ classify/extract │
-└───────────────┴─────────────────┴──────────────────┘
+┌──────────────────┬─────────────────┬──────────────────┐
+│ JET backend/jet  │ Domain SA 250B  │ Pipeline legacy  │
+│ pratiche, ingest │ verify/export   │ classify/extract │
+│ criteri, store   │ (non toccare)   │                  │
+└──────────────────┴─────────────────┴──────────────────┘
         │
-Evidence store (controllo)     JetStore SQLite (pratiche JET)
+JetStore SQLite                  Evidence store controllo
 ```
 
-Il JET **operativo** è `backend/jet/` (isolato da `backend/domain/`).  
-`backend/modules/jet/` è un prototipo precedente: non usarlo per le pratiche.
-
-Sotto `backend/core/` e `backend/enterprise/` c'è lo scaffolding (auth, tenant, Redis) per un eventuale deploy multi-utente: **non è il percorso di lavoro attuale**.
+`backend/core/` e `backend/enterprise/` sono scaffolding (auth, tenant, Redis) per un eventuale multi-utente: **non è il percorso attuale**.
 
 ## API JET (sintesi)
 
 ```
-POST /api/jet/pratiche
-GET  /api/jet/pratiche
-PUT  /api/jet/pratiche/{id}/parametri
-POST /api/jet/pratiche/{id}/files          # staging multi-file
-PUT  /api/jet/pratiche/{id}/mappatura
-POST /api/jet/pratiche/{id}/analizza
-GET  /api/jet/pratiche/{id}/risultati
-GET  /api/jet/pratiche/{id}/export.xlsx
+POST   /api/jet/pratiche
+GET    /api/jet/pratiche
+PUT    /api/jet/pratiche/{id}/parametri
+POST   /api/jet/pratiche/{id}/files
+GET    /api/jet/pratiche/{id}/fonti
+PATCH  /api/jet/pratiche/{id}/fonti/{fonte_id}
+POST   /api/jet/pratiche/{id}/analizza
+GET    /api/jet/pratiche/{id}/risultati
+GET    /api/jet/pratiche/{id}/export.xlsx
+GET    /api/jet/profili
 ```
 
-Dettaglio in `/docs` a runtime.
+Dettaglio in [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
-## Clienti controllo
+## Clienti controllo (quando si riprende)
 
-Config in `backend/domain/clients/*.yaml`:
+Config in `backend/domain/clients/*.yaml`: Ferrero, SWGI, Demo. Nuovo cliente = YAML con banche, fondi, soglie e voci catalogo.
 
-| Cliente | File | Note |
-|---------|------|------|
-| Ferrero | `ferrero.yaml` | Riferimento |
-| SWGI | `swgi.yaml` | Secondo cliente |
-| Demo | `demo.yaml` | Test |
-
-Nuovo cliente: YAML con banche, fondi, soglie e voci catalogo.
-
-## Sezioni A–I e stati
+## Sezioni A–I (controllo, in pausa)
 
 | | Carta | Verifiche SA 250B |
 |---|---|---|
@@ -136,11 +150,11 @@ Nuovo cliente: YAML con banche, fondi, soglie e voci catalogo.
 
 ## Deploy
 
-Non usare Vercel per API+JET+OCR.
+Non usare Vercel per API + JET + OCR.
 
-- **Primi test:** questo Mac, `./start.sh` (anche in LAN se l'IT lo consente).
-- **Studio / URL interno:** VPS EU + Docker (`docker-compose.yml` / `docker-compose.prod.yml`). Primo giro **senza** OCR pesante.
-- Dati cliente e file JET reali: solo disco locale o server dello studio. Non finiscono in git (`data/`, `test/`, `storage/` sono ignorati).
+- Primi test: questo Mac, `./start.sh`.
+- Studio / URL interno: VPS EU + Docker (`docker-compose.yml`). Primo giro senza OCR pesante.
+- Dati cliente e file JET reali: solo disco locale o server dello studio. Non finiscono in git (`data/`, `test/`, `storage/` ignorati).
 
 Copia `.env.example` in `.env` per Postgres/Redis/MinIO quando usi Compose.
 
@@ -149,7 +163,6 @@ Copia `.env.example` in `.env` per Postgres/Redis/MinIO quando usi Compose.
 ```bash
 .venv-py313/bin/python -m pytest tests/ -q
 .venv-py313/bin/python -m pytest tests/test_jet*.py tests/modules/jet/ -q
-.venv-py313/bin/python -m pytest tests/test_domain_*.py -q
 ```
 
 ## Stack
@@ -157,14 +170,15 @@ Copia `.env.example` in `.env` per Postgres/Redis/MinIO quando usi Compose.
 - Backend: FastAPI, Python 3.13
 - UI: React + Vite + TypeScript
 - JET persistenza: SQLite sotto `storage/`
-- OCR controllo: PaddleOCR (locale)
+- OCR controllo: PaddleOCR (locale), non in uso sul JET tabellare
 - Opzionale: PostgreSQL, Redis, MinIO (Compose)
 
 ## Documentazione
 
-- [Piano operativo](docs/piano_operativo.md) — ordine JET → controllo → OCR → Consentil
-- [Obiettivi SA 250B](docs/analisi_obiettivi_controllo_contabile.md)
+- [Piano operativo](docs/piano_operativo.md)
 - [Riferimento tecnico JET](docs/jet/00_riferimento_tecnico.md)
+- [Sprint 15 controlli](docs/jet/piano_sprint_15_controlli_2026-09-10.md)
+- [Obiettivi SA 250B](docs/analisi_obiettivi_controllo_contabile.md) — modulo in pausa
 - [OCR](docs/OCR.md)
-- [Prompts e review](docs/prompts/)
+- [Design UI JET](ui/design-system/pages/jet.md)
 - [Architettura enterprise (futuro)](docs/architecture/ENTERPRISE_ARCHITECTURE.md)
