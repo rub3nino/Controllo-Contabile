@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import openpyxl
@@ -68,6 +69,18 @@ def test_flusso_api_completo_filtri_paginazione_ed_export(client):
     analyzed = client.post(f"/api/jet/pratiche/{pid}/analizza")
     assert analyzed.status_code == 200
     assert analyzed.json()["numero_registrazioni"] == 8
+    tutti_risultati = client.get(
+        f"/api/jet/pratiche/{pid}/risultati", params={"page_size": 100}
+    ).json()["items"]
+    importi_non_zero = [
+        abs(Decimal(item["riga"]["importo_netto"]))
+        for item in tutti_risultati
+        if Decimal(item["riga"]["importo_netto"]) != 0
+    ]
+    media_attesa = sum(importi_non_zero) / Decimal(len(importi_non_zero))
+    assert Decimal(
+        analyzed.json()["valore_medio_registrazione_effettivo"]
+    ) == media_attesa
     page = client.get(f"/api/jet/pratiche/{pid}/risultati", params={"page_size": 3})
     assert page.status_code == 200
     assert page.json()["total"] == 8 and len(page.json()["items"]) == 3
@@ -95,3 +108,21 @@ def test_analisi_richiede_tutti_i_passi(client):
     response = client.post(f"/api/jet/pratiche/{pid}/analizza")
     assert response.status_code == 409
     assert "parametri" in response.json()["detail"]
+
+
+def test_media_effettiva_rispetta_override_manuale(client):
+    pid = client.post("/api/jet/pratiche", json={"client": "Media", "period": "2026"}).json()["id"]
+    configurazione = params()
+    configurazione["valore_medio_registrazione"] = 123.45
+    client.put(f"/api/jet/pratiche/{pid}/parametri", json=configurazione)
+    with FIXTURE.open("rb") as fh:
+        client.post(
+            f"/api/jet/pratiche/{pid}/file",
+            files={"file": (FIXTURE.name, fh, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        )
+    client.put(f"/api/jet/pratiche/{pid}/mappatura", json={"mappatura": MAPPING})
+    analyzed = client.post(f"/api/jet/pratiche/{pid}/analizza")
+    assert analyzed.status_code == 200
+    assert Decimal(
+        analyzed.json()["valore_medio_registrazione_effettivo"]
+    ) == Decimal("123.45")

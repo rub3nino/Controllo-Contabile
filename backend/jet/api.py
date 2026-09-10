@@ -12,7 +12,11 @@ from fastapi.responses import FileResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
-from backend.jet.criteri import calcola_frequenza_conti, valuta_riga
+from backend.jet.criteri import (
+    calcola_frequenza_conti,
+    calcola_media_assoluta_registrazioni,
+    valuta_riga,
+)
 from backend.jet.fonti import (
     ConfigurazioneDuplicatiJet,
     ConfigurazioneFonteJet,
@@ -783,7 +787,11 @@ def analyze(pratica_id: str):
             status_code=400, detail=f"Errore nella mappatura dei dati: {exc}"
         ) from exc
     frequenze = calcola_frequenza_conti(righe)
-    esiti = [valuta_riga(r, pratica.parametri, frequenze) for r in righe]
+    media_popolazione = calcola_media_assoluta_registrazioni(righe)
+    esiti = [
+        valuta_riga(r, pratica.parametri, frequenze, media_popolazione)
+        for r in righe
+    ]
     if fonti:
         risultati_persistenza = [
             RisultatoJet(
@@ -808,6 +816,11 @@ def analyze(pratica_id: str):
             "analizzato_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "numero_registrazioni": len(esiti),
             "numero_da_investigare": sum(e.da_investigare for e in esiti),
+            "valore_medio_registrazione_effettivo": (
+                pratica.parametri.valore_medio_registrazione
+                if pratica.parametri.valore_medio_registrazione is not None
+                else media_popolazione
+            ),
         }
     )
     _store().replace_analysis(pratica, risultati_persistenza, mancanti, intervalli)

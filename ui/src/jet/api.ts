@@ -50,6 +50,7 @@ export type JetPractice = {
   numero_fonti: number;
   numero_registrazioni: number;
   numero_da_investigare: number;
+  valore_medio_registrazione_effettivo: number | string | null;
 };
 export type JetSource = {
   id: string;

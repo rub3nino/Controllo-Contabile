@@ -7,7 +7,11 @@ from decimal import Decimal
 
 from backend.jet.models import EsitoRigaJet, ParametriClienteJet, RigaGiornale
 
-__all__ = ["calcola_frequenza_conti", "valuta_riga"]
+__all__ = [
+    "calcola_frequenza_conti",
+    "calcola_media_assoluta_registrazioni",
+    "valuta_riga",
+]
 
 
 def calcola_frequenza_conti(righe: list[RigaGiornale]) -> dict[str, int]:
@@ -21,10 +25,27 @@ def calcola_frequenza_conti(righe: list[RigaGiornale]) -> dict[str, int]:
     )
 
 
+def calcola_media_assoluta_registrazioni(
+    righe: list[RigaGiornale],
+) -> Decimal | None:
+    """Media dei valori assoluti degli importi sulla popolazione caricata.
+
+    Gli importi pari a zero sono esclusi dal denominatore. Restituisce ``None``
+    quando non c'è alcun valore utilizzabile (popolazione vuota o tutti zero),
+    mai zero: zero implicherebbe erroneamente che qualunque importo sia
+    "oltre 10 volte la media".
+    """
+    valori = [abs(r.importo_netto) for r in righe if r.importo_netto != 0]
+    if not valori:
+        return None
+    return sum(valori) / Decimal(len(valori))
+
+
 def valuta_riga(
     riga: RigaGiornale,
     parametri: ParametriClienteJet,
     frequenze_conto: dict[str, int] | None = None,
+    media_registrazione_popolazione: Decimal | None = None,
 ) -> EsitoRigaJet:
     """Valuta una riga replicando gli undici criteri di ``Calcs1``.
 
@@ -39,9 +60,14 @@ def valuta_riga(
         if parametri.utile_netto_dopo_imposte is not None
         else None
     )
-    flag_oltre_dieci_volte_media = (
-        importo > Decimal(10) * abs(parametri.valore_medio_registrazione)
+    media_registrazione = (
+        parametri.valore_medio_registrazione
         if parametri.valore_medio_registrazione is not None
+        else media_registrazione_popolazione
+    )
+    flag_oltre_dieci_volte_media = (
+        importo > Decimal(10) * abs(media_registrazione)
+        if media_registrazione is not None
         else None
     )
     flag_sopra_performance_materiality = (

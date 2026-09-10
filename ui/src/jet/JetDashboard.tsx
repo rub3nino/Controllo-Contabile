@@ -886,7 +886,13 @@ export function JetDashboard() {
                   {active.numero_registrazioni.toLocaleString("it-IT")} righe ·
                   {" "}
                   {active.numero_da_investigare.toLocaleString("it-IT")}{" "}
-                  da investigare
+                  da investigare · media registrazione:{" "}
+                  {active.valore_medio_registrazione_effettivo === null
+                    ? "—"
+                    : `€${Number(active.valore_medio_registrazione_effettivo).toLocaleString(
+                      "it-IT",
+                      { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                    )}`}
                 </span>
               )}
             </div>

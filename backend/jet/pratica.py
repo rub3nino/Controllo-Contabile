@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Literal
 from uuid import uuid4
 
@@ -33,6 +34,7 @@ class PraticaJet(BaseModel):
     analizzato_at: str | None = None
     numero_registrazioni: int = Field(default=0, ge=0)
     numero_da_investigare: int = Field(default=0, ge=0)
+    valore_medio_registrazione_effettivo: Decimal | None = None
 
 
 class CreaPraticaJet(BaseModel):

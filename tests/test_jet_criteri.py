@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from backend.jet import ParametriClienteJet, RigaGiornale, valuta_riga
+from backend.jet.criteri import calcola_media_assoluta_registrazioni
 
 
 def _parametri(**modifiche) -> ParametriClienteJet:
@@ -140,3 +141,32 @@ def test_criteri_conto_restano_non_calcolati():
     assert esito.frequenza_utilizzo_conto is None
     assert esito.flag_conto_insolito_raro is None
     assert esito.flag_conto_infragruppo_parte_correlata is None
+
+
+def test_media_assoluta_usa_assoluti_ed_esclude_zeri():
+    righe = [
+        _riga(importo_netto=Decimal("10")),
+        _riga(importo_netto=Decimal("-20")),
+        _riga(importo_netto=Decimal("0")),
+    ]
+    assert calcola_media_assoluta_registrazioni(righe) == Decimal("15")
+
+
+@pytest.mark.parametrize("righe", [[], [_riga(importo_netto=Decimal("0"))]])
+def test_media_assoluta_senza_valori_utilizzabili_restituisce_none(righe):
+    assert calcola_media_assoluta_registrazioni(righe) is None
+
+
+def test_media_manuale_prevale_sulla_media_di_popolazione():
+    manuale = valuta_riga(
+        _riga(importo_netto=Decimal("150")),
+        _parametri(valore_medio_registrazione=Decimal("20")),
+        media_registrazione_popolazione=Decimal("10"),
+    )
+    automatica = valuta_riga(
+        _riga(importo_netto=Decimal("150")),
+        _parametri(valore_medio_registrazione=None),
+        media_registrazione_popolazione=Decimal("10"),
+    )
+    assert manuale.flag_oltre_dieci_volte_media is False
+    assert automatica.flag_oltre_dieci_volte_media is True
