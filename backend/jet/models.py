@@ -87,6 +87,8 @@ class ParametriClienteJet(BaseModel):
     orario_ufficio_fine: time | None = None
     giorni_weekend: list[int] | None = None
     soglia_backdating_giorni: int | None = Field(default=None, ge=0)
+    data_chiusura: date | None = None
+    finestra_chiusura_giorni_lavorativi: int | None = Field(default=None, ge=0)
     festivita: list[date] | None = None
     staff_autorizzato: list[str] | None = None
     utenti_di_sistema: list[str] | None = Field(
@@ -155,6 +157,8 @@ class EsitoRigaJet(BaseModel):
     flag_backdated: bool | None
     flag_forward_dating: bool | None = None
     metodo_calcolo_backdating: str | None = None
+    flag_finestra_chiusura: bool | None = None
+    flag_creata_dopo_chiusura: bool | None = None
     flag_staff_non_autorizzato: bool | None
     flag_parte_correlata: bool | None
     flag_descrizione_vuota: bool

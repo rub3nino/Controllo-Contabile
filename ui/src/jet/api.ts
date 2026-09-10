@@ -16,6 +16,8 @@ export type JetParams = {
   orario_ufficio_fine: string | null;
   giorni_weekend: number[] | null;
   soglia_backdating_giorni: number | null;
+  data_chiusura: string | null;
+  finestra_chiusura_giorni_lavorativi: number | null;
   festivita: string[] | null;
   staff_autorizzato: string[] | null;
   utenti_di_sistema: string[] | null;

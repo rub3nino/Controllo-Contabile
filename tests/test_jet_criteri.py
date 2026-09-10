@@ -171,6 +171,126 @@ def test_backdating_senza_soglia_non_calcolabile():
     assert esito.metodo_calcolo_backdating is None
 
 
+def test_finestra_chiusura_include_data_chiusura_e_confine():
+    parametri = _parametri(
+        paese="IT",
+        giorni_weekend=None,
+        festivita=None,
+        data_chiusura=date(2026, 12, 31),
+        finestra_chiusura_giorni_lavorativi=5,
+    )
+
+    sulla_chiusura = valuta_riga(_riga(data_effettiva=date(2026, 12, 31)), parametri)
+    ultimo_giorno_incluso = valuta_riga(_riga(data_effettiva=date(2026, 12, 24)), parametri)
+    primo_giorno_escluso = valuta_riga(_riga(data_effettiva=date(2026, 12, 23)), parametri)
+
+    assert sulla_chiusura.flag_finestra_chiusura is True
+    assert ultimo_giorno_incluso.flag_finestra_chiusura is True
+    assert primo_giorno_escluso.flag_finestra_chiusura is False
+
+
+def test_finestra_chiusura_data_effettiva_successiva_e_false():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2027, 1, 2)),
+        _parametri(
+            paese="IT",
+            data_chiusura=date(2026, 12, 31),
+            finestra_chiusura_giorni_lavorativi=5,
+        ),
+    )
+    assert esito.flag_finestra_chiusura is False
+
+
+def test_creata_dopo_chiusura_vero_e_falso():
+    parametri = _parametri(data_chiusura=date(2026, 12, 31))
+    successiva = valuta_riga(
+        _riga(data_effettiva=date(2026, 12, 31), data_creazione=date(2027, 1, 2)),
+        parametri,
+    )
+    precedente = valuta_riga(
+        _riga(data_effettiva=date(2026, 12, 30), data_creazione=date(2026, 12, 31)),
+        parametri,
+    )
+    assert successiva.flag_creata_dopo_chiusura is True
+    assert precedente.flag_creata_dopo_chiusura is False
+
+
+def test_data_chiusura_assente_rende_entrambi_non_calcolabili():
+    esito = valuta_riga(
+        _riga(),
+        _parametri(data_chiusura=None, finestra_chiusura_giorni_lavorativi=5),
+    )
+    assert esito.flag_finestra_chiusura is None
+    assert esito.flag_creata_dopo_chiusura is None
+
+
+def test_soglia_finestra_assente_non_blocca_creata_dopo_chiusura():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 12, 31), data_creazione=date(2027, 1, 2)),
+        _parametri(
+            data_chiusura=date(2026, 12, 31),
+            finestra_chiusura_giorni_lavorativi=None,
+        ),
+    )
+    assert esito.flag_finestra_chiusura is None
+    assert esito.flag_creata_dopo_chiusura is True
+
+
+def test_finestra_senza_paese_non_ha_fallback_ma_creata_dopo_e_calcolabile():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 12, 31), data_creazione=date(2027, 1, 2)),
+        _parametri(
+            paese=None,
+            data_chiusura=date(2026, 12, 31),
+            finestra_chiusura_giorni_lavorativi=5,
+        ),
+    )
+    assert esito.flag_finestra_chiusura is None
+    assert esito.flag_creata_dopo_chiusura is True
+
+
+def test_finestra_israele_senza_festivita_non_calcolabile():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 12, 31)),
+        _parametri(
+            paese="IL",
+            giorni_weekend=None,
+            festivita=None,
+            data_chiusura=date(2026, 12, 31),
+            finestra_chiusura_giorni_lavorativi=5,
+        ),
+    )
+    assert esito.flag_finestra_chiusura is None
+
+
+def test_flag_chiusura_non_contribuiscono_al_punteggio():
+    esito = valuta_riga(
+        _riga(
+            data_effettiva=date(2026, 12, 31),
+            data_creazione=date(2027, 1, 2),
+        ),
+        _parametri(
+            paese="IT", giorni_weekend=None, festivita=None,
+            data_chiusura=date(2026, 12, 31),
+            finestra_chiusura_giorni_lavorativi=5,
+            soglia_backdating_giorni=None,
+            utile_netto_dopo_imposte=None, valore_medio_registrazione=None,
+            performance_materiality=None, soglia_importo_cifra_tonda=None,
+            orario_ufficio_inizio=None, staff_autorizzato=None,
+            parole_chiave_parti_correlate=None,
+            punteggio_profit_impact=999, punteggio_oltre_dieci_volte_media=999,
+            punteggio_sopra_performance_materiality=999,
+            punteggio_importo_cifra_tonda=999, punteggio_weekend=999,
+            punteggio_festivita=999, punteggio_fuori_orario=999,
+            punteggio_backdated=999, punteggio_staff_non_autorizzato=999,
+            punteggio_parte_correlata=999, punteggio_descrizione_vuota=999,
+        ),
+    )
+    assert esito.flag_finestra_chiusura is True
+    assert esito.flag_creata_dopo_chiusura is True
+    assert esito.punteggio_totale == 0
+
+
 @pytest.mark.parametrize(
     ("soglia", "importo", "atteso"),
     [

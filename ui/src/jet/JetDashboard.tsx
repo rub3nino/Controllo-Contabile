@@ -52,6 +52,8 @@ const EMPTY: JetParams = {
   orario_ufficio_fine: null,
   giorni_weekend: null,
   soglia_backdating_giorni: null,
+  data_chiusura: null,
+  finestra_chiusura_giorni_lavorativi: null,
   festivita: null,
   staff_autorizzato: null,
   utenti_di_sistema: null,
@@ -79,6 +81,7 @@ const OPTIONAL_NUMBERS: [keyof JetParams, string][] = [
   ["utile_netto_dopo_imposte", "Utile netto dopo imposte"],
   ["valore_medio_registrazione", "Valore medio registrazione"],
   ["soglia_backdating_giorni", "Soglia retrodatazione (giorni lavorativi)"],
+  ["finestra_chiusura_giorni_lavorativi", "Finestra di chiusura (giorni lavorativi)"],
   ["soglia_frequenza_insolita", "Soglia frequenza conto insolito"],
 ];
 const WEIGHTS: [keyof JetParams, string, boolean?][] = [
@@ -131,6 +134,8 @@ const FLAG_NAMES: Record<string, string> = {
   flag_fuori_orario: "Fuori orario",
   flag_backdated: "Retrodatata",
   flag_forward_dating: "Anticipata",
+  flag_finestra_chiusura: "Finestra di chiusura",
+  flag_creata_dopo_chiusura: "Creata dopo chiusura",
   flag_staff_non_autorizzato: "Staff non autorizzato",
   flag_parte_correlata: "Parte correlata",
   flag_descrizione_vuota: "Descrizione vuota",
@@ -266,7 +271,13 @@ export function JetDashboard() {
   };
   const choose = async (p: JetPractice) => {
     setActive(p);
-    setParams(p.parametri || EMPTY);
+    const annoPeriodo = p.period.match(/\b(20\d{2})\b/)?.[1];
+    setParams(
+      p.parametri || {
+        ...EMPTY,
+        data_chiusura: `${annoPeriodo || new Date().getFullYear()}-12-31`,
+      },
+    );
     const soglia = p.parametri?.soglia_importo_cifra_tonda;
     setSogliaCifraTondaCustom(
       soglia !== null && soglia !== undefined &&
@@ -578,6 +589,18 @@ export function JetDashboard() {
                       setParams({
                         ...params,
                         orario_ufficio_inizio: e.target.value || null,
+                      })}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="Data di chiusura">
+                  <input
+                    type="date"
+                    value={params.data_chiusura || ""}
+                    onChange={(e) =>
+                      setParams({
+                        ...params,
+                        data_chiusura: e.target.value || null,
                       })}
                     className={inputClass}
                   />

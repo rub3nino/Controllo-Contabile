@@ -130,6 +130,23 @@ def valuta_riga(
         if base_periodo or parametri.festivita:
             festivita_periodo = sorted(set(base_periodo or []) | set(parametri.festivita or []))
 
+    festivita_chiusura = None
+    if (
+        parametri.paese is not None
+        and parametri.data_chiusura is not None
+        and riga.data_effettiva <= parametri.data_chiusura
+    ):
+        try:
+            base_chiusura = calendari.festivita(
+                parametri.paese, riga.data_effettiva.year, parametri.data_chiusura.year
+            )
+        except ValueError:
+            base_chiusura = None
+        if base_chiusura or parametri.festivita:
+            festivita_chiusura = sorted(
+                set(base_chiusura or []) | set(parametri.festivita or [])
+            )
+
     if (
         riga.ora_creazione is None
         or parametri.orario_ufficio_inizio is None
@@ -162,6 +179,35 @@ def valuta_riga(
             metodo_calcolo_backdating = "giorni_calendario"
         flag_backdated = scarto >= parametri.soglia_backdating_giorni
         flag_forward_dating = False
+
+    if (
+        parametri.data_chiusura is None
+        or parametri.finestra_chiusura_giorni_lavorativi is None
+        or parametri.paese is None
+    ):
+        flag_finestra_chiusura = None
+    elif riga.data_effettiva > parametri.data_chiusura:
+        flag_finestra_chiusura = False
+    elif festivita_chiusura is None:
+        flag_finestra_chiusura = None
+    else:
+        scarto_chiusura = calendari.giorni_lavorativi_tra(
+            riga.data_effettiva,
+            parametri.data_chiusura,
+            weekend_effettivo,
+            festivita_chiusura,
+        )
+        flag_finestra_chiusura = (
+            scarto_chiusura < parametri.finestra_chiusura_giorni_lavorativi
+        )
+
+    if riga.data_creazione is None or parametri.data_chiusura is None:
+        flag_creata_dopo_chiusura = None
+    else:
+        flag_creata_dopo_chiusura = (
+            riga.data_creazione > parametri.data_chiusura
+            and riga.data_effettiva <= parametri.data_chiusura
+        )
 
     if (
         parametri.staff_autorizzato is None
@@ -252,6 +298,8 @@ def valuta_riga(
         flag_backdated=flag_backdated,
         flag_forward_dating=flag_forward_dating,
         metodo_calcolo_backdating=metodo_calcolo_backdating,
+        flag_finestra_chiusura=flag_finestra_chiusura,
+        flag_creata_dopo_chiusura=flag_creata_dopo_chiusura,
         flag_staff_non_autorizzato=flag_staff_non_autorizzato,
         flag_parte_correlata=flag_parte_correlata,
         flag_descrizione_vuota=flag_descrizione_vuota,
