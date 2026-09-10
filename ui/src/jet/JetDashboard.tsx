@@ -35,6 +35,7 @@ const EMPTY: JetParams = {
   performance_materiality: null,
   utile_netto_dopo_imposte: null,
   valore_medio_registrazione: null,
+  soglia_importo_cifra_tonda: null,
   orario_ufficio_inizio: null,
   orario_ufficio_fine: null,
   giorni_weekend: null,
@@ -201,6 +202,7 @@ export function JetDashboard() {
   const [active, setActive] = useState<JetPractice | null>(null);
   const [create, setCreate] = useState({ client: "", period: "" });
   const [params, setParams] = useState<JetParams>(EMPTY);
+  const [sogliaCifraTondaCustom, setSogliaCifraTondaCustom] = useState(false);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [sources, setSources] = useState<JetSource[]>([]);
@@ -252,6 +254,11 @@ export function JetDashboard() {
   const choose = async (p: JetPractice) => {
     setActive(p);
     setParams(p.parametri || EMPTY);
+    const soglia = p.parametri?.soglia_importo_cifra_tonda;
+    setSogliaCifraTondaCustom(
+      soglia !== null && soglia !== undefined &&
+        ![10000, 100000, 1000000].includes(Number(soglia)),
+    );
     setResults([]);
     setError("");
     try {
@@ -498,6 +505,58 @@ export function JetDashboard() {
                     />
                   </Field>
                 ))}
+                <Field label="Soglia importo a cifra tonda">
+                  <div className="space-y-sm">
+                    <select
+                      value={
+                        sogliaCifraTondaCustom
+                          ? "custom"
+                          : params.soglia_importo_cifra_tonda === null
+                          ? ""
+                          : String(Number(params.soglia_importo_cifra_tonda))
+                      }
+                      onChange={(e) => {
+                        if (e.target.value === "custom") {
+                          setSogliaCifraTondaCustom(true);
+                          setParams({
+                            ...params,
+                            soglia_importo_cifra_tonda: null,
+                          });
+                          return;
+                        }
+                        setSogliaCifraTondaCustom(false);
+                        setParams({
+                          ...params,
+                          soglia_importo_cifra_tonda: Number(e.target.value),
+                        });
+                      }}
+                      className={inputClass}
+                    >
+                      <option value="" disabled>Seleziona una soglia</option>
+                      <option value="10000">10.000</option>
+                      <option value="100000">100.000</option>
+                      <option value="1000000">1.000.000</option>
+                      <option value="custom">Personalizzato</option>
+                    </select>
+                    {sogliaCifraTondaCustom && (
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={params.soglia_importo_cifra_tonda ?? ""}
+                        placeholder="Inserisci una soglia maggiore di zero"
+                        onChange={(e) =>
+                          setParams({
+                            ...params,
+                            soglia_importo_cifra_tonda: e.target.value === ""
+                              ? null
+                              : Number(e.target.value),
+                          })}
+                        className={inputClass}
+                      />
+                    )}
+                  </div>
+                </Field>
                 <Field label="Orario ufficio — inizio">
                   <input
                     type="time"

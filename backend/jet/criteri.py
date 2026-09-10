@@ -75,7 +75,11 @@ def valuta_riga(
         if parametri.performance_materiality is not None
         else None
     )
-    flag_importo_cifra_tonda = importo % Decimal(10) == 0
+    flag_importo_cifra_tonda = (
+        importo % parametri.soglia_importo_cifra_tonda == 0
+        if parametri.soglia_importo_cifra_tonda is not None
+        else None
+    )
     flag_weekend = (
         riga.data_effettiva.weekday() in parametri.giorni_weekend
         if parametri.giorni_weekend is not None

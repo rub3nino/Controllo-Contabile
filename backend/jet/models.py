@@ -79,6 +79,7 @@ class ParametriClienteJet(BaseModel):
     performance_materiality: Decimal | None = None
     utile_netto_dopo_imposte: Decimal | None = None
     valore_medio_registrazione: Decimal | None = None
+    soglia_importo_cifra_tonda: Decimal | None = Field(default=None, gt=0)
     orario_ufficio_inizio: time | None = None
     orario_ufficio_fine: time | None = None
     giorni_weekend: list[int] | None = None
@@ -134,7 +135,7 @@ class EsitoRigaJet(BaseModel):
     flag_profit_impact: bool | None
     flag_oltre_dieci_volte_media: bool | None
     flag_sopra_performance_materiality: bool | None
-    flag_importo_cifra_tonda: bool
+    flag_importo_cifra_tonda: bool | None
     flag_weekend: bool | None
     flag_festivita: bool | None
     flag_fuori_orario: bool | None

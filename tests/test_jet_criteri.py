@@ -20,6 +20,7 @@ def _parametri(**modifiche) -> ParametriClienteJet:
         performance_materiality=Decimal("700"),
         utile_netto_dopo_imposte=Decimal("1000"),
         valore_medio_registrazione=Decimal("10"),
+        soglia_importo_cifra_tonda=Decimal("10"),
         orario_ufficio_inizio=time(8, 30),
         orario_ufficio_fine=time(17),
         giorni_weekend=[5, 6],
@@ -88,6 +89,37 @@ def test_flag_non_calcolabili_restano_none_e_non_danno_punti():
     assert esito.flag_fuori_orario is None
     assert esito.flag_backdated is None
     assert esito.flag_staff_non_autorizzato is None
+    assert esito.punteggio_totale == 0
+
+
+@pytest.mark.parametrize(
+    ("soglia", "importo", "atteso"),
+    [
+        (Decimal("10000"), Decimal("100000"), True),
+        (Decimal("100000"), Decimal("10000"), False),
+    ],
+)
+def test_cifra_tonda_usa_la_soglia_configurata(soglia, importo, atteso):
+    esito = valuta_riga(
+        _riga(importo_netto=importo),
+        _parametri(soglia_importo_cifra_tonda=soglia),
+    )
+
+    assert esito.flag_importo_cifra_tonda is atteso
+
+
+def test_cifra_tonda_senza_soglia_non_e_calcolabile_e_non_da_punti():
+    esito = valuta_riga(
+        _riga(importo_netto=Decimal("100000")),
+        _parametri(
+            soglia_importo_cifra_tonda=None,
+            utile_netto_dopo_imposte=None,
+            valore_medio_registrazione=None,
+            performance_materiality=None,
+        ),
+    )
+
+    assert esito.flag_importo_cifra_tonda is None
     assert esito.punteggio_totale == 0
 
 

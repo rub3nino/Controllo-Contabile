@@ -97,7 +97,7 @@ def test_esito_accetta_flag_non_calcolabili_espliciti():
         flag_profit_impact=False,
         flag_oltre_dieci_volte_media=False,
         flag_sopra_performance_materiality=False,
-        flag_importo_cifra_tonda=False,
+        flag_importo_cifra_tonda=None,
         flag_weekend=False,
         flag_festivita=False,
         flag_fuori_orario=None,
@@ -112,3 +112,4 @@ def test_esito_accetta_flag_non_calcolabili_espliciti():
     assert esito.flag_fuori_orario is None
     assert esito.flag_backdated is None
     assert esito.flag_staff_non_autorizzato is None
+    assert esito.flag_importo_cifra_tonda is None
