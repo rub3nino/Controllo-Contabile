@@ -13,22 +13,24 @@ export default {
         // Atelier Document System — Token colore
         // ─────────────────────────────────────────────────────────────────────
 
-        // Superfici
+        // Superfici — code.html / Notion paper
         "surface": "#faf9f6",
         "surface-sidebar": "#f7f6f3",
         "surface-card": "#ffffff",
         "surface-hover": "#f1f1ef",
-        "surface-recessed": "#eaeae8",
+        "surface-recessed": "#eeede9",
         "surface-sidebar-hover": "#ebebea",
 
         // Bordi
-        "border-subtle": "#e5e5e3",
-        "border-muted": "#eaeae8",
+        "border-subtle": "#e9e8e4",
+        "border-muted": "#ecebe8",
+        "border-table": "#eeedea",
 
-        // Inchiostro / testo
-        "ink-primary": "#232321",
+        // Inchiostro
+        "ink-primary": "#2f3437",
         "ink-secondary": "#5f5e5b",
-        "ink-tertiary": "#9b9a97",
+        "ink-tertiary": "#787774",
+        "ink-body": "#37352f",
 
         // Accenti funzionali tenui (fill + testo abbinato)
         "tint-blue-bg": "#edf5f8",
@@ -91,6 +93,7 @@ export default {
       boxShadow: {
         // Unica ombra ammessa: dropdown/menu contestuali (livello 3)
         "dropdown": "0 1px 2px rgba(15,15,15,.04), 0 4px 12px rgba(15,15,15,.06)",
+        "xs": "0 1px 2px rgba(15,15,15,.04)",
         // Legacy (da rimuovere)
         "card": "0 1px 2px rgba(20,20,20,0.04), 0 8px 24px rgba(20,20,20,0.04)",
       },

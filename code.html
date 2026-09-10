@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+
+<html lang="it"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "notion-bg": "#faf9f6",
+            "notion-sidebar": "#f7f6f3",
+            "notion-sidebar-hover": "#ebebea",
+            "notion-border": "#e9e8e4",
+            "notion-border-subtle": "#ecebe8",
+            "notion-text": "#2f3437",
+            "notion-text-muted": "#787774",
+            "notion-text-subtle": "#9b9a97",
+            "notion-card": "#ffffff",
+            "notion-callout": "#f7f6f3",
+            "notion-green-bg": "#e6f4ea",
+            "notion-green-text": "#137333",
+            "notion-red-bg": "#fce8e6",
+            "notion-red-text": "#c5221f",
+            "notion-yellow-bg": "#fef7e0",
+            "notion-yellow-text": "#b06000",
+            "notion-gray-tag": "#f1f1ef",
+            "notion-blue-tag": "#e8f0fe",
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #37352f;
+      background-color: #faf9f6;
+    }
+    .notion-grid-bg {
+      background-color: #faf9f6;
+      background-image: radial-gradient(#d5d4d0 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #e3e2de;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #c8c7c3;
+    }
+    .notion-table th, .notion-table td {
+      border-bottom: 1px solid #eeedea;
+      border-right: 1px solid #eeedea;
+    }
+    .notion-table tr:hover td {
+      background-color: rgba(55, 53, 47, 0.025);
+    }
+  </style>
+</head>
+<body class="bg-[#faf9f6] text-[#37352f] antialiased min-h-screen flex selection:bg-[#cde4f7]">
+<!-- Notion Left Sidebar -->
+<aside class="fixed left-0 top-0 h-screen w-[260px] bg-[#f7f6f3] border-r border-[#e9e8e4] z-50 flex flex-col justify-between select-none">
+<div class="flex flex-col overflow-y-auto">
+<!-- Workspace Switcher / Header -->
+<div class="p-3">
+<div class="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-[#ebebea] cursor-pointer transition-colors group">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-6 h-6 rounded bg-[#2f3437] text-white flex items-center justify-center font-semibold text-xs shrink-0 shadow-sm">
+              Q
+            </div>
+<div class="flex flex-col min-w-0">
+<span class="text-xs font-semibold text-[#37352f] truncate leading-tight">Quadra Revisione</span>
+<span class="text-[10px] text-[#787774] truncate">SA Italia 250B · art. 2409-ter</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-[#9b9a97] group-hover:text-[#37352f]">unfold_more</span>
+</div>
+</div>
+<!-- Quick Action Jumpers -->
+<div class="px-2 space-y-0.5">
+<div class="flex items-center gap-2 px-2.5 py-1 text-xs text-[#787774] hover:bg-[#ebebea] rounded-md cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[16px]">search</span>
+<span>Cerca</span>
+<span class="ml-auto text-[10px] text-[#9b9a97] font-mono">⌘K</span>
+</div>
+<div class="flex items-center gap-2 px-2.5 py-1 text-xs text-[#787774] hover:bg-[#ebebea] rounded-md cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[16px]">update</span>
+<span>Aggiornamenti</span>
+</div>
+<div class="flex items-center gap-2 px-2.5 py-1 text-xs text-[#787774] hover:bg-[#ebebea] rounded-md cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[16px]">settings</span>
+<span>Impostazioni &amp; Membri</span>
+</div>
+</div>
+<!-- Sidebar Section: Procedure di Audit -->
+<div class="mt-4 px-2">
+<div class="flex items-center justify-between px-2.5 py-1 text-[11px] font-semibold tracking-wider text-[#9b9a97] uppercase">
+<span>Procedure di Audit</span>
+<span class="material-symbols-outlined text-[14px] hover:text-[#37352f] cursor-pointer">add</span>
+</div>
+<nav class="mt-1 space-y-0.5">
+<!-- Active Page -->
+<a class="flex items-center justify-between px-2 py-1.5 text-xs rounded-md bg-[#ebebea] text-[#37352f] font-medium group transition-colors" href="#">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-[16px] text-[#37352f]">fact_check</span>
+<span class="truncate">Controllo Contabile</span>
+</div>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#e0deda] text-[#55534e] font-mono">250B</span>
+</a>
+<!-- Inactive Pages -->
+<a class="flex items-center justify-between px-2 py-1.5 text-xs rounded-md text-[#787774] hover:bg-[#ebebea] hover:text-[#37352f] group transition-colors" href="#">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-[16px] text-[#9b9a97] group-hover:text-[#37352f]">account_balance</span>
+<span class="truncate">JET (ISA 240)</span>
+</div>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#f1f1ef] text-[#787774] group-hover:bg-[#e7e6e3]">Testing</span>
+</a>
+<a class="flex items-center justify-between px-2 py-1.5 text-xs rounded-md text-[#787774] hover:bg-[#ebebea] hover:text-[#37352f] group transition-colors" href="#">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-[16px] text-[#9b9a97] group-hover:text-[#37352f]">inventory_2</span>
+<span class="truncate">Sezione 3</span>
+</div>
+<span class="text-[10px] text-[#9b9a97]">In arrivo</span>
+</a>
+<a class="flex items-center justify-between px-2 py-1.5 text-xs rounded-md text-[#787774] hover:bg-[#ebebea] hover:text-[#37352f] group transition-colors" href="#">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-[16px] text-[#9b9a97] group-hover:text-[#37352f]">folder_supervised</span>
+<span class="truncate">Sezione 4</span>
+</div>
+<span class="text-[10px] text-[#9b9a97]">In arrivo</span>
+</a>
+<a class="flex items-center justify-between px-2 py-1.5 text-xs rounded-md text-[#787774] hover:bg-[#ebebea] hover:text-[#37352f] group transition-colors" href="#">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-[16px] text-[#9b9a97] group-hover:text-[#37352f]">history_edu</span>
+<span class="truncate">Sezione 5</span>
+</div>
+<span class="text-[10px] text-[#9b9a97]">In arrivo</span>
+</a>
+</nav>
+</div>
+<!-- Favorites / Quick Views -->
+<div class="mt-5 px-2">
+<div class="px-2.5 py-1 text-[11px] font-semibold tracking-wider text-[#9b9a97] uppercase">
+          Archivio Cartelle
+        </div>
+<div class="mt-1 space-y-0.5">
+<div class="flex items-center gap-2 px-2 py-1.5 text-xs text-[#787774] hover:bg-[#ebebea] hover:text-[#37352f] rounded-md cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[16px] text-[#9b9a97]">description</span>
+<span class="truncate">Verbali Collegio Sindacale</span>
+</div>
+<div class="flex items-center gap-2 px-2 py-1.5 text-xs text-[#787774] hover:bg-[#ebebea] hover:text-[#37352f] rounded-md cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[16px] text-[#9b9a97]">calculate</span>
+<span class="truncate">Riconciliazioni Q1 - Q2</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Sidebar Footer -->
+<div class="p-2 border-t border-[#e9e8e4] bg-[#f7f6f3]">
+<div class="px-2.5 py-2 rounded-md bg-[#eeede9] border border-[#e2e1dc] mb-1.5">
+<div class="text-[10px] font-medium text-[#787774] uppercase tracking-wider">Sessione di Revisione</div>
+<div class="text-xs font-semibold text-[#37352f] truncate flex items-center gap-1.5 mt-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+          Incarico Fiscale Attivo
+        </div>
+</div>
+<button class="w-full flex items-center justify-between px-2 py-1.5 text-xs text-[#787774] hover:bg-[#ebebea] hover:text-[#37352f] rounded-md transition-colors" type="button">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">dock_to_right</span>
+<span>Riduci Barra Laterale</span>
+</span>
+<span class="text-[10px] text-[#9b9a97] font-mono">⌥\</span>
+</button>
+</div>
+</aside>
+<!-- Notion Main Workspace Area -->
+<div class="pl-[260px] w-full min-h-screen flex flex-col">
+<!-- Top Notion App Bar -->
+<header class="sticky top-0 z-40 h-11 px-6 bg-[#faf9f6]/90 backdrop-blur-sm border-b border-[#ecebe8] flex items-center justify-between">
+<!-- Breadcrumb Hierarchy -->
+<nav aria-label="Percorso" class="flex items-center gap-1.5 text-xs text-[#787774]">
+<a class="hover:text-[#37352f] transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[15px]">corporate_fare</span>
+<span>Clienti</span>
+</a>
+<span class="text-[#c8c7c3]">/</span>
+<a class="hover:text-[#37352f] transition-colors truncate max-w-[200px]" href="#">
+          Manifatture Meccaniche Lombarde S.p.A.
+        </a>
+<span class="text-[#c8c7c3]">/</span>
+<span class="text-[#37352f] font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">assignment</span>
+          Verifica Trimestrale Q3 2024
+        </span>
+</nav>
+<!-- Right Header Actions (Notion Style) -->
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#f1f1ef] text-[#55534e] border border-[#e5e4df]">
+<span class="material-symbols-outlined text-[13px] text-emerald-700">verified</span>
+<span>Conforme ISA / SA Italia</span>
+</div>
+<div class="h-3.5 w-px bg-[#e3e2de]"></div>
+<button class="px-2 py-1 text-xs text-[#787774] hover:text-[#37352f] hover:bg-[#ebebea] rounded transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">ios_share</span>
+          Condividi
+        </button>
+<button class="px-2 py-1 text-xs text-[#787774] hover:text-[#37352f] hover:bg-[#ebebea] rounded transition-colors">
+<span class="material-symbols-outlined text-[16px]">more_horiz</span>
+</button>
+</div>
+</header>
+<!-- Notion Canvas Page with Dot-Grid Background -->
+<main class="flex-1 notion-grid-bg px-8 sm:px-12 lg:px-16 py-8">
+<div class="max-w-[1120px] mx-auto flex flex-col gap-6">
+<!-- Page Icon & Header Block -->
+<div class="flex flex-col gap-3 group">
+<!-- Page Icon -->
+<div class="flex items-center justify-between">
+<div class="w-12 h-12 rounded-lg bg-white border border-[#e9e8e4] shadow-sm flex items-center justify-center text-2xl cursor-pointer hover:bg-[#f7f6f3] transition-colors" title="Icona di pagina">
+              📑
+            </div>
+<div class="flex items-center gap-1.5">
+<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-[#f1f1ef] text-[#787774] border border-[#e5e4e0]">
+                Rif. SA Italia 250B
+              </span>
+<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-[#f1f1ef] text-[#787774] border border-[#e5e4e0]">
+                D.Lgs. 39/2010
+              </span>
+</div>
+</div>
+<!-- Title -->
+<div class="flex flex-col gap-1">
+<h1 class="text-3xl font-bold text-[#2f3437] tracking-tight flex items-baseline gap-3">
+              Manifatture Meccaniche Lombarde S.p.A. — Verifica ex art. 2409-ter c.c.
+            </h1>
+<div class="flex flex-wrap items-center gap-2 pt-1 text-xs text-[#787774]">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#f1f1ef] text-[#55534e] font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                In corso · 7/9 sezioni completate
+              </span>
+<span class="text-[#c8c7c3]">·</span>
+<span>Codice Pratica: <strong class="font-mono text-[#37352f]">REV-2024-MML-003</strong></span>
+<span class="text-[#c8c7c3]">·</span>
+<span>Periodo: <strong class="text-[#37352f]">01/07/2024 – 30/09/2024</strong></span>
+<span class="text-[#c8c7c3]">·</span>
+<span>Organo: <strong class="text-[#37352f]">Collegio Sindacale</strong></span>
+</div>
+</div>
+<!-- Page Toolbar / Quick Actions -->
+<div class="flex flex-wrap items-center justify-between gap-3 pt-2 pb-1 border-b border-[#eeede9]">
+<div class="flex items-center gap-1.5">
+<button class="px-2.5 py-1 text-xs text-[#55534e] hover:text-[#2f3437] hover:bg-[#ebebea] border border-[#e3e2de] rounded-md transition-colors flex items-center gap-1.5 bg-white shadow-xs" id="btn-toggle-docs">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">folder_open</span>
+<span>Storico Documenti (8 file)</span>
+</button>
+<button class="px-2.5 py-1 text-xs text-[#55534e] hover:text-[#2f3437] hover:bg-[#ebebea] border border-[#e3e2de] rounded-md transition-colors flex items-center gap-1.5 bg-white shadow-xs">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">file_download</span>
+<span>Esporta in Excel (.xlsx)</span>
+</button>
+</div>
+<button class="px-3 py-1 text-xs font-medium bg-[#2f3437] text-white hover:bg-[#1a1c1b] rounded-md transition-colors flex items-center gap-1.5 shadow-xs">
+<span class="material-symbols-outlined text-[15px]">add</span>
+<span>Nuova Verifica</span>
+</button>
+</div>
+</div>
+<!-- Notion Callout Metric Cards Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+<!-- Card 1: Conformi (Callout Style) -->
+<div class="p-3.5 rounded-md bg-[#f7f6f3] border border-[#e9e8e4] flex items-start gap-3 transition-colors hover:border-[#dfdeda]">
+<div class="w-8 h-8 rounded bg-[#e6f4ea] text-[#137333] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">task_alt</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-baseline justify-between">
+<span class="text-[11px] font-medium uppercase tracking-wider text-[#787774]">Carte Verificate</span>
+<span class="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#e6f4ea] text-[#137333]">78%</span>
+</div>
+<div class="text-xl font-bold text-[#2f3437] mt-0.5 font-mono">7 <span class="text-xs font-normal text-[#787774]">/ 9</span></div>
+<p class="text-[11px] text-[#787774] mt-0.5 truncate">Nessun rilievo bloccante</p>
+</div>
+</div>
+<!-- Card 2: Anomalie (Callout Alert Style) -->
+<div class="p-3.5 rounded-md bg-[#fff7f6] border border-[#f5c6cb]/60 flex items-start gap-3 transition-colors hover:border-[#f5c6cb]">
+<div class="w-8 h-8 rounded bg-[#fce8e6] text-[#c5221f] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-baseline justify-between">
+<span class="text-[11px] font-medium uppercase tracking-wider text-[#787774]">Anomalie Rilevate</span>
+<span class="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#fce8e6] text-[#c5221f]">Riconciliazione</span>
+</div>
+<div class="text-xl font-bold text-[#c5221f] mt-0.5 font-mono">1</div>
+<p class="text-[11px] text-[#787774] mt-0.5 truncate">Scostamento c/c non pareggiato</p>
+</div>
+</div>
+<!-- Card 3: In Sospeso / Mancanti -->
+<div class="p-3.5 rounded-md bg-[#fffcf5] border border-[#fde68a]/60 flex items-start gap-3 transition-colors hover:border-[#fde68a]">
+<div class="w-8 h-8 rounded bg-[#fef7e0] text-[#b06000] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">pending</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-baseline justify-between">
+<span class="text-[11px] font-medium uppercase tracking-wider text-[#787774]">In Sospeso</span>
+<span class="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#fef7e0] text-[#b06000]">In attesa</span>
+</div>
+<div class="text-xl font-bold text-[#b06000] mt-0.5 font-mono">1</div>
+<p class="text-[11px] text-[#787774] mt-0.5 truncate">Valorizzazione magazzino LIFO</p>
+</div>
+</div>
+<!-- Card 4: Sincronizzazione -->
+<div class="p-3.5 rounded-md bg-[#f7f6f3] border border-[#e9e8e4] flex items-start gap-3 transition-colors hover:border-[#dfdeda]">
+<div class="w-8 h-8 rounded bg-[#e8eaed] text-[#5f6368] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-baseline justify-between">
+<span class="text-[11px] font-medium uppercase tracking-wider text-[#787774]">Ultima Sincronia</span>
+<span class="text-[10px] text-[#9b9a97] font-mono">11:42 CET</span>
+</div>
+<div class="text-base font-semibold text-[#2f3437] mt-0.5 font-mono">18 Ott 2024</div>
+<p class="text-[11px] text-[#787774] mt-0.5 truncate">Libro Giornale Q3 da SAP</p>
+</div>
+</div>
+</div>
+<!-- Notion Database Table Section: Carte di Lavoro -->
+<section class="flex flex-col bg-white rounded-lg border border-[#e9e8e4] shadow-xs overflow-hidden">
+<!-- Database View Header -->
+<div class="px-4 py-2.5 border-b border-[#e9e8e4] flex flex-wrap items-center justify-between gap-3 bg-[#faf9f7]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-[#787774]">table_chart</span>
+<h2 class="text-sm font-semibold text-[#2f3437]">
+                Carte di Lavoro Programmate (Sezioni A – I)
+              </h2>
+<span class="text-xs text-[#9b9a97] font-normal hidden md:inline">· Presidio continuo tenuta contabilità sociale</span>
+</div>
+<!-- Notion Database Toolbar (Views, Filter, Sort) -->
+<div class="flex items-center gap-1.5 text-xs">
+<div class="flex items-center bg-[#f1f1ef] p-0.5 rounded border border-[#e3e2de]">
+<button class="px-2 py-0.5 rounded bg-white text-[#2f3437] font-medium shadow-xs text-xs" type="button">
+                  Tutte (9)
+                </button>
+<button class="px-2 py-0.5 rounded text-[#787774] hover:text-[#2f3437] transition-colors text-xs" type="button">
+                  Critiche (2)
+                </button>
+<button class="px-2 py-0.5 rounded text-[#787774] hover:text-[#2f3437] transition-colors text-xs" type="button">
+                  Conformi (7)
+                </button>
+</div>
+<button class="px-2 py-1 text-[#787774] hover:bg-[#ebebea] hover:text-[#2f3437] rounded transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">filter_list</span>
+<span>Filtra</span>
+</button>
+<button class="px-2 py-1 text-[#787774] hover:bg-[#ebebea] hover:text-[#2f3437] rounded transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">swap_vert</span>
+<span>Ordina</span>
+</button>
+</div>
+</div>
+<!-- Notion Style Database Table View -->
+<div class="overflow-x-auto">
+<table class="w-full border-collapse text-left text-xs notion-table">
+<thead>
+<tr class="bg-[#f7f6f3] text-[#787774] font-medium">
+<th class="py-2 px-3 w-12 text-center font-mono uppercase tracking-wider text-[11px]">
+                    Sez.
+                  </th>
+<th class="py-2 px-3 min-w-[220px] font-normal">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">text_fields</span>
+<span>Ambito di Controllo Contabile</span>
+</span>
+</th>
+<th class="py-2 px-3 min-w-[230px] font-normal">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+<span>Esito &amp; Note di Revisione</span>
+</span>
+</th>
+<th class="py-2 px-3 min-w-[210px] font-normal">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">attach_file</span>
+<span>Fonte Documentale Collegata</span>
+</span>
+</th>
+<th class="py-2 px-3 w-32 text-right font-normal">
+<span class="flex items-center justify-end gap-1.5">
+<span class="material-symbols-outlined text-[14px]">tag</span>
+<span>Scostamento</span>
+</span>
+</th>
+<th class="py-2 px-3 w-24 text-center font-normal">
+<span>Azione</span>
+</th>
+</tr>
+</thead>
+<tbody class="divide-y-0 text-[#2f3437]">
+<!-- Row A: Saldi Iniziali -->
+<tr>
+<td class="py-2.5 px-3 text-center font-mono font-medium text-[#787774]">A</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#2f3437] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">account_balance_wallet</span>
+<span>Saldi Iniziali e Continuità</span>
+</div>
+<div class="text-[11px] text-[#787774] pl-5">Quadratura apertura vs bilancio 31/12/2023</div>
+</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#e6f4ea] text-[#137333]">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Conforme · Ripresa saldi regolare
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#37352f] truncate">Bilancio Chiusura 2023 + Libro Giornale Q1-Q3</div>
+<div class="text-[10px] text-[#9b9a97] font-mono">Protocollo SAP #GL-2024-001</div>
+</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-[#37352f]">
+                    € 0,00
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<button class="px-2 py-1 text-[11px] rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+                      Apri
+                    </button>
+</td>
+</tr>
+<!-- Row B: Riconciliazioni Bancarie (Notion Anomaly Highlight) -->
+<tr class="bg-[#fff9f9]">
+<td class="py-2.5 px-3 text-center font-mono font-semibold text-[#c5221f]">B</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#2f3437] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-[#c5221f]">receipt_long</span>
+<span>Riconciliazioni Bancarie</span>
+</div>
+<div class="text-[11px] text-[#787774] pl-5">Quadratura estratti conto trimestrali con mastri</div>
+</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#fce8e6] text-[#c5221f]">
+<span class="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+                      Anomalia: Disallineamento c/c Intesa Sanpaolo
+                    </span>
+<div class="text-[11px] text-[#c5221f] mt-0.5 pl-1">Scostamento non pareggiato vs mastro 100201</div>
+</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#37352f] truncate">Estratto conto scalare PDF + Mastro 100201</div>
+<div class="text-[10px] text-[#9b9a97] font-mono">IBAN IT92B0306909606100000012345</div>
+</td>
+<td class="py-2.5 px-3 text-right font-mono font-bold text-[#c5221f]">
+                    + € 1.420,50
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<button class="px-2 py-1 text-[11px] rounded font-medium bg-[#fce8e6] text-[#c5221f] hover:bg-[#fad2cf] transition-colors" type="button">
+                      Ispeziona
+                    </button>
+</td>
+</tr>
+<!-- Row C: F24 e Deleghe -->
+<tr>
+<td class="py-2.5 px-3 text-center font-mono font-medium text-[#787774]">C</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#2f3437] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">payments</span>
+<span>F24 e Deleghe di Pagamento</span>
+</div>
+<div class="text-[11px] text-[#787774] pl-5">Ritenute lavoro dipendente, autonomo e INPS/INAIL</div>
+</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#e6f4ea] text-[#137333]">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Conforme · Quietanzati 12 F24 trimestrali
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#37352f] truncate">Cassetto Fiscale Agenzia Entrate</div>
+<div class="text-[10px] text-[#9b9a97]">Confronto archivio Entratel completato</div>
+</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-[#37352f]">
+                    € 0,00
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<button class="px-2 py-1 text-[11px] rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+                      Apri
+                    </button>
+</td>
+</tr>
+<!-- Row D: IVA Periodica -->
+<tr>
+<td class="py-2.5 px-3 text-center font-mono font-medium text-[#787774]">D</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#2f3437] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">request_quote</span>
+<span>IVA Periodica e Liquidazioni</span>
+</div>
+<div class="text-[11px] text-[#787774] pl-5">Controllo registri IVA vendite/acquisti e LIPE Q3</div>
+</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#e6f4ea] text-[#137333]">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Conforme · Liquidazione a debito versata
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#37352f] truncate">Registri IVA Vendite / Acquisti Q3</div>
+<div class="text-[10px] text-[#9b9a97] font-mono">Mastro Erario c/IVA n. 210100</div>
+</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-[#37352f]">
+                    € 0,00
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<button class="px-2 py-1 text-[11px] rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+                      Apri
+                    </button>
+</td>
+</tr>
+<!-- Row E: Debiti verso dipendenti e TFR -->
+<tr>
+<td class="py-2.5 px-3 text-center font-mono font-medium text-[#787774]">E</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#2f3437] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">groups</span>
+<span>Debiti Dipendenti &amp; Fondo TFR</span>
+</div>
+<div class="text-[11px] text-[#787774] pl-5">Corrispondenza Libro Unico Lavoro, paghe e accantonamenti</div>
+</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#e6f4ea] text-[#137333]">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Conforme · Salari regolarmente liquidati
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#37352f] truncate">Prospetti Paghe Luglio-Settembre + LUL</div>
+<div class="text-[10px] text-[#9b9a97]">Certificazione Consulente del Lavoro</div>
+</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-[#37352f]">
+                    € 0,00
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<button class="px-2 py-1 text-[11px] rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+                      Apri
+                    </button>
+</td>
+</tr>
+<!-- Row F: Rimanenze di Magazzino (Pending) -->
+<tr class="bg-[#fffdf7]">
+<td class="py-2.5 px-3 text-center font-mono font-medium text-[#b06000]">F</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#2f3437] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-[#b06000]">warehouse</span>
+<span>Rimanenze e Valorizzazione</span>
+</div>
+<div class="text-[11px] text-[#787774] pl-5">Test continuità criteri di valutazione materie prime</div>
+</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#fef7e0] text-[#b06000]">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                      Da verificare · Attesa prospetto LIFO
+                    </span>
+<div class="text-[11px] text-[#b06000] mt-0.5 pl-1">Manca attestazione del responsabile</div>
+</td>
+<td class="py-2.5 px-3">
+<div class="text-[#787774] italic">Documento mancante · Da caricare</div>
+<div class="text-[10px] text-[#9b9a97]">Richiesta inoltrata al CFO il 15/10</div>
+</td>
+<td class="py-2.5 px-3 text-right font-mono text-[#9b9a97]">
+                    —
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<button class="px-2 py-1 text-[11px] rounded font-medium bg-[#fef7e0] text-[#b06000] hover:bg-[#fdeec4] transition-colors flex items-center justify-center gap-1 mx-auto" type="button">
+<span class="material-symbols-outlined text-[13px]">upload_file</span>
+<span>Sollecita</span>
+</button>
+</td>
+</tr>
+<!-- Row G: Crediti Commerciali -->
+<tr>
+<td class="py-2.5 px-3 text-center font-mono font-medium text-[#787774]">G</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#2f3437] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">person_search</span>
+<span>Crediti Commerciali &amp; Svalutazione</span>
+</div>
+<div class="text-[11px] text-[#787774] pl-5">Analisi anzianità scaduto (aging) e fondo svalutazione</div>
+</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#e6f4ea] text-[#137333]">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Conforme · Fondo capiente ex art. 2426 c.c.
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#37352f] truncate">Partitario Clienti e Tabella Aging Q3</div>
+<div class="text-[10px] text-[#9b9a97]">Crediti deteriorati sotto soglia tolleranza</div>
+</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-[#37352f]">
+                    € 0,00
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<button class="px-2 py-1 text-[11px] rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+                      Apri
+                    </button>
+</td>
+</tr>
+<!-- Row H: Cassa Contanti -->
+<tr>
+<td class="py-2.5 px-3 text-center font-mono font-medium text-[#787774]">H</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#2f3437] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">point_of_sale</span>
+<span>Cassa Contanti e Prima Nota</span>
+</div>
+<div class="text-[11px] text-[#787774] pl-5">Verifica fisica e quadratura saldi cassa sede e filiali</div>
+</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#e6f4ea] text-[#137333]">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Conforme · Saldo fisico coincidente
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#37352f] truncate">Verbale Verifica Cassa del 30/09/2024</div>
+<div class="text-[10px] text-[#9b9a97]">Firmato dal cassiere e dal Sindaco Effettivo</div>
+</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-[#37352f]">
+                    € 0,00
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<button class="px-2 py-1 text-[11px] rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+                      Apri
+                    </button>
+</td>
+</tr>
+<!-- Row I: Libri Sociali Obbligatori -->
+<tr>
+<td class="py-2.5 px-3 text-center font-mono font-medium text-[#787774]">I</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#2f3437] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">menu_book</span>
+<span>Libri Sociali Obbligatori</span>
+</div>
+<div class="text-[11px] text-[#787774] pl-5">Aggiornamento Verbali CdA, Assemblee e Sindaci</div>
+</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#e6f4ea] text-[#137333]">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Conforme · Verbali regolarmente trascritti
+                    </span>
+</td>
+<td class="py-2.5 px-3">
+<div class="font-medium text-[#37352f] truncate">Estratto Libro Verbali CdA Q3 (4 riunioni)</div>
+<div class="text-[10px] text-[#9b9a97]">Bollatura notarile e fogli verificate</div>
+</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-[#37352f]">
+                    € 0,00
+                  </td>
+<td class="py-2.5 px-3 text-center">
+<button class="px-2 py-1 text-[11px] rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+                      Apri
+                    </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Bottom Table Bar: Quick Record Add -->
+<div class="px-4 py-2 bg-[#f7f6f3]/60 border-t border-[#e9e8e4] flex items-center justify-between text-xs text-[#787774]">
+<button class="flex items-center gap-1.5 hover:text-[#2f3437] transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>Nuova riga di controllo</span>
+</button>
+<span class="font-mono text-[11px] text-[#9b9a97]">9 record totali</span>
+</div>
+</section>
+<!-- Notion Database / Gallery List: Storico Documenti -->
+<section class="flex flex-col bg-white rounded-lg border border-[#e9e8e4] p-4 shadow-xs transition-colors" id="docs-drawer">
+<div class="flex flex-wrap items-center justify-between gap-3 mb-3 pb-2.5 border-b border-[#e9e8e4]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-[#787774]">folder_shared</span>
+<div>
+<h3 class="text-sm font-semibold text-[#2f3437]">
+                  Storico Documenti Caricati per la Pratica
+                </h3>
+<p class="text-xs text-[#787774]">
+                  File di supporto probatorio archiviati per la verifica Q3 2024 · Totale: 8 allegati acquisiti
+                </p>
+</div>
+</div>
+<button class="px-2.5 py-1 text-xs font-medium bg-[#f1f1ef] text-[#37352f] hover:bg-[#e6e5e2] border border-[#e2e1dc] rounded-md transition-colors flex items-center gap-1.5 shadow-xs" type="button">
+<span class="material-symbols-outlined text-[15px] text-[#787774]">cloud_upload</span>
+<span>Carica Allegato Tecnico</span>
+</button>
+</div>
+<!-- Document Rows Table (Notion List/Database View) -->
+<div class="overflow-x-auto">
+<table class="w-full border-collapse text-left text-xs notion-table">
+<thead>
+<tr class="bg-[#f7f6f3] text-[#787774] font-medium">
+<th class="py-2 px-3 font-normal">Nome File</th>
+<th class="py-2 px-3 font-normal w-36">Data e Ora</th>
+<th class="py-2 px-3 font-normal w-40">Tipologia</th>
+<th class="py-2 px-3 font-normal text-right w-32">Righe Estratte</th>
+<th class="py-2 px-3 font-normal w-36">Stato Parsing</th>
+<th class="py-2 px-3 font-normal text-center w-20">Download</th>
+</tr>
+</thead>
+<tbody class="text-[#2f3437]">
+<tr>
+<td class="py-2 px-3">
+<div class="flex items-center gap-2 font-medium text-[#2f3437]">
+<span class="material-symbols-outlined text-[17px] text-[#e05252]">picture_as_pdf</span>
+<span class="truncate">Estratto_Conto_Intesa_Q3.pdf</span>
+</div>
+</td>
+<td class="py-2 px-3 font-mono text-[11px] text-[#787774]">18/10/2024 · 09:15</td>
+<td class="py-2 px-3">
+<span class="px-1.5 py-0.5 rounded text-[11px] bg-[#f1f1ef] text-[#55534e] border border-[#e5e4df]">
+                      Estratto Scalare
+                    </span>
+</td>
+<td class="py-2 px-3 text-right font-mono text-[11px]">412</td>
+<td class="py-2 px-3">
+<span class="inline-flex items-center gap-1 text-[11px] text-[#137333]">
+<span class="material-symbols-outlined text-[13px]">check</span>
+                      100% estratto
+                    </span>
+</td>
+<td class="py-2 px-3 text-center">
+<button aria-label="Scarica" class="p-1 rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px]">download</span>
+</button>
+</td>
+</tr>
+<tr>
+<td class="py-2 px-3">
+<div class="flex items-center gap-2 font-medium text-[#2f3437]">
+<span class="material-symbols-outlined text-[17px] text-[#d97706]">folder_zip</span>
+<span class="truncate">F24_Quietanzati_Lug_Set2024.zip</span>
+</div>
+</td>
+<td class="py-2 px-3 font-mono text-[11px] text-[#787774]">17/10/2024 · 16:30</td>
+<td class="py-2 px-3">
+<span class="px-1.5 py-0.5 rounded text-[11px] bg-[#f1f1ef] text-[#55534e] border border-[#e5e4df]">
+                      F24 Quietanzati
+                    </span>
+</td>
+<td class="py-2 px-3 text-right font-mono text-[11px]">12 quietanze</td>
+<td class="py-2 px-3">
+<span class="inline-flex items-center gap-1 text-[11px] text-[#137333]">
+<span class="material-symbols-outlined text-[13px]">check</span>
+                      100% estratto
+                    </span>
+</td>
+<td class="py-2 px-3 text-center">
+<button aria-label="Scarica" class="p-1 rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px]">download</span>
+</button>
+</td>
+</tr>
+<tr>
+<td class="py-2 px-3">
+<div class="flex items-center gap-2 font-medium text-[#2f3437]">
+<span class="material-symbols-outlined text-[17px] text-[#0f9d58]">table_view</span>
+<span class="truncate">Libro_Giornale_SAP_2024.xlsx</span>
+</div>
+</td>
+<td class="py-2 px-3 font-mono text-[11px] text-[#787774]">16/10/2024 · 14:05</td>
+<td class="py-2 px-3">
+<span class="px-1.5 py-0.5 rounded text-[11px] bg-[#f1f1ef] text-[#55534e] border border-[#e5e4df]">
+                      Prima Nota Generale
+                    </span>
+</td>
+<td class="py-2 px-3 text-right font-mono text-[11px]">18.420</td>
+<td class="py-2 px-3">
+<span class="inline-flex items-center gap-1 text-[11px] text-[#137333]">
+<span class="material-symbols-outlined text-[13px]">check</span>
+                      100% verificato
+                    </span>
+</td>
+<td class="py-2 px-3 text-center">
+<button aria-label="Scarica" class="p-1 rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px]">download</span>
+</button>
+</td>
+</tr>
+<tr>
+<td class="py-2 px-3">
+<div class="flex items-center gap-2 font-medium text-[#2f3437]">
+<span class="material-symbols-outlined text-[17px] text-[#4285f4]">description</span>
+<span class="truncate">LIPE_III_Trimestre_Ricevuta_AdE.pdf</span>
+</div>
+</td>
+<td class="py-2 px-3 font-mono text-[11px] text-[#787774]">15/10/2024 · 18:22</td>
+<td class="py-2 px-3">
+<span class="px-1.5 py-0.5 rounded text-[11px] bg-[#f1f1ef] text-[#55534e] border border-[#e5e4df]">
+                      Comunicazione LIPE
+                    </span>
+</td>
+<td class="py-2 px-3 text-right font-mono text-[11px]">1 invio</td>
+<td class="py-2 px-3">
+<span class="inline-flex items-center gap-1 text-[11px] text-[#137333]">
+<span class="material-symbols-outlined text-[13px]">check</span>
+                      100% estratto
+                    </span>
+</td>
+<td class="py-2 px-3 text-center">
+<button aria-label="Scarica" class="p-1 rounded text-[#787774] hover:text-[#2f3437] hover:bg-[#ebebea] transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px]">download</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- Smooth focus scroll script -->
+<script>
+    (function() {
+      var toggleBtn = document.getElementById('btn-toggle-docs');
+      var drawer = document.getElementById('docs-drawer');
+      if (toggleBtn && drawer) {
+        toggleBtn.addEventListener('click', function() {
+          drawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          drawer.classList.add('ring-2', 'ring-[#2f3437]/20');
+          setTimeout(function() {
+            drawer.classList.remove('ring-2', 'ring-[#2f3437]/20');
+          }, 1200);
+        });
+      }
+    })();
+  </script>
+</body></html>

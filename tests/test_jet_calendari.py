@@ -9,6 +9,7 @@ from backend.jet.calendari import (
     FESTIVITA_PER_PAESE,
     WEEKEND_PER_PAESE,
     festivita,
+    giorni_lavorativi_tra,
     giorni_weekend,
 )
 
@@ -60,3 +61,30 @@ def test_range_non_disponibile_o_invertito_solleva_value_error():
         festivita("IT", 2023, 2024)
     with pytest.raises(ValueError, match="anno_da"):
         festivita("IT", 2026, 2025)
+
+
+def test_giorni_lavorativi_tra_stessa_data_restituisce_zero():
+    assert giorni_lavorativi_tra(date(2026, 1, 7), date(2026, 1, 7), [5, 6], []) == 0
+
+
+def test_giorni_lavorativi_tra_attraversa_il_weekend():
+    assert giorni_lavorativi_tra(date(2026, 1, 9), date(2026, 1, 12), [5, 6], []) == 1
+
+
+def test_giorni_lavorativi_tra_esclude_una_festivita_nazionale():
+    senza_festivita = giorni_lavorativi_tra(
+        date(2026, 12, 23), date(2026, 12, 28), [5, 6], []
+    )
+    con_festivita = giorni_lavorativi_tra(
+        date(2026, 12, 23),
+        date(2026, 12, 28),
+        [5, 6],
+        festivita("IT", 2026, 2026),
+    )
+
+    assert con_festivita == senza_festivita - 1
+
+
+def test_giorni_lavorativi_tra_rifiuta_intervallo_invertito():
+    with pytest.raises(ValueError, match="data_a"):
+        giorni_lavorativi_tra(date(2026, 1, 8), date(2026, 1, 7), [5, 6], [])

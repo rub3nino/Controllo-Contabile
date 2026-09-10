@@ -19,7 +19,7 @@ interface NavItem {
   label: string;
   icon: string;
   badge?: string;
-  badgeType?: "neutral" | "muted";
+  badgeType?: "neutral" | "muted" | "blue" | "yellow";
 }
 
 interface ArchiveItem {
@@ -48,7 +48,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "JET (ISA 240)",
     icon: "account_balance",
     badge: "Testing",
-    badgeType: "neutral",
+    badgeType: "blue",
   },
   {
     id: "sezione-3",
@@ -74,11 +74,8 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const ARCHIVE_ITEMS: ArchiveItem[] = [
-  {
-    id: "verbali",
-    label: "Verbali Collegio Sindacale",
-    icon: "gavel",
-  },
+  { id: "verbali", label: "Verbali Collegio Sindacale", icon: "description" },
+  { id: "riconciliazioni", label: "Riconciliazioni Q1 - Q2", icon: "calculate" },
 ];
 
 const STORAGE_KEY = "quadra-sidebar-collapsed";
@@ -92,28 +89,32 @@ function NavButton({
   active,
   onClick,
   title,
+  disabled,
 }: {
   icon: string;
   label: string;
   badge?: string;
-  badgeType?: "neutral" | "muted";
+  badgeType?: "neutral" | "muted" | "blue" | "yellow";
   collapsed: boolean;
   active?: boolean;
   onClick?: () => void;
   title?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      title={collapsed ? title || label : undefined}
+      disabled={disabled}
+      title={title || (collapsed ? label : undefined)}
       className={`
-        w-full flex items-center gap-3 rounded-md
+        w-full flex items-center gap-2 rounded-md text-xs
         transition-colors
-        ${collapsed ? "justify-center px-2 py-2" : "px-3 py-1.5"}
+        ${collapsed ? "justify-center px-2 py-2" : "px-2 py-1.5"}
+        ${disabled ? "opacity-60 cursor-default hover:bg-transparent hover:text-ink-secondary" : ""}
         ${
           active
-            ? "bg-surface-sidebar-hover text-ink-primary"
+            ? "bg-surface-sidebar-hover text-ink-primary font-medium"
             : "text-ink-secondary hover:bg-surface-sidebar-hover hover:text-ink-primary"
         }
       `}
@@ -125,15 +126,21 @@ function NavButton({
       />
       {!collapsed && (
         <>
-          <span className="flex-1 text-left text-[13px] font-medium truncate">{label}</span>
+          <span className="flex-1 text-left truncate">{label}</span>
           {badge && (
             <span
               className={`
-                text-[11px] px-1.5 py-0.5 rounded
+                text-[10px] px-1.5 py-0.5 rounded font-mono
                 ${
                   badgeType === "muted"
                     ? "text-ink-tertiary"
-                    : "bg-tint-gray-bg text-tint-gray-text"
+                    : badgeType === "blue"
+                      ? "bg-[#e7f3f8] text-[#337ea9]"
+                      : badgeType === "yellow"
+                        ? "bg-[#fbf3db] text-[#9f6b00]"
+                    : active
+                      ? "bg-[#e0deda] text-[#55534e]"
+                      : "bg-surface-hover text-ink-secondary"
                 }
               `}
             >
@@ -174,17 +181,20 @@ export function Sidebar({ activeSection, onSectionChange, onSearch }: SidebarPro
           ${collapsed ? "justify-center" : ""}
         `}
       >
-        <div className="w-7 h-7 rounded bg-ink-primary flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-[13px] font-semibold">Q</span>
+        <div className="w-6 h-6 rounded bg-ink-primary text-white flex items-center justify-center font-semibold text-xs shrink-0 shadow-xs">
+          Q
         </div>
         {!collapsed && (
-          <div className="min-w-0">
-            <div className="text-[13px] font-semibold text-ink-primary truncate leading-tight">
-              Quadra Revisione
+          <div className="flex items-center justify-between flex-1 min-w-0 gap-2">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-ink-body truncate leading-tight">
+                Quadra Revisione
+              </div>
+              <div className="text-xs text-ink-secondary truncate">
+                SA Italia 250B · art. 2409-ter
+              </div>
             </div>
-            <div className="text-[11px] text-ink-tertiary truncate">
-              SA Italia 250B · art. 2409-ter
-            </div>
+            <Icon name="unfold_more" size="sm" className="text-ink-tertiary shrink-0" />
           </div>
         )}
       </div>
@@ -196,13 +206,15 @@ export function Sidebar({ activeSection, onSectionChange, onSearch }: SidebarPro
             <NavButton
               icon="search"
               label="Cerca"
+              badge="⌘K"
+              badgeType="muted"
               collapsed={collapsed}
               onClick={onSearch}
             />
           </li>
           <li>
             <NavButton
-              icon="notifications_none"
+              icon="update"
               label="Aggiornamenti"
               collapsed={collapsed}
             />
@@ -264,9 +276,11 @@ export function Sidebar({ activeSection, onSectionChange, onSearch }: SidebarPro
               <NavButton
                 icon={item.icon}
                 label={item.label}
+                collapsed={collapsed}
+                disabled
+                title="In arrivo — non ancora collegato"
                 badge="In arrivo"
                 badgeType="muted"
-                collapsed={collapsed}
               />
             </li>
           ))}
@@ -274,32 +288,33 @@ export function Sidebar({ activeSection, onSectionChange, onSearch }: SidebarPro
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto border-t border-border-muted">
-        <div className={`px-3 py-3 ${collapsed ? "text-center" : ""}`}>
-          {collapsed ? (
-            <div className="w-2 h-2 rounded-full bg-status-green-text mx-auto" title="Sessione attiva" />
-          ) : (
-            <>
-              <div className="text-[12px] text-ink-secondary mb-1">Sessione di Revisione</div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-status-green-text flex-shrink-0" />
-                <span className="text-[12px] text-ink-primary truncate">Incarico Fiscale Attivo</span>
-              </div>
-            </>
-          )}
-        </div>
+      <div className="p-2 border-t border-border-subtle bg-surface-sidebar">
+        {!collapsed && (
+          <div className="px-2.5 py-2 rounded-md bg-[#eeede9] border border-[#e2e1dc] mb-1.5">
+            <div className="text-[10px] font-medium text-ink-secondary uppercase tracking-wider">
+              Sessione di Revisione
+            </div>
+            <div className="text-xs font-semibold text-ink-body truncate flex items-center gap-1.5 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+              Incarico Fiscale Attivo
+            </div>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
           className={`
-            w-full flex items-center gap-2 px-3 py-2.5
-            text-ink-secondary hover:text-ink-primary hover:bg-surface-sidebar-hover
-            transition-colors
+            w-full flex items-center justify-between px-2 py-1.5 text-xs
+            text-ink-secondary hover:bg-surface-sidebar-hover hover:text-ink-primary
+            rounded-md transition-colors
             ${collapsed ? "justify-center" : ""}
           `}
         >
-          <Icon name={collapsed ? "chevron_right" : "chevron_left"} size="sm" />
-          {!collapsed && <span className="text-[12px]">Riduci barra laterale</span>}
+          <span className="flex items-center gap-1.5">
+            <Icon name={collapsed ? "dock_to_left" : "dock_to_right"} size="sm" />
+            {!collapsed && <span>Riduci Barra Laterale</span>}
+          </span>
+          {!collapsed && <span className="text-[10px] text-ink-tertiary font-mono">⌥\\</span>}
         </button>
       </div>
     </aside>

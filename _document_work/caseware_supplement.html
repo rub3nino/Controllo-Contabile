@@ -1,0 +1,143 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Supplemento Caseware al documento JET</title>
+<style>
+@page{size:A4;margin:16mm 16mm 18mm;@bottom-left{content:"Quadra — Benchmark Caseware";font:8pt Arial;color:#687780}@bottom-right{content:counter(page);font:8pt Arial;color:#687780}}
+*{box-sizing:border-box}body{font:10pt/1.34 Arial,sans-serif;color:#1e2b34;margin:0}h1{font-size:22pt;line-height:1.08;color:#17384d;margin:0 0 8pt}h2{font-size:15pt;color:#1f5d7c;margin:16pt 0 6pt;break-after:avoid}h3{font-size:11.5pt;color:#17384d;margin:10pt 0 3pt;break-after:avoid}p{margin:0 0 6pt;break-inside:avoid;orphans:3;widows:3}ul,ol{margin:4pt 0 8pt 20pt;padding:0}li{margin:0 0 3pt}table{width:100%;border-collapse:collapse;margin:7pt 0 10pt;font-size:8.3pt}thead{display:table-header-group}tr{break-inside:avoid}th{background:#225e7b;color:white;padding:5pt;border:0.5pt solid #b9c6ce;text-align:left}td{padding:5pt;border:0.5pt solid #c4d0d7;vertical-align:top}.callout{background:#eaf2f6;border-left:4pt solid #225e7b;padding:9pt 10pt;margin:9pt 0 12pt;break-inside:avoid}.warn{background:#fff5d8;border-left-color:#b98200}.status{font-weight:bold;color:#225e7b}.small{font-size:8.4pt;color:#536672}.page{break-before:page}.keep{break-inside:avoid}.tag{display:inline-block;background:#eaf2f6;color:#17455e;border-radius:3px;padding:1pt 4pt;font-size:8pt;font-weight:bold}.source{font-size:8pt;color:#536672;margin-top:2pt}a{color:#225e7b;text-decoration:none}
+</style></head><body>
+<h1>Supplemento comparativo Caseware</h1>
+<p><strong>Integrazione al documento “JET — I 15 controlli richiesti: stato attuale e confronto”</strong></p>
+<p class="small">Benchmark funzionale basato sulla documentazione ufficiale Caseware Analytics Hub e sui test analitici collegati · 10 settembre 2026</p>
+<div class="callout warn"><strong>Come leggere questo supplemento.</strong> Le prime tre pagine del documento rimangono la specifica ufficiale dei controlli Quadra/Baker Tilly. Caseware è usato come benchmark di prodotto: una funzionalità Caseware non diventa automaticamente un requisito metodologico e non modifica i pesi approvati.</div>
+
+<h2>1. Risultato del confronto</h2>
+<p>Caseware struttura l’analisi come una <strong>libreria di test autonomi</strong>, ciascuno con campi richiesti, parametri e risultato proprio. L’Analytics Hub consente di eseguire più test, filtrare il dataset, aggregare le transazioni segnalate, assegnare stati ed esportare. Quadra oggi utilizza invece principalmente un unico motore di scoring per riga.</p>
+<table><thead><tr><th>Dimensione</th><th>Quadra oggi</th><th>Caseware</th><th>Scelta raccomandata</th></tr></thead><tbody>
+<tr><td>Unità di analisi</td><td>Prevalentemente riga</td><td>Riga e scrittura raggruppata tramite Entry ID</td><td>Conservare entrambi i livelli</td></tr>
+<tr><td>Organizzazione</td><td>Criteri dentro un unico punteggio</td><td>Test autonomi configurabili</td><td>Catalogo di test, scoring solo dove utile</td></tr>
+<tr><td>Secondo livello</td><td>Filtro/export</td><td>Filtri, rerun, risultati aggregati e stati</td><td>Workflow casi mantenendo benchmark originali</td></tr>
+<tr><td>Audit workflow</td><td>Export JET</td><td>Collegamento a checklist/procedure</td><td>Collegare ogni test alla carta di lavoro</td></tr>
+<tr><td>Personalizzazione</td><td>Parametri per pratica</td><td>Duplicazione test, default, filtri, scopo</td><td>Template di studio versionati</td></tr>
+</tbody></table>
+
+<h2>2. Confronto puntuale dei 15 controlli</h2>
+
+<h3>1 — Impatto superiore al 10% dell’utile netto</h3>
+<p><span class="status">Caseware:</span> non è documentato un test standard con la formula esatta 10% dell’utile. Relative Size Factor confronta invece il maggiore importo di un sottoinsieme con il secondo maggiore, usando un fattore configurabile.</p>
+<p><strong>Cosa ha in più:</strong> confronto contestuale per conto, fornitore, utente o altra chiave; esclusione dei piccoli importi; analisi separata dei segni.</p>
+<p><strong>Come sfruttarlo:</strong> mantenere il nostro controllo ufficiale e aggiungere un test distinto “outlier relativo” per gruppi. Non sostituire il benchmark sull’utile.</p>
+<p class="source">Fonte: Caseware, Relative Size Factor.</p>
+
+<h3>2 — Importo superiore a 10 volte la media</h3>
+<p><span class="status">Caseware:</span> non risulta la stessa formula. Il Relative Size Factor non usa la media, ma il rapporto fra primo e secondo valore del gruppo.</p>
+<p><strong>Cosa ha in più:</strong> l’anomalia è valutata rispetto al contesto operativo, non solo alla media dell’intera popolazione.</p>
+<p><strong>Come sfruttarlo:</strong> calcolare automaticamente la nostra media assoluta e affiancare RSF per conto/utente/tipo documento. Le statistiche devono essere calcolate sulla popolazione originale, non sui soli sospetti.</p>
+
+<h3>3 — Superamento della performance materiality</h3>
+<p><span class="status">Caseware:</span> dispone di un documento Materiality strutturato con overall, performance, clearly trivial, valori specifici, modalità planning/revised, component materiality e sign-off. Non è confermato che ogni test Analytics Hub legga automaticamente la PM.</p>
+<p><strong>Cosa ha in più:</strong> governo e approvazione del parametro.</p>
+<p><strong>Come sfruttarlo:</strong> associare al valore importato da Global Focus valuta, entità, periodo, versione, fonte, preparer e reviewer; impedire l’uso di un valore non approvato.</p>
+
+<h3>4 — Cifre tonde 10.000/100.000</h3>
+<p><span class="status">Caseware:</span> Rounded Values accetta qualsiasi intero come valore di arrotondamento (default documentato 100) e permette di includere o ignorare i decimali.</p>
+<p><strong>Cosa ha in più:</strong> multiplo configurabile, selezione di più campi numerici e gestione esplicita dei decimali.</p>
+<p><strong>Come sfruttarlo:</strong> creare configurazioni 10.000 e 100.000, mostrare il livello massimo scattato, evitare doppio punteggio e applicare una soglia minima/valuta coerente.</p>
+
+<h3>5 — Weekend e festività per Paese</h3>
+<p><span class="status">Caseware:</span> Date Entries ricerca giorni della settimana, giorni dell’anno, date e intervalli. Non è documentato un calendario nazionale automatico IT/DE/FR/ES.</p>
+<p><strong>Cosa ha in più:</strong> scelta del campo data e configurazioni “prima/dopo/tra”, in giorni, settimane o mesi.</p>
+<p><strong>Come sfruttarlo:</strong> replicare la flessibilità e aggiungere il nostro differenziale: calendari nazionali/locali versionati, chiusure aziendali e override cliente. Distinguere data effettiva da data tecnica di creazione.</p>
+
+<h3>6 — Fuori orario 08:00–18:00</h3>
+<p><span class="status">Caseware:</span> non è stato trovato un test standard documentato per fascia lavorativa. Missing Information individua orari mancanti, non orari fuori fascia.</p>
+<p><strong>Come sfruttarlo:</strong> mantenere il nostro vantaggio, aggiungendo fuso orario, sede, turni, closing e account batch. Il risultato deve mostrare ora rilevata e fascia applicata.</p>
+
+<h3>7 — Retrodatazione e finestra di chiusura</h3>
+<p><span class="status">Caseware:</span> Date Entries confronta due date, identifica intervalli lunghi, backdating/forward dating e movimenti intorno a una data configurata.</p>
+<p><strong>Cosa ha in più:</strong> configurazioni temporali generiche e riutilizzabili.</p>
+<p><strong>Come sfruttarlo:</strong> separare “differenza fra date” e “closing window”; introdurre data chiusura modificabile, calendario lavorativo, ultimi 5 giorni lavorativi e scritture post-closing con competenza precedente. Il closing resta una popolazione obbligatoria indipendente dal punteggio.</p>
+
+<h3>8 — Utenti non autorizzati</h3>
+<p><span class="status">Caseware:</span> Comparisons confronta due o più campi e può verificare, per esempio, che chi inserisce sia diverso da chi autorizza. Non è documentata una whitelist standard equivalente alla nostra.</p>
+<p><strong>Cosa ha in più:</strong> test di segregation of duties.</p>
+<p><strong>Come sfruttarlo:</strong> aggiungere confronto preparer/approver e mantenere whitelist, utenti di sistema e stato Attivo / Non applicabile / Dato non disponibile con motivazione.</p>
+
+<h3>9 — Righe o descrizioni vuote</h3>
+<p><span class="status">Caseware:</span> Missing Information rileva descrizioni vuote o con lunghezza ≤ soglia e può applicarsi anche a ID, date, ore, utenti, codici, valuta, periodo e numerici vuoti/zero.</p>
+<p><strong>Cosa ha in più:</strong> controllo generalizzato di completezza dei campi e descrizione “scarsa”, non solo vuota.</p>
+<p><strong>Come sfruttarlo:</strong> creare una famiglia “Dati mancanti” distinta dal rischio: descrizione corta/generica, ID, conto, data, ora, utente, valuta. Mostrare tasso di completezza e bloccare l’analisi se mancano campi critici.</p>
+
+<h3>10 — Conto raro 2–4 volte l’anno</h3>
+<p><span class="status">Caseware:</span> Unusual Account Combinations identifica combinazioni rare rispetto alla popolazione con percentuale configurabile (default documentato 3%). Complex Account Combinations segnala scritture con almeno N conti.</p>
+<p><strong>Cosa ha in più:</strong> analisi delle contropartite e della scrittura completa, non solo frequenza del singolo conto.</p>
+<p><strong>Come sfruttarlo:</strong> mantenere 1–4 utilizzi annuali e aggiungere combinazioni Dare/Avere rare, confronto con anno precedente e complessità per numero di conti. Contare sia righe sia Entry ID distinti.</p>
+
+<h3>11 — Sequenza numerica e pagine</h3>
+<p><span class="status">Caseware:</span> Gaps analizza campi numerici, date o caratteri con limiti configurabili. Distingue Entry Number da Entry ID. Non risulta un controllo documentato sulle pagine PDF.</p>
+<p><strong>Cosa ha in più:</strong> sequenze non limitate ai soli numeri e configurazione dell’intervallo.</p>
+<p><strong>Come sfruttarlo:</strong> introdurre sezionali, prefissi, reset per esercizio e intervalli; conservare il controllo pagine come modulo Quadra separato. Numeri annullati richiedono evidenza, non un automatico esito di frode.</p>
+
+<h3>12 — Cifre finali ripetute</h3>
+<p><span class="status">Caseware:</span> Recurring Numeric Pattern ricerca combinazioni definite dall’utente o N cifre ripetute, all’inizio o alla fine, con opzione per ignorare importi tondi; default documentato 3 cifre. I decimali sono ignorati nei pattern finali.</p>
+<p><strong>Cosa ha in più:</strong> pattern configurabile e lunghezza opzionale.</p>
+<p><strong>Come sfruttarlo:</strong> adottare questa configurabilità e superarla con test separati sulla parte intera e sui centesimi, così da gestire anche 86.514,99. Prevedere soglia minima e peso basso per contenere falsi positivi.</p>
+
+<h3>13 — Ri-analisi dei sospetti</h3>
+<p><span class="status">Caseware:</span> Analytics Hub permette filtri AND/OR/NOT sul dataset, esecuzione di test sul sottoinsieme, lancio multiplo, risultati aggregati, stato della transazione ed export CSV.</p>
+<p><strong>Cosa ha in più:</strong> workflow operativo di secondo livello.</p>
+<p><strong>Come sfruttarlo:</strong> creare una coda casi che raggruppi per scrittura, conservi i benchmark della popolazione originale, richieda documenti e registri conclusione preparer/reviewer (giustificata, errore, rettifica, escalation).</p>
+
+<h3>14 — Conto superiore a 10 cifre</h3>
+<p><span class="status">Caseware:</span> non è documentato un test standard equivalente.</p>
+<p><strong>Come sfruttarlo:</strong> non copiare una regola universale. Implementare validazione configurabile per ERP: lunghezza, regex, segmenti e lookup nel piano dei conti. Preferire l’esito “conto non conforme/non esistente” e trattarlo come qualità dati, salvo evidenze di rischio.</p>
+
+<h3>15 — Keyword, visura e soggetti con poteri</h3>
+<p><span class="status">Caseware:</span> Keywords accetta liste predefinite, caricate o inserite; match esatto/parziale; case sensitivity; più campi; colonna con il termine trovato. Join unisce dataset attraverso chiavi comuni. Non è documentato OCR della visura o attribuzione automatica della capacità di manomettere il giornale.</p>
+<p><strong>Cosa ha in più:</strong> governo completo delle keyword e possibilità generica di arricchire dati con join.</p>
+<p><strong>Come sfruttarlo:</strong> dizionario versionato per categorie e cliente; OCR locale della visura con conferma umana; dataset separati persone/poteri, user ID/autorizzazioni e scritture; join solo dopo mapping verificato. La visura dimostra poteri legali, non accesso tecnico: nessuna persona deve essere etichettata automaticamente come sospetta.</p>
+
+<div class="page"></div>
+<h2>3. Funzionalità Caseware aggiuntive da incorporare</h2>
+<table><thead><tr><th>Funzionalità Caseware</th><th>Come è strutturata</th><th>Uso proposto in Quadra</th><th>Priorità</th></tr></thead><tbody>
+<tr><td><strong>Out of Balance Entries</strong></td><td>Raggruppa per Entry ID, somma le righe, estrae totali non zero e riporta le righe originali.</td><td>Controllo di integrità obbligatorio prima dello scoring; tolleranza valuta configurabile.</td><td>P1</td></tr>
+<tr><td><strong>Unusual Account Combinations</strong></td><td>Misura combinazioni di conti rare rispetto alla popolazione; soglia percentuale.</td><td>Rilevare contropartite insolite per Entry ID e confrontarle con storico.</td><td>P1</td></tr>
+<tr><td><strong>Complex Account Combinations</strong></td><td>Conta i conti per scrittura e seleziona almeno N conti.</td><td>Indicatore di scrittura complessa/non ordinaria, separato dal conto raro.</td><td>P2</td></tr>
+<tr><td><strong>Missing Information</strong></td><td>Un motore unico per testo corto/vuoto, data, ora, numerici, ID, utenti e codici.</td><td>Profilo qualità dati pre-analisi, copertura dei test e blocchi sui campi indispensabili.</td><td>P0</td></tr>
+<tr><td><strong>Relative Size Factor</strong></td><td>Rapporto fra massimo e secondo massimo in sottoinsiemi configurabili.</td><td>Outlier per conto, utente, tipo documento e controparte.</td><td>P2</td></tr>
+<tr><td><strong>Comparisons</strong></td><td>Confronta due o più campi con =, ≠, &gt;, ≥, &lt;, ≤.</td><td>Segregation of duties, date incoerenti e confronti fra valori importati.</td><td>P2</td></tr>
+<tr><td><strong>Join</strong></td><td>Inner/outer/left/right e record senza corrispondenza fra due dataset.</td><td>Arricchire giornale con utenti, piano dei conti, parti correlate e persone validate.</td><td>P1</td></tr>
+<tr><td><strong>Filtri dinamici</strong></td><td>Condizioni per colonna combinate con AND/OR/NOT e conteggio righe.</td><td>Perimetri salvabili, riproducibili e riutilizzabili senza alterare l’originale.</td><td>P1</td></tr>
+<tr><td><strong>Risultati aggregati e status</strong></td><td>Unisce eccezioni di più test; filtra, assegna stati ed esporta.</td><td>Dossier unico per Entry ID con motivi, owner, esito e reviewer.</td><td>P0</td></tr>
+<tr><td><strong>Test collegati a checklist</strong></td><td>Ogni analisi è legata a una procedura di revisione.</td><td>Collegare risultato, finalità ISA, lavoro svolto e conclusione nella carta di lavoro.</td><td>P0</td></tr>
+<tr><td><strong>Template personalizzabili</strong></td><td>Duplicazione test, default, filtri, descrizioni e scopi a livello studio.</td><td>Libreria approvata dal partner, versionata e separata dagli override della pratica.</td><td>P1</td></tr>
+<tr><td><strong>Analisi consolidata</strong></td><td>Risultati per entità e aggregati nell’incarico di gruppo.</td><td>Filtro società/entità e confronto cross-entity per gruppi; compatibilità campi obbligatoria.</td><td>P3</td></tr>
+</tbody></table>
+
+<h2>4. Struttura TO-BE raccomandata</h2>
+<ol>
+<li><strong>Catalogo test.</strong> Ogni controllo ha codice, nome, versione, finalità, base normativa, campi richiesti, parametri, formula, peso opzionale e output.</li>
+<li><strong>Validazione input.</strong> Prima dell’analisi: completezza campi, riconciliazione, quadratura, valuta, periodo e copertura.</li>
+<li><strong>Motore per test autonomi.</strong> I controlli possono essere eseguiti singolarmente o in gruppo; vero, falso e non calcolabile restano distinti.</li>
+<li><strong>Aggregazione per scrittura.</strong> I flag di riga confluiscono in un unico dossier Entry ID, senza duplicare il caso.</li>
+<li><strong>Scoring trasparente.</strong> Solo gli indicatori di rischio ricevono punti; integrità, completezza e closing hanno esiti dedicati.</li>
+<li><strong>Second-level review.</strong> Filtri, documenti, spiegazioni, owner, stato, conclusione e sign-off.</li>
+<li><strong>Template e versioni.</strong> Configurazione standard di studio, override motivati per cliente e pieno audit trail.</li>
+</ol>
+
+<div class="callout"><strong>Principio guida.</strong> Il vantaggio da prendere da Caseware è la modularità e la tracciabilità. Quadra dovrebbe conservare i propri controlli specifici — 10% dell’utile, fascia oraria e OCR visura — ma inserirli nella stessa architettura governata di test autonomi, risultati aggregati e workflow di revisione.</div>
+
+<h2>5. Piano operativo per sfruttare il benchmark</h2>
+<table><thead><tr><th>Fase</th><th>Deliverable</th><th>Decisione richiesta</th></tr></thead><tbody>
+<tr><td>P0 — Metodo</td><td>Dizionario ufficiale dei test; distinzione riga/scrittura; non calcolabile; closing; qualità dati; status casi.</td><td>Partner metodologico</td></tr>
+<tr><td>P1 — Fondazioni</td><td>Entry ID, quadratura, join anagrafiche, filtri salvabili, calendario, media automatica, risultati aggregati.</td><td>Manager + responsabile tecnico</td></tr>
+<tr><td>P2 — Analisi avanzata</td><td>RSF, combinazioni insolite/complesse, recurring patterns, comparisons e segregation of duties.</td><td>Validazione su caso reale</td></tr>
+<tr><td>P3 — Gruppi e documenti</td><td>Cross-entity, OCR visura con conferma, mapping persone–utenti–accessi.</td><td>Privacy, sicurezza e partner</td></tr>
+</tbody></table>
+
+<h2>6. Fonti ufficiali Caseware consultate</h2>
+<ul class="small">
+<li>Analytics Hub: https://docs.caseware.com/2020/webapps/31/webapps/Engagements/Accounts-and-Analysis/Manage-analytic-tests-in-the-analytics-hub.htm</li>
+<li>Customize analytic tests: https://docs.caseware.com/en/Content/Engagements/Template-and-Authoring/Customize-analytic-tests.htm</li>
+<li>Date Entries, Rounded Values, Missing Information, Keywords, Gaps, Relative Size Factor, Recurring Numeric Pattern, Comparisons, Join, Out of Balance Entries, Unusual Account Combinations, Complex Account Combinations: pagine ufficiali nella sezione Accounts and Analysis di docs.caseware.com.</li>
+<li>Define materiality e Transaction details: pagine ufficiali nella sezione Engagements/File Preparation.</li>
+</ul>
+<p class="small"><strong>Limite del confronto:</strong> Caseware dichiara che disponibilità e configurazioni dei test possono variare in base al prodotto e al template. Il supplemento descrive esclusivamente funzionalità confermate dalla documentazione ufficiale consultata; non presume funzioni non documentate.</p>
+</body></html>

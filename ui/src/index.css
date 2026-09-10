@@ -15,6 +15,13 @@ body,
 
 body {
   overflow: hidden;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #37352f;
+  background-color: #faf9f6;
+}
+
+::selection {
+  background-color: #cde4f7;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -49,8 +56,15 @@ body {
 
   /* Pattern a puntini per area contenuto (opzionale) */
   .dot-pattern {
-    background-image: radial-gradient(#e5e5e3 1px, transparent 1px);
-    background-size: 16px 16px;
+    background-color: #faf9f6;
+    background-image: radial-gradient(#d5d4d0 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .notion-grid-bg {
+    background-color: #faf9f6;
+    background-image: radial-gradient(#d5d4d0 1px, transparent 1px);
+    background-size: 20px 20px;
   }
 
   /* Transizione standard per hover */
@@ -146,7 +160,42 @@ body {
   }
 
   .data-table tbody tr:hover {
-    background-color: rgba(35, 35, 33, 0.025);
+    background-color: rgba(55, 53, 47, 0.025);
+  }
+
+  .notion-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  .notion-table th,
+  .notion-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #eeedea;
+    border-right: 1px solid #eeedea;
+    vertical-align: top;
+  }
+
+  .notion-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: #f7f6f3;
+    color: #787774;
+    font-weight: 500;
+  }
+
+  .notion-table tr:hover td {
+    background-color: rgba(55, 53, 47, 0.025);
+  }
+
+  .notion-table tbody tr[tabindex] {
+    cursor: pointer;
+  }
+
+  .notion-table tbody tr[tabindex]:focus-visible td {
+    background-color: rgba(55, 53, 47, 0.05);
   }
 }
 
@@ -170,8 +219,8 @@ body {
    ───────────────────────────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -179,12 +228,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d5d5d0;
-  border-radius: 9999px;
+  background: #e3e2de;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #c0c0bb;
+  background: #c8c7c3;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -438,23 +487,44 @@ body {
   border-radius: 8px;
 }
 
-/* Focus ring per accessibilità */
+/* Focus ring: visibile su tastiera anche se il controllo ha outline-none */
+:focus-visible {
+  outline: 2px solid #2f3437;
+  outline-offset: 2px;
+}
+
+.outline-none:focus-visible {
+  outline: 2px solid #2f3437;
+  outline-offset: 2px;
+}
+
 .focus-ring:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px #faf9f6, 0 0 0 4px #2b5966;
+  outline: 2px solid #2f3437;
+  outline-offset: 2px;
 }
 
 .dark .focus-ring:focus-visible {
-  box-shadow: 0 0 0 2px #191918, 0 0 0 4px #4a9eb3;
+  outline-color: #d4d4d0;
 }
 
 /* Smooth transitions per elementi interattivi */
+button,
+a,
+[role="button"] {
+  cursor: pointer;
+}
+
 button,
 a,
 input,
 select,
 textarea {
   @apply transition-colors-fast;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 /* Caption text style */

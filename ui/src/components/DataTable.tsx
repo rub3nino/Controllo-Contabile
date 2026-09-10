@@ -23,6 +23,7 @@ interface DataTableProps<T> {
   /** Messaggio se nessun dato */
   emptyMessage?: string;
   className?: string;
+  variant?: "default" | "notion";
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -32,6 +33,7 @@ export function DataTable<T extends Record<string, unknown>>({
   onRowClick,
   emptyMessage = "Nessun dato.",
   className = "",
+  variant = "default",
 }: DataTableProps<T>) {
   const alignClasses = {
     left: "text-left",
@@ -41,17 +43,19 @@ export function DataTable<T extends Record<string, unknown>>({
 
   if (data.length === 0) {
     return (
-      <div className="px-base py-lg text-body-md text-ink-tertiary text-center">
+      <div className="px-4 py-8 text-sm text-[#9b9a97] text-center">
         {emptyMessage}
       </div>
     );
   }
 
+  const notion = variant === "notion";
+
   return (
     <div className={`overflow-x-auto ${className}`}>
-      <table className="data-table">
+      <table className={notion ? "w-full border-collapse text-left text-xs notion-table" : "data-table"}>
         <thead>
-          <tr>
+          <tr className={notion ? "bg-[#f7f6f3] text-[#787774] font-medium" : undefined}>
             {columns.map((col) => (
               <th
                 key={String(col.key)}
@@ -68,7 +72,18 @@ export function DataTable<T extends Record<string, unknown>>({
             <tr
               key={getRowKey(row, rowIndex)}
               className={onRowClick ? "cursor-pointer" : ""}
+              tabIndex={onRowClick ? 0 : undefined}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onRowClick(row);
+                    }
+                  }
+                  : undefined
+              }
             >
               {columns.map((col) => (
                 <td

@@ -31,6 +31,9 @@ export { ConnectionStatus, ConnectionBanner } from "./ConnectionStatus";
 
 // Theme
 export { ThemeToggle, ThemeSelector } from "./ThemeToggle";
+export { Switch } from "./Switch";
+export { NotionTag, NOTION_TAG, NOTION_ICON } from "./NotionTag";
+export type { NotionTone } from "./NotionTag";
 
 // Onboarding
 export { OnboardingProvider, OnboardingTooltips, WelcomeModal, useOnboarding } from "./Onboarding";

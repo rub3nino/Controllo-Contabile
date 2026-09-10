@@ -7,7 +7,7 @@ un controllo di revisione. Vedi il commento sopra ogni blocco Paese per le fonti
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 CODICI_PAESE = ["IT", "DE", "FR", "ES", "IL", "US", "MT", "IE", "CY"]
 
@@ -182,10 +182,33 @@ def giorni_weekend(codice_paese: str) -> list[int]:
     return list(WEEKEND_PER_PAESE[codice_paese])
 
 
+def giorni_lavorativi_tra(
+    data_da: date, data_a: date, giorni_weekend: list[int], giorni_festivi: list[date]
+) -> int:
+    """Conta i giorni lavorativi nell'intervallo (data_da, data_a], esclusi weekend e festività.
+
+    Intervallo aperto a sinistra e chiuso a destra: ``data_da`` non viene mai contato. Pensata
+    per calcolare quanti giorni lavorativi sono trascorsi fra una data effettiva e una data di
+    creazione successiva; richiede ``data_a >= data_da``.
+    """
+    if data_a < data_da:
+        raise ValueError("data_a non può precedere data_da")
+    festivi = set(giorni_festivi)
+    weekend = set(giorni_weekend)
+    conteggio = 0
+    giorno = data_da + timedelta(days=1)
+    while giorno <= data_a:
+        if giorno.weekday() not in weekend and giorno not in festivi:
+            conteggio += 1
+        giorno += timedelta(days=1)
+    return conteggio
+
+
 __all__ = [
     "CODICI_PAESE",
     "FESTIVITA_PER_PAESE",
     "WEEKEND_PER_PAESE",
     "festivita",
+    "giorni_lavorativi_tra",
     "giorni_weekend",
 ]

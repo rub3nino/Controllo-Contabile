@@ -1,0 +1,21 @@
+@page { size: A4; margin: 17mm 17mm 18mm 17mm; @bottom-center { content: "Quadra — JET AS-IS / TO-BE"; color: #6b7780; font-size: 8pt; } @bottom-right { content: counter(page); color: #6b7780; font-size: 8pt; } }
+html { font-family: Arial, Helvetica, sans-serif; color: #1f2b34; font-size: 10pt; line-height: 1.32; }
+body { margin: 0; }
+h1 { color: #235a78; font-size: 18pt; margin: 20pt 0 8pt; break-after: avoid; }
+h2 { color: #235a78; font-size: 14pt; margin: 15pt 0 6pt; break-after: avoid; }
+h3 { color: #183245; font-size: 11.5pt; margin: 10pt 0 4pt; break-after: avoid; }
+p { margin: 0 0 6pt; orphans: 3; widows: 3; break-inside: avoid; }
+ul, ol { margin: 3pt 0 8pt 20pt; padding: 0; }
+li { margin: 0 0 3pt; }
+table { border-collapse: collapse; width: 100%; margin: 7pt 0 11pt; break-inside: auto; break-after: avoid-page; font-size: 8.7pt; }
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th { background: #235a78; color: #fff; text-align: left; font-weight: 700; padding: 6pt; border: 0.6pt solid #b9c6ce; }
+td { padding: 5pt 6pt; border: 0.6pt solid #c7d0d6; vertical-align: middle; }
+blockquote { margin: 8pt 0 10pt; padding: 8pt 10pt; background: #fff4d6; border-left: 4pt solid #c18a00; }
+strong { color: #183245; }
+section:first-of-type h1:first-child { font-size: 27pt; color: #183245; margin-top: 18mm; }
+hr { border: 0; border-top: 1pt solid #9fb2be; margin: 12pt 0; }
+@media print { a { color: inherit; text-decoration: none; } }
+#fonti-e-tracciabilità { break-before: page; }
+#jet15 { break-before: page; page-break-before: always; }

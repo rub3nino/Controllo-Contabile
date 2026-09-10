@@ -8,12 +8,24 @@ import {
 import { asUserError } from "../api";
 import {
   Callout,
-  Card,
-  CardHeader,
   DataTable,
   Icon,
   StatusBadge,
 } from "../components";
+import { PageHeader, PrimaryButton, ToolButton, GhostButton } from "../shell/PageHeader";
+import {
+  countActiveControls,
+  EMPTY_JET_PARAMS,
+  ParamsPanel,
+} from "./ParamsPanel";
+import {
+  JetMetric,
+  JetSection,
+  jetGhostClass,
+  jetInputClass,
+  jetPrimaryClass,
+} from "./NotionChrome";
+import { SourcePanel } from "./SourcePanel";
 import {
   type ExtractionProfile,
   type FileInspection,
@@ -25,102 +37,9 @@ import {
   type ResultFilters,
 } from "./api";
 
-const inputClass =
-  "w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary";
-const buttonClass =
-  "inline-flex items-center justify-center gap-sm px-base py-sm rounded bg-ink-primary text-label-md text-white hover:bg-ink-primary/90 disabled:opacity-50 disabled:cursor-not-allowed";
-const PAESI = [
-  ["IT", "Italia"],
-  ["DE", "Germania"],
-  ["FR", "Francia"],
-  ["ES", "Spagna"],
-  ["IL", "Israele"],
-  ["US", "Stati Uniti"],
-  ["MT", "Malta"],
-  ["IE", "Irlanda"],
-  ["CY", "Cipro"],
-] as const;
+const inputClass = jetInputClass;
+const buttonClass = jetPrimaryClass;
 
-const EMPTY: JetParams = {
-  materialita_bilancio: null,
-  performance_materiality: null,
-  utile_netto_dopo_imposte: null,
-  valore_medio_registrazione: null,
-  soglia_importo_cifra_tonda: null,
-  paese: null,
-  orario_ufficio_inizio: null,
-  orario_ufficio_fine: null,
-  giorni_weekend: null,
-  soglia_backdating_giorni: null,
-  festivita: null,
-  staff_autorizzato: null,
-  utenti_di_sistema: null,
-  parole_chiave_parti_correlate: null,
-  soglia_frequenza_insolita: null,
-  conti_infragruppo_parte_correlata: null,
-  soglia_da_investigare: 4,
-  punteggio_profit_impact: 1,
-  punteggio_oltre_dieci_volte_media: 1,
-  punteggio_sopra_performance_materiality: 1,
-  punteggio_importo_cifra_tonda: 1,
-  punteggio_weekend: 1,
-  punteggio_festivita: 4,
-  punteggio_fuori_orario: 1,
-  punteggio_backdated: 4,
-  punteggio_staff_non_autorizzato: 4,
-  punteggio_parte_correlata: 1,
-  punteggio_descrizione_vuota: 4,
-  punteggio_conto_insolito_raro: null,
-  punteggio_conto_infragruppo_parte_correlata: null,
-};
-const OPTIONAL_NUMBERS: [keyof JetParams, string][] = [
-  ["materialita_bilancio", "Materialità di bilancio"],
-  ["performance_materiality", "Performance materiality"],
-  ["utile_netto_dopo_imposte", "Utile netto dopo imposte"],
-  ["valore_medio_registrazione", "Valore medio registrazione"],
-  ["soglia_backdating_giorni", "Soglia retrodatazione (giorni)"],
-  ["soglia_frequenza_insolita", "Soglia frequenza conto insolito"],
-];
-const WEIGHTS: [keyof JetParams, string, boolean?][] = [
-  ["punteggio_profit_impact", "Impatto sull’utile"],
-  ["punteggio_oltre_dieci_volte_media", "Oltre 10× media"],
-  ["punteggio_sopra_performance_materiality", "Oltre performance materiality"],
-  ["punteggio_importo_cifra_tonda", "Cifra tonda"],
-  ["punteggio_weekend", "Weekend"],
-  ["punteggio_festivita", "Festività"],
-  ["punteggio_fuori_orario", "Fuori orario"],
-  ["punteggio_backdated", "Retrodatata"],
-  ["punteggio_staff_non_autorizzato", "Staff non autorizzato"],
-  ["punteggio_parte_correlata", "Parte correlata"],
-  ["punteggio_descrizione_vuota", "Descrizione vuota"],
-  ["punteggio_conto_insolito_raro", "Conto insolito/raro", true],
-  ["punteggio_conto_infragruppo_parte_correlata", "Conto infragruppo", true],
-];
-const LISTS: [keyof JetParams, string, "text" | "date" | "number"][] = [
-  ["giorni_weekend", "Giorni weekend (0=lunedì, 6=domenica)", "number"],
-  ["festivita", "Festività", "date"],
-  ["staff_autorizzato", "Staff autorizzato", "text"],
-  ["utenti_di_sistema", "Utenti di sistema", "text"],
-  ["parole_chiave_parti_correlate", "Parole chiave parti correlate", "text"],
-  [
-    "conti_infragruppo_parte_correlata",
-    "Conti infragruppo / parti correlate",
-    "text",
-  ],
-];
-const MAP_FIELDS = [
-  "identificativo_registrazione",
-  "numero_documento",
-  "data_effettiva",
-  "data_creazione",
-  "ora_creazione",
-  "conto_contabile",
-  "importo_netto",
-  "importo_dare",
-  "importo_avere",
-  "descrizione",
-  "utente",
-];
 const FLAG_NAMES: Record<string, string> = {
   flag_profit_impact: "Impatto utile",
   flag_oltre_dieci_volte_media: ">10× media",
@@ -130,6 +49,7 @@ const FLAG_NAMES: Record<string, string> = {
   flag_festivita: "Festività",
   flag_fuori_orario: "Fuori orario",
   flag_backdated: "Retrodatata",
+  flag_forward_dating: "Anticipata",
   flag_staff_non_autorizzato: "Staff non autorizzato",
   flag_parte_correlata: "Parte correlata",
   flag_descrizione_vuota: "Descrizione vuota",
@@ -140,7 +60,7 @@ const FLAG_NAMES: Record<string, string> = {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="block mb-xs text-label-sm text-ink-secondary">
+      <span className="block mb-1 text-xs text-[#787774]">
         {label}
       </span>
       {children}
@@ -155,66 +75,11 @@ function statusVariant(status: JetPractice["status"]) {
     : "info";
 }
 
-function ListInput(
-  { label, values, type, onChange }: {
-    label: string;
-    values: (string | number)[] | null;
-    type: string;
-    onChange: (x: (string | number)[] | null) => void;
-  },
-) {
-  const [draft, setDraft] = useState("");
-  const add = () => {
-    if (!draft.trim()) return;
-    const value = type === "number" ? Number(draft) : draft.trim();
-    onChange([...(values || []), value]);
-    setDraft("");
-  };
-  return (
-    <Field label={label}>
-      <div className="flex gap-sm">
-        <input
-          type={type}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          className={inputClass}
-        />
-        <button
-          type="button"
-          onClick={add}
-          className="px-md rounded border border-border-subtle"
-        >
-          Aggiungi
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-xs mt-xs">
-        {values?.map((v, i) => (
-          <button
-            type="button"
-            key={`${v}-${i}`}
-            onClick={() => {
-              const next = values.filter((_, x) => x !== i);
-              onChange(next.length ? next : null);
-            }}
-            className="px-sm py-xxs rounded bg-tint-gray-bg text-label-sm text-tint-gray-text"
-          >
-            {v} ×
-          </button>
-        ))}
-        {values === null && (
-          <span className="text-body-sm text-ink-tertiary">Non impostato</span>
-        )}
-      </div>
-    </Field>
-  );
-}
-
 export function JetDashboard() {
   const [practices, setPractices] = useState<JetPractice[]>([]);
   const [active, setActive] = useState<JetPractice | null>(null);
   const [create, setCreate] = useState({ client: "", period: "" });
-  const [params, setParams] = useState<JetParams>(EMPTY);
-  const [sogliaCifraTondaCustom, setSogliaCifraTondaCustom] = useState(false);
+  const [params, setParams] = useState<JetParams>(EMPTY_JET_PARAMS);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [sources, setSources] = useState<JetSource[]>([]);
@@ -236,6 +101,7 @@ export function JetDashboard() {
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
   const refresh = async () => setPractices(await jetApi.list());
   useEffect(() => {
     refresh().catch((e) => setError(asUserError(e).title));
@@ -265,12 +131,8 @@ export function JetDashboard() {
   };
   const choose = async (p: JetPractice) => {
     setActive(p);
-    setParams(p.parametri || EMPTY);
-    const soglia = p.parametri?.soglia_importo_cifra_tonda;
-    setSogliaCifraTondaCustom(
-      soglia !== null && soglia !== undefined &&
-        ![10000, 100000, 1000000].includes(Number(soglia)),
-    );
+    setShowCreate(false);
+    setParams(p.parametri || EMPTY_JET_PARAMS);
     setResults([]);
     setError("");
     try {
@@ -298,14 +160,15 @@ export function JetDashboard() {
     await run(async () => {
       const p = await jetApi.create(create.client, create.period);
       setCreate({ client: "", period: "" });
+      setShowCreate(false);
+      setParams(EMPTY_JET_PARAMS);
       return p;
     });
   };
-  const saveParams = (e: FormEvent) => {
-    e.preventDefault();
+  const saveParams = () => {
     if (active) run(() => jetApi.parameters(active.id, params));
   };
-  const upload = async (files?: FileList | null) => {
+  const upload = async (files?: FileList | File[] | null) => {
     if (!files?.length || !active) return;
     setBusy(true);
     setError("");
@@ -398,8 +261,6 @@ export function JetDashboard() {
       ) => label),
     [],
   );
-  const isProfileFile = selectedSource?.formato === "txt" ||
-    selectedSource?.formato === "pdf";
   const allActiveSourcesReady = sources.some((x) => x.attiva) &&
     sources.filter((x) => x.attiva).every((x) => x.stato === "pronta");
   const highlightedHeader = useMemo(() => {
@@ -419,596 +280,316 @@ export function JetDashboard() {
     );
   }, [txtInspection?.intestazione, positions, highlightField]);
 
-  return (
-    <div className="space-y-lg">
-      <header>
-        <h1 className="text-headline-lg text-ink-primary">
-          JET — Journal Entry Testing
-        </h1>
-        <p className="mt-sm text-body-lg text-ink-secondary">
-          Crea una pratica, configura i criteri ISA 240, carica il giornale
-          Excel, TXT o PDF testuale e analizza i risultati.
-        </p>
-      </header>
-      {error && <Callout variant="warning">{error}</Callout>}
-      <Card padding="lg">
-        <CardHeader>Pratiche JET</CardHeader>
-        <form
-          onSubmit={createPractice}
-          className="grid md:grid-cols-3 gap-md mb-lg"
-        >
-          <Field label="Cliente">
-            <input
-              required
-              value={create.client}
-              onChange={(e) => setCreate({ ...create, client: e.target.value })}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Periodo">
-            <input
-              required
-              value={create.period}
-              onChange={(e) => setCreate({ ...create, period: e.target.value })}
-              className={inputClass}
-            />
-          </Field>
-          <button disabled={busy} className={`${buttonClass} self-end`}>
-            <Icon name="add" size="sm" />Crea pratica
-          </button>
-        </form>
-        <DataTable
-          data={practices as (JetPractice & Record<string, unknown>)[]}
-          getRowKey={(p) => p.id}
-          onRowClick={choose}
-          emptyMessage="Nessuna pratica JET."
-          columns={[{ key: "client", header: "Cliente" }, {
-            key: "period",
-            header: "Periodo",
-          }, {
-            key: "status",
-            header: "Stato",
-            render: (p) => (
-              <StatusBadge variant={statusVariant(p.status)}>
-                {p.status.replaceAll("_", " ")}
-              </StatusBadge>
-            ),
-          }, {
-            key: "numero_registrazioni",
-            header: "Righe",
-            align: "right",
-            render: (p) => p.numero_registrazioni.toLocaleString("it-IT"),
-          }, {
-            key: "numero_da_investigare",
-            header: "Da investigare",
-            align: "right",
-          }]}
+  const attivi = countActiveControls(params);
+  const fontiAttive = sources.filter((s) => s.attiva).length;
+  const investigateTone =
+    active && active.numero_da_investigare > 0 ? "alert" : "default";
+
+  if (!active) {
+    return (
+      <div className="flex flex-col gap-6 min-w-0 w-full pb-8">
+        <PageHeader
+          variant="page"
+          icon="account_balance"
+          iconAccent="blue"
+          tags={[
+            { label: "ISA Italia 240", tone: "blue" },
+            { label: "JET", tone: "yellow" },
+          ]}
+          title="JET — Journal Entry Testing"
+          meta={
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#e7f3f8] text-[#337ea9] font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+              {practices.length} pratiche
+            </span>
+          }
+          toolbar={
+            <ToolButton icon="add" onClick={() => setShowCreate((v) => !v)}>
+              {showCreate ? "Chiudi form" : "Nuova pratica"}
+            </ToolButton>
+          }
         />
-      </Card>
-      {active && (
-        <>
-          <Card padding="lg">
-            <CardHeader
-              trailing={
-                <StatusBadge variant={statusVariant(active.status)}>
-                  {active.status.replaceAll("_", " ")}
-                </StatusBadge>
-              }
-            >
-              1. Parametri — {active.client}
-            </CardHeader>
-            <form onSubmit={saveParams} className="space-y-lg">
-              <div className="grid md:grid-cols-3 gap-md">
-                {OPTIONAL_NUMBERS.map(([key, label]) => (
-                  <Field key={key} label={label}>
-                    <input
-                      type="number"
-                      step="any"
-                      value={(params[key] as number | null) ?? ""}
-                      placeholder="Non impostato"
-                      onChange={(e) =>
-                        setParams({
-                          ...params,
-                          [key]: e.target.value === ""
-                            ? null
-                            : Number(e.target.value),
-                        })}
-                      className={inputClass}
-                    />
-                  </Field>
-                ))}
-                <Field label="Soglia importo a cifra tonda">
-                  <div className="space-y-sm">
-                    <select
-                      value={
-                        sogliaCifraTondaCustom
-                          ? "custom"
-                          : params.soglia_importo_cifra_tonda === null
-                          ? ""
-                          : String(Number(params.soglia_importo_cifra_tonda))
-                      }
-                      onChange={(e) => {
-                        if (e.target.value === "custom") {
-                          setSogliaCifraTondaCustom(true);
-                          setParams({
-                            ...params,
-                            soglia_importo_cifra_tonda: null,
-                          });
-                          return;
-                        }
-                        setSogliaCifraTondaCustom(false);
-                        setParams({
-                          ...params,
-                          soglia_importo_cifra_tonda: Number(e.target.value),
-                        });
-                      }}
-                      className={inputClass}
-                    >
-                      <option value="" disabled>Seleziona una soglia</option>
-                      <option value="10000">10.000</option>
-                      <option value="100000">100.000</option>
-                      <option value="1000000">1.000.000</option>
-                      <option value="custom">Personalizzato</option>
-                    </select>
-                    {sogliaCifraTondaCustom && (
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={params.soglia_importo_cifra_tonda ?? ""}
-                        placeholder="Inserisci una soglia maggiore di zero"
-                        onChange={(e) =>
-                          setParams({
-                            ...params,
-                            soglia_importo_cifra_tonda: e.target.value === ""
-                              ? null
-                              : Number(e.target.value),
-                          })}
-                        className={inputClass}
-                      />
-                    )}
-                  </div>
-                </Field>
-                <Field label="Orario ufficio — inizio">
-                  <input
-                    type="time"
-                    value={params.orario_ufficio_inizio || ""}
-                    onChange={(e) =>
-                      setParams({
-                        ...params,
-                        orario_ufficio_inizio: e.target.value || null,
-                      })}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Orario ufficio — fine">
-                  <input
-                    type="time"
-                    value={params.orario_ufficio_fine || ""}
-                    onChange={(e) =>
-                      setParams({
-                        ...params,
-                        orario_ufficio_fine: e.target.value || null,
-                      })}
-                    className={inputClass}
-                  />
-                </Field>
-              </div>
-              <Field label="Paese">
-                <select
-                  value={params.paese || ""}
-                  onChange={(e) =>
-                    setParams({ ...params, paese: e.target.value || null })}
-                  className={inputClass}
-                >
-                  <option value="">Nessun Paese — configurazione manuale</option>
-                  {PAESI.map(([codice, nome]) => (
-                    <option key={codice} value={codice}>{nome}</option>
-                  ))}
-                </select>
-                {params.paese && (
-                  <p className="mt-xs text-body-sm text-ink-tertiary">
-                    Le festività inserite manualmente sono chiusure aggiuntive;
-                    i giorni weekend manuali sostituiscono il weekend nazionale.
-                  </p>
-                )}
-              </Field>
-              <div className="grid md:grid-cols-2 gap-md">
-                {LISTS.map(([key, label, type]) => (
-                  <ListInput
-                    key={key}
-                    label={label}
-                    type={type}
-                    values={params[key] as (string | number)[] | null}
-                    onChange={(v) => setParams({ ...params, [key]: v })}
-                  />
-                ))}
-              </div>
-              <div>
-                <h4 className="text-label-md text-ink-primary mb-md">
-                  Pesi dei criteri e soglia
-                </h4>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-md">
-                  {WEIGHTS.map(([key, label, optional]) => (
-                    <Field
-                      key={key}
-                      label={`${label}${optional ? " (opzionale)" : ""}`}
-                    >
-                      <input
-                        required={!optional}
-                        min="0"
-                        type="number"
-                        value={(params[key] as number | null) ?? ""}
-                        placeholder="Non impostato"
-                        onChange={(e) =>
-                          setParams({
-                            ...params,
-                            [key]: e.target.value === "" && optional
-                              ? null
-                              : Number(e.target.value),
-                          })}
-                        className={inputClass}
-                      />
-                    </Field>
-                  ))}
-                  <Field label="Soglia da investigare">
-                    <input
-                      required
-                      min="0"
-                      type="number"
-                      value={params.soglia_da_investigare}
-                      onChange={(e) =>
-                        setParams({
-                          ...params,
-                          soglia_da_investigare: Number(e.target.value),
-                        })}
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-              </div>
-              <button disabled={busy} className={buttonClass}>
-                Salva tutti i parametri
-              </button>
-            </form>
-          </Card>
-          <Card padding="lg">
-            <CardHeader>2. Fonti e mappatura/profilo</CardHeader>
-            <div className="space-y-md">
-              <Field label="Libri giornale (.xlsx, .txt o .pdf testuale)">
+        {error && <Callout variant="warning">{error}</Callout>}
+        {showCreate && (
+          <JetSection icon="add" title="Nuova pratica" accent="blue" padded>
+            <form onSubmit={createPractice} className="grid md:grid-cols-3 gap-3">
+              <Field label="Cliente">
                 <input
-                  multiple
-                  type="file"
-                  accept=".xlsx,.txt,.pdf"
-                  onChange={(e) => upload(e.target.files)}
+                  required
+                  value={create.client}
+                  onChange={(e) => setCreate({ ...create, client: e.target.value })}
                   className={inputClass}
                 />
               </Field>
-              <div className="grid gap-sm">
-                {sources.map((source) => (
-                  <div
-                    key={source.id}
-                    className={`flex flex-wrap items-center gap-sm rounded border p-sm ${
-                      selectedSource?.id === source.id
-                        ? "border-ink-primary"
-                        : "border-border-subtle"
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      className="min-w-0 flex-1 text-left"
-                      onClick={() => active && loadSource(active.id, source)}
-                    >
-                      <span className="block truncate text-label-md text-ink-primary">
-                        {source.nome_originale}
-                      </span>
-                      <span className="text-body-sm text-ink-secondary">
-                        {source.formato.toUpperCase()} ·{" "}
-                        {source.numero_righe.toLocaleString("it-IT")} righe ·
-                        {" "}
-                        {source.stato.replaceAll("_", " ")}
-                      </span>
-                    </button>
-                    <label className="flex items-center gap-xs text-body-sm">
-                      <input
-                        type="checkbox"
-                        checked={source.attiva}
-                        onChange={async (event) => {
-                          if (!active) return;
-                          await refreshConfiguredSource(
-                            await jetApi.configureSource(
-                              active.id,
-                              source.id,
-                              event.target.checked,
-                            ),
-                          );
-                        }}
-                      />
-                      Inclusa
-                    </label>
-                    <label className="cursor-pointer px-sm py-xs rounded border border-border-subtle text-label-sm">
-                      Sostituisci
-                      <input
-                        className="sr-only"
-                        type="file"
-                        accept=".xlsx,.txt,.pdf"
-                        onChange={async (event) => {
-                          const file = event.target.files?.[0];
-                          if (!active || !file) return;
-                          setBusy(true);
-                          try {
-                            await jetApi.replaceSource(
-                              active.id,
-                              source.id,
-                              file,
-                            );
-                            await reloadSources(active.id, source.id);
-                            const updated = (await jetApi.list()).find((item) =>
-                              item.id === active.id
-                            );
-                            if (updated) setActive(updated);
-                          } catch (cause) {
-                            setError(asUserError(cause).title);
-                          } finally {
-                            setBusy(false);
-                          }
-                        }}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      className="px-sm py-xs rounded border border-border-subtle text-label-sm"
-                      onClick={async () => {
-                        if (
-                          !active ||
-                          !window.confirm(`Eliminare ${source.nome_originale}?`)
-                        ) return;
-                        await jetApi.deleteSource(active.id, source.id);
-                        await reloadSources(active.id);
-                        const updated = (await jetApi.list()).find((item) =>
-                          item.id === active.id
-                        );
-                        if (updated) setActive(updated);
-                      }}
-                    >
-                      Elimina
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <Field label="Gestione righe identiche tra fonti">
-                <select
-                  value={active.strategia_duplicati}
-                  onChange={(event) =>
-                    run(() =>
-                      jetApi.duplicates(
-                        active.id,
-                        event.target
-                          .value as JetPractice["strategia_duplicati"],
-                      )
-                    )}
+              <Field label="Periodo">
+                <input
+                  required
+                  value={create.period}
+                  onChange={(e) => setCreate({ ...create, period: e.target.value })}
                   className={inputClass}
-                >
-                  <option value="mantieni_tutti">
-                    Mantieni tutte le righe
-                  </option>
-                  <option value="scarta_identiche">
-                    Scarta duplicati identici
-                  </option>
-                </select>
+                />
               </Field>
-              {!isProfileFile && headers.length > 0 && (
-                <>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-md">
-                    {MAP_FIELDS.map((field) => (
-                      <Field key={field} label={field.replaceAll("_", " ")}>
-                        <select
-                          value={mapping[field] || ""}
-                          onChange={(e) => {
-                            const next = { ...mapping };
-                            if (e.target.value) {
-                              next[field] = e.target.value;
-                            } else delete next[field];
-                            setMapping(next);
-                          }}
-                          className={inputClass}
-                        >
-                          <option value="">Non mappato</option>
-                          {headers.map((h) => <option key={h}>{h}</option>)}
-                        </select>
-                      </Field>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={async () => {
-                      if (!selectedSource) return;
-                      setBusy(true);
-                      try {
-                        await refreshConfiguredSource(
-                          await jetApi.sourceMapping(
-                            active.id,
-                            selectedSource.id,
-                            mapping,
-                          ),
-                        );
-                      } catch (cause) {
-                        setError(asUserError(cause).title);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                    className={buttonClass}
-                  >
-                    Conferma mappatura
-                  </button>
-                </>
-              )}
-              {isProfileFile && txtInspection && (
-                <div className="space-y-lg">
-                  <div>
-                    <p className="mb-xs text-label-sm text-ink-secondary">
-                      Intestazione e righe di esempio · {txtInspection.codifica}
-                    </p>
-                    <pre className="overflow-x-auto rounded bg-tint-gray-bg p-md font-mono text-body-sm text-ink-primary"><code>{highlightedHeader}{txtInspection.righe_esempio?.map((line, index) => <span key={index}>{"\n"}{line}</span>)}</code></pre>
-                  </div>
-                  {txtInspection.profilo && (
-                    <Callout variant="info">
-                      Profilo riconosciuto:{" "}
-                      <strong>{txtInspection.profilo.nome}</strong>, creato il
-                      {" "}
-                      {new Date(txtInspection.profilo.created_at)
-                        .toLocaleString("it-IT")}.
-                    </Callout>
-                  )}
-                  <div className="grid md:grid-cols-[1fr_auto] gap-md items-end">
-                    <Field label="Profilo esistente">
-                      <select
-                        value={selectedProfile}
-                        onChange={(e) => setSelectedProfile(e.target.value)}
-                        className={inputClass}
-                      >
-                        <option value="">Scegli un profilo</option>
-                        {profiles.map((profile) => (
-                          <option key={profile.id} value={profile.id}>
-                            {profile.nome}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <button
-                      type="button"
-                      disabled={busy || !selectedProfile}
-                      onClick={applyProfile}
-                      className={buttonClass}
-                    >
-                      Conferma profilo
-                    </button>
-                  </div>
-                  <div className="border-t border-border-muted pt-lg">
-                    <h4 className="mb-md text-label-md text-ink-primary">
-                      Crea un nuovo profilo
-                    </h4>
-                    <Field label="Nome profilo">
-                      <input
-                        value={profileName}
-                        onChange={(e) => setProfileName(e.target.value)}
-                        className={inputClass}
-                      />
-                    </Field>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-md mt-md">
-                      {MAP_FIELDS.map((field) => (
-                        <div
-                          key={field}
-                          onFocus={() => setHighlightField(field)}
-                        >
-                          <span className="block mb-xs text-label-sm text-ink-secondary">
-                            {field.replaceAll("_", " ")}
-                          </span>
-                          <div className="grid grid-cols-2 gap-sm">
-                            <input
-                              aria-label={`${field} inizio`}
-                              type="number"
-                              min="0"
-                              placeholder="Inizio"
-                              value={positions[field]?.start || ""}
-                              onChange={(e) =>
-                                setPositions({
-                                  ...positions,
-                                  [field]: {
-                                    start: e.target.value,
-                                    end: positions[field]?.end || "",
-                                  },
-                                })}
-                              className={inputClass}
-                            />
-                            <input
-                              aria-label={`${field} fine`}
-                              type="number"
-                              min="1"
-                              placeholder="Fine esclusiva"
-                              value={positions[field]?.end || ""}
-                              onChange={(e) =>
-                                setPositions({
-                                  ...positions,
-                                  [field]: {
-                                    start: positions[field]?.start || "",
-                                    end: e.target.value,
-                                  },
-                                })}
-                              className={inputClass}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      disabled={busy || !profileName.trim()}
-                      onClick={createProfile}
-                      className={`${buttonClass} mt-md`}
-                    >
-                      Salva e applica profilo
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-          <Card padding="lg">
-            <CardHeader>3. Analisi</CardHeader>
-            <div className="flex flex-wrap items-center gap-md">
-              <button
-                disabled={busy || !active.parametri || !allActiveSourcesReady}
-                onClick={() => run(() => jetApi.analyze(active.id))}
-                className={buttonClass}
-              >
-                <Icon name="analytics" size="sm" />
-                {busy
-                  ? "Elaborazione…"
-                  : active.status === "analizzato"
-                  ? "Rilancia analisi"
-                  : "Avvia analisi"}
+              <button disabled={busy} className={`${buttonClass} self-end`}>
+                <Icon name="add" size="sm" />Crea pratica
               </button>
-              {active.status === "analizzato" && (
-                <span className="text-body-md text-ink-secondary">
-                  {active.numero_registrazioni.toLocaleString("it-IT")} righe ·
-                  {" "}
-                  {active.numero_da_investigare.toLocaleString("it-IT")}{" "}
-                  da investigare · media registrazione:{" "}
-                  {active.valore_medio_registrazione_effettivo === null
+            </form>
+          </JetSection>
+        )}
+        <JetSection
+          icon="table_chart"
+          title="Pratiche JET"
+          hint="Apri un incarico per KPI, fonti, matrice e risultati"
+          accent="blue"
+        >
+          <DataTable
+            variant="notion"
+            data={practices as (JetPractice & Record<string, unknown>)[]}
+            getRowKey={(p) => p.id}
+            onRowClick={choose}
+            emptyMessage="Nessuna pratica JET."
+            columns={[{ key: "client", header: "Cliente" }, {
+              key: "period",
+              header: "Periodo",
+            }, {
+              key: "status",
+              header: "Stato",
+              render: (p) => (
+                <StatusBadge variant={statusVariant(p.status)}>
+                  {p.status.replaceAll("_", " ")}
+                </StatusBadge>
+              ),
+            }, {
+              key: "numero_registrazioni",
+              header: "Righe",
+              align: "right",
+              render: (p) => p.numero_registrazioni.toLocaleString("it-IT"),
+            }, {
+              key: "numero_da_investigare",
+              header: "Da investigare",
+              align: "right",
+            }]}
+          />
+        </JetSection>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6 min-w-0 w-full pb-8">
+      <PageHeader
+        variant="page"
+        icon="account_balance"
+        iconAccent="blue"
+        tags={[
+          { label: "ISA Italia 240", tone: "blue" },
+          { label: active.period, tone: "gray" },
+        ]}
+        title={`${active.client} — Journal Entry Testing`}
+        meta={
+          <>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fbf3db] text-[#9f6b00] font-medium">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  active.status === "analizzato" ? "bg-emerald-600" : "bg-amber-600"
+                }`}
+              />
+              {active.status.replaceAll("_", " ")}
+            </span>
+            <span className="text-[#c8c7c3]">·</span>
+            <span>
+              Fonti:{" "}
+              <strong className="text-[#37352f]">{fontiAttive}</strong>
+            </span>
+            <span className="text-[#c8c7c3]">·</span>
+            <span>
+              Libro giornale:{" "}
+              <strong className="text-[#37352f]">
+                {active.numero_registrazioni.toLocaleString("it-IT")} righe
+              </strong>
+            </span>
+          </>
+        }
+        toolbar={
+          <GhostButton icon="arrow_back" onClick={() => setActive(null)}>
+            Pratiche
+          </GhostButton>
+        }
+        primaryAction={
+          <PrimaryButton
+            icon="analytics"
+            disabled={busy || !allActiveSourcesReady}
+            onClick={() =>
+              void run(async () => {
+                if (!active.parametri) {
+                  await jetApi.parameters(active.id, params);
+                }
+                return jetApi.analyze(active.id);
+              })
+            }
+            title={
+              !allActiveSourcesReady
+                ? "Carica e conferma almeno una fonte"
+                : undefined
+            }
+          >
+            {busy
+              ? "Elaborazione…"
+              : active.status === "analizzato"
+              ? "Rilancia analisi"
+              : "Avvia analisi"}
+          </PrimaryButton>
+        }
+      />
+      {error && <Callout variant="warning">{error}</Callout>}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <JetMetric
+          icon="table_rows"
+          label="Popolazione"
+          tone={active.numero_registrazioni > 0 ? "ok" : "default"}
+          value={active.numero_registrazioni.toLocaleString("it-IT")}
+          hint={
+            active.status === "analizzato"
+              ? "Registrazioni analizzate"
+              : "Dopo l’analisi"
+          }
+        />
+        <JetMetric
+          icon="warning"
+          label="Scritture sospette"
+          tone={investigateTone}
+          value={active.numero_da_investigare.toLocaleString("it-IT")}
+          hint="Punteggio sopra soglia"
+        />
+        <JetMetric
+          icon="fact_check"
+          label="Controlli attivi"
+          tone="info"
+          value={`${attivi} / 15`}
+          hint="Parametri salvati sul profilo"
+        />
+        <JetMetric
+          icon="source"
+          label="Fonti attive"
+          tone={fontiAttive ? "ok" : "pending"}
+          value={fontiAttive || "—"}
+          hint={allActiveSourcesReady ? "Pronte per l’analisi" : "Da configurare"}
+        />
+      </div>
+      <SourcePanel
+        practice={active}
+        sources={sources}
+        selectedSource={selectedSource}
+        busy={busy}
+        headers={headers}
+        mapping={mapping}
+        setMapping={setMapping}
+        profiles={profiles}
+        txtInspection={txtInspection}
+        selectedProfile={selectedProfile}
+        setSelectedProfile={setSelectedProfile}
+        profileName={profileName}
+        setProfileName={setProfileName}
+        positions={positions}
+        setPositions={setPositions}
+        setHighlightField={setHighlightField}
+        highlightedHeader={highlightedHeader}
+        onUpload={upload}
+        onSelectSource={(source) => void loadSource(active.id, source)}
+        onToggleActive={async (source, attiva) => {
+          await refreshConfiguredSource(
+            await jetApi.configureSource(active.id, source.id, attiva),
+          );
+        }}
+        onReplace={async (source, file) => {
+          setBusy(true);
+          try {
+            await jetApi.replaceSource(active.id, source.id, file);
+            await reloadSources(active.id, source.id);
+            const updated = (await jetApi.list()).find((item) => item.id === active.id);
+            if (updated) setActive(updated);
+          } catch (cause) {
+            setError(asUserError(cause).title);
+          } finally {
+            setBusy(false);
+          }
+        }}
+        onDelete={async (source) => {
+          if (!window.confirm(`Eliminare ${source.nome_originale}?`)) return;
+          await jetApi.deleteSource(active.id, source.id);
+          await reloadSources(active.id);
+          const updated = (await jetApi.list()).find((item) => item.id === active.id);
+          if (updated) setActive(updated);
+        }}
+        onDuplicates={(value) =>
+          run(() => jetApi.duplicates(active.id, value))
+        }
+        onConfirmMapping={async () => {
+          if (!selectedSource) return;
+          setBusy(true);
+          try {
+            await refreshConfiguredSource(
+              await jetApi.sourceMapping(active.id, selectedSource.id, mapping),
+            );
+          } catch (cause) {
+            setError(asUserError(cause).title);
+          } finally {
+            setBusy(false);
+          }
+        }}
+        onApplyProfile={applyProfile}
+        onCreateProfile={createProfile}
+      />
+      <ParamsPanel
+        client={active.client}
+        params={params}
+        setParams={setParams}
+        busy={busy}
+        onSave={saveParams}
+      />
+      <JetSection
+        icon="analytics"
+        title="Analisi"
+            accent="purple"
+            hint={
+              allActiveSourcesReady
+                ? "Fonti pronte"
+                : "Carica e conferma almeno una fonte"
+            }
+            padded
+          >
+            <p className="text-xs text-[#787774]">
+              {active.status === "analizzato"
+                ? `${active.numero_registrazioni.toLocaleString("it-IT")} righe · ${active.numero_da_investigare.toLocaleString("it-IT")} da investigare · media registrazione: ${
+                  active.valore_medio_registrazione_effettivo === null
                     ? "—"
                     : `€${Number(active.valore_medio_registrazione_effettivo).toLocaleString(
                       "it-IT",
                       { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-                    )}`}
-                </span>
-              )}
-            </div>
-          </Card>
+                    )}`
+                }`
+                : "Il comando «Avvia analisi» è nella barra della pagina. Resta disattivato finché non c’è almeno una fonte inclusa e pronta."}
+            </p>
+          </JetSection>
           {active.status === "analizzato" && (
-            <Card padding="none">
-              <div className="p-base">
-                <CardHeader
-                  trailing={
-                    <a
-                      href={jetApi.exportUrl(active.id, filters)}
-                      className={buttonClass}
-                    >
-                      <Icon name="download" size="sm" />Esporta Excel
-                    </a>
-                  }
-                >
-                  4. Risultati
-                </CardHeader>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    loadResults(1);
-                  }}
-                  className="grid md:grid-cols-4 gap-md"
-                >
+            <JetSection
+              icon="table_chart"
+              title="Righe sospette"
+              accent="yellow"
+              hint={`${total.toLocaleString("it-IT")} righe`}
+              trailing={
+                <a href={jetApi.exportUrl(active.id, filters)} className={jetGhostClass}>
+                  <Icon name="download" size="sm" className="text-[#787774]" />
+                  Esporta Excel
+                </a>
+              }
+            >
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  loadResults(1);
+                }}
+                className="grid md:grid-cols-4 gap-3 p-4 border-b border-[#e9e8e4] bg-[#faf9f7]"
+              >
                   <Field label="Da investigare">
                     <select
                       value={filters.da_investigare === undefined
@@ -1057,10 +638,10 @@ export function JetDashboard() {
                   <button className={`${buttonClass} self-end`}>
                     Applica filtri
                   </button>
-                </form>
-              </div>
+              </form>
               <DataTable
-                data={results}
+                variant="notion"
+                data={results as (JetResult & Record<string, unknown>)[]}
                 getRowKey={(x) => x.riga.identificativo_registrazione}
                 columns={[{
                   key: "id",
@@ -1098,11 +679,11 @@ export function JetDashboard() {
                   key: "flags",
                   header: "Criteri scattati",
                   render: (x) => (
-                    <div className="flex flex-wrap gap-xs">
+                    <div className="flex flex-wrap gap-1">
                       {trueFlags(x.esito).map((f) => (
                         <span
                           key={f}
-                          className="px-xs rounded bg-status-yellow-bg text-status-yellow-text text-label-sm"
+                          className="px-1.5 py-0.5 rounded bg-[#fef7e0] text-[#b06000] text-[11px]"
                         >
                           {f}
                         </span>
@@ -1110,7 +691,7 @@ export function JetDashboard() {
                       {Object.entries(FLAG_NAMES).some(([k]) =>
                         x.esito[k] === null
                       ) && (
-                        <span className="px-xs rounded bg-tint-gray-bg text-tint-gray-text text-label-sm">
+                        <span className="px-1.5 py-0.5 rounded bg-[#f1f1ef] text-[#787774] text-[11px]">
                           Alcuni non calcolabili
                         </span>
                       )}
@@ -1118,33 +699,31 @@ export function JetDashboard() {
                   ),
                 }]}
               />
-              <div className="flex items-center justify-between p-base border-t border-border-muted">
-                <span className="text-body-sm text-ink-secondary">
+              <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#e9e8e4] bg-[#faf9f7]">
+                <span className="text-xs text-[#787774]">
                   {total.toLocaleString("it-IT")} risultati · pagina {page} di
                   {" "}
                   {pages || 1}
                 </span>
-                <div className="flex gap-sm">
+                <div className="flex gap-1.5">
                   <button
                     disabled={page <= 1 || busy}
                     onClick={() => loadResults(page - 1)}
-                    className="px-md py-sm rounded border border-border-subtle disabled:opacity-40"
+                    className={`${jetGhostClass} disabled:opacity-40`}
                   >
                     Precedente
                   </button>
                   <button
                     disabled={page >= pages || busy}
                     onClick={() => loadResults(page + 1)}
-                    className="px-md py-sm rounded border border-border-subtle disabled:opacity-40"
+                    className={`${jetGhostClass} disabled:opacity-40`}
                   >
                     Successiva
                   </button>
                 </div>
               </div>
-            </Card>
+            </JetSection>
           )}
-        </>
-      )}
     </div>
   );
 }

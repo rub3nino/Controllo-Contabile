@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Relazione_analisi_JET_AS-IS_TO-BE</title>
+  <style>
+
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">@page { size: A4; margin: 17mm 17mm 18mm 17mm; @bottom-center { content: "Quadra — JET AS-IS / TO-BE"; color: #6b7780; font-size: 8pt; } @bottom-right { content: counter(page); color: #6b7780; font-size: 8pt; } }
+html { font-family: Arial, Helvetica, sans-serif; color: #1f2b34; font-size: 10pt; line-height: 1.32; }
+body { margin: 0; }
+h1 { color: #235a78; font-size: 18pt; margin: 20pt 0 8pt; break-after: avoid; }
+h2 { color: #235a78; font-size: 14pt; margin: 15pt 0 6pt; break-after: avoid; }
+h3 { color: #183245; font-size: 11.5pt; margin: 10pt 0 4pt; break-after: avoid; }
+p { margin: 0 0 6pt; orphans: 3; widows: 3; break-inside: avoid; }
+ul, ol { margin: 3pt 0 8pt 20pt; padding: 0; }
+li { margin: 0 0 3pt; }
+table { border-collapse: collapse; width: 100%; margin: 7pt 0 11pt; break-inside: auto; break-after: avoid-page; font-size: 8.7pt; }
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th { background: #235a78; color: #fff; text-align: left; font-weight: 700; padding: 6pt; border: 0.6pt solid #b9c6ce; }
+td { padding: 5pt 6pt; border: 0.6pt solid #c7d0d6; vertical-align: middle; }
+blockquote { margin: 8pt 0 10pt; padding: 8pt 10pt; background: #fff4d6; border-left: 4pt solid #c18a00; }
+strong { color: #183245; }
+section:first-of-type h1:first-child { font-size: 27pt; color: #183245; margin-top: 18mm; }
+hr { border: 0; border-top: 1pt solid #9fb2be; margin: 12pt 0; }
+@media print { a { color: inherit; text-decoration: none; } }
+#fonti-e-tracciabilità { break-before: page; }
+</style>
+</head>
+<body>
+<p><strong>RELAZIONE TECNICO-FUNZIONALE</strong></p>
+<p>Journal Entry Testing<br />
+AS-IS e proposta TO-BE</p>
+<p>Valutazione dei 15 controlli richiesti per l’evoluzione da MVP a
+prodotto operativo</p>
+<p><strong>Destinatari:</strong> Partner, manager e responsabili del
+progetto</p>
+<p><strong>Perimetro:</strong> Analisi funzionale e metodologica;
+nessuna modifica al software</p>
+<p><strong>Base:</strong> ISA Italia 240 §33 e §A44; riferimento tecnico
+JET; codice Quadra attuale</p>
+<p><strong>Versione:</strong> 1.0 — 10 settembre 2026</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Messaggio decisionale</strong></p>
+<p>L’MVP contiene una parte significativa dei controlli di preselezione,
+ma diversi requisiti richiesti sono assenti o implementati con una
+logica diversa. Prima dello sviluppo occorre approvare unità di analisi,
+soglie, punteggi, fonti dati e trattamento dei controlli non
+calcolabili.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<h1 id="sintesi-esecutiva">Sintesi esecutiva</h1>
+<p>Il JET attuale valuta prevalentemente singole righe del libro
+giornale. Ogni indicatore vero attribuisce un peso; la somma viene
+confrontata con la soglia “da investigare”. La selezione non certifica
+errore o frode: identifica registrazioni sulle quali svolgere follow-up
+documentale e professionale.</p>
+<ul>
+<li><p>Già presenti e sostanzialmente coerenti: impatto sull’utile,
+oltre 10× la media, superamento della performance materiality, fuori
+orario, descrizione vuota, conto raro, sequenza numerica.</p></li>
+<li><p>Presenti ma da correggere o ampliare: cifra tonda,
+weekend/festività, retrodatazione/fine periodo, utenti non autorizzati,
+keyword.</p></li>
+<li><p>Assenti: cifre finali ripetute, seconda analisi strutturata dei
+sospetti, lunghezza anomala del conto, calendari multinazionali
+automatici, OCR della visura e incrocio con poteri/accessi.</p></li>
+<li><p>Il test di sequenza e la successiva re-analisi non dovrebbero
+concorrere automaticamente al punteggio di rischio della singola
+riga.</p></li>
+</ul>
+<h2 id="decisioni-richieste-a-partner-e-manager">Decisioni richieste a
+partner e manager</h2>
+<ul>
+<li><p>Approvare se il JET debba selezionare righe, scritture complete o
+entrambe.</p></li>
+<li><p>Approvare una matrice dei pesi e la regola per gli indicatori
+obbligatori indipendenti dal punteggio.</p></li>
+<li><p>Stabilire chi è responsabile della validazione di calendario,
+utenti, parti correlate e data di chiusura.</p></li>
+<li><p>Stabilire come documentare criteri non eseguibili per dati
+mancanti.</p></li>
+<li><p>Separare l’analisi antifrode dai controlli di integrità e
+completezza della popolazione.</p></li>
+</ul>
+<h1 id="base-normativa-e-metodo-di-valutazione">1. Base normativa e
+metodo di valutazione</h1>
+<p>L’ISA Italia 240 §33(a) richiede la verifica delle scritture
+contabili e delle rettifiche, con attenzione specifica alle
+registrazioni di fine periodo. Il §A44 fornisce caratteristiche di
+rischio — conti insoliti, autori inusuali, descrizioni scarse, importi
+tondi, operazioni infragruppo e fuori dal normale corso — ma non
+prescrive soglie numeriche o punteggi. Le formule quantitative derivano
+dal modello operativo NORDSON/BTI e dalle scelte progettuali di
+Quadra.</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Principio di interpretazione</strong></p>
+<p>Un indicatore vero significa “selezionare per approfondimento”, non
+“frode”. Un indicatore non calcolabile deve essere visibile come tale e
+non confuso con un risultato negativo.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<h2 id="scala-utilizzata-nella-relazione">Scala utilizzata nella
+relazione</h2>
+<table>
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 80%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: center;"><strong>Stato</strong></th>
+<th style="text-align: center;"><strong>Significato</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">Presente</td>
+<td style="text-align: left;">Il controllo esiste e la logica richiesta
+è sostanzialmente disponibile.</td>
+</tr>
+<tr>
+<td style="text-align: center;">Parziale/diverso</td>
+<td style="text-align: left;">Esiste un controllo collegato, ma formula,
+perimetro o dati differiscono dal requisito.</td>
+</tr>
+<tr>
+<td style="text-align: center;">Assente</td>
+<td style="text-align: left;">Non esiste oggi una logica che produca il
+risultato richiesto.</td>
+</tr>
+</tbody>
+</table>
+<h1 id="matrice-generale-dei-15-controlli">Matrice generale dei 15
+controlli</h1>
+<table>
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 21%" />
+<col style="width: 14%" />
+<col style="width: 59%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: center;"><strong>#</strong></th>
+<th style="text-align: center;"><strong>Stato attuale</strong></th>
+<th style="text-align: center;"><strong>Peso attuale</strong></th>
+<th style="text-align: center;"><strong>Intervento
+principale</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;">Presente</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">Confermare formula e gestione utile
+nullo/perdita</td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td style="text-align: left;">Presente</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">Calcolare automaticamente la media
+assoluta</td>
+</tr>
+<tr>
+<td style="text-align: center;">3</td>
+<td style="text-align: left;">Presente</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">Importare/validare PM da Global Focus</td>
+</tr>
+<tr>
+<td style="text-align: center;">4</td>
+<td style="text-align: left;">Parziale/diverso</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">Oggi divisibile per 10; definire
+10.000/100.000</td>
+</tr>
+<tr>
+<td style="text-align: center;">5</td>
+<td style="text-align: left;">Parziale/diverso</td>
+<td style="text-align: left;">1 + 1 oggi</td>
+<td style="text-align: left;">Calendari per Paese assenti; data usata da
+chiarire</td>
+</tr>
+<tr>
+<td style="text-align: center;">6</td>
+<td style="text-align: left;">Presente</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">Default 08:00–18:00 configurabile</td>
+</tr>
+<tr>
+<td style="text-align: center;">7</td>
+<td style="text-align: left;">Parziale/diverso</td>
+<td style="text-align: left;">1 oggi</td>
+<td style="text-align: left;">Manca finestra ultimi 5 giorni
+lavorativi</td>
+</tr>
+<tr>
+<td style="text-align: center;">8</td>
+<td style="text-align: left;">Parziale/diverso</td>
+<td style="text-align: left;">1 oggi</td>
+<td style="text-align: left;">Manca interruttore esplicito; dati spesso
+assenti</td>
+</tr>
+<tr>
+<td style="text-align: center;">9</td>
+<td style="text-align: left;">Presente</td>
+<td style="text-align: left;">1 oggi</td>
+<td style="text-align: left;">Nel modello NORDSON valeva 4</td>
+</tr>
+<tr>
+<td style="text-align: center;">10</td>
+<td style="text-align: left;">Presente</td>
+<td style="text-align: left;">opzionale/null</td>
+<td style="text-align: left;">Definire 2–4 utilizzi e base annuale</td>
+</tr>
+<tr>
+<td style="text-align: center;">11</td>
+<td style="text-align: left;">Presente separato</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">Solo sequenze numeriche; regole per
+pagina/serie</td>
+</tr>
+<tr>
+<td style="text-align: center;">12</td>
+<td style="text-align: left;">Assente</td>
+<td style="text-align: left;">da approvare</td>
+<td style="text-align: left;">Definire pattern e soglia importo</td>
+</tr>
+<tr>
+<td style="text-align: center;">13</td>
+<td style="text-align: left;">Assente</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">Workflow di secondo livello, non nuovo
+rischio</td>
+</tr>
+<tr>
+<td style="text-align: center;">14</td>
+<td style="text-align: left;">Assente</td>
+<td style="text-align: left;">da approvare</td>
+<td style="text-align: left;">Validare rispetto ai formati ERP</td>
+</tr>
+<tr>
+<td style="text-align: center;">15</td>
+<td style="text-align: left;">Parziale + assente OCR</td>
+<td style="text-align: left;">1 oggi keyword</td>
+<td style="text-align: left;">Separare keyword, visura, accessi e
+poteri</td>
+</tr>
+</tbody>
+</table>
+<h1 id="analisi-dettagliata-dei-controlli">2. Analisi dettagliata dei
+controlli</h1>
+<h2 id="impatto-superiore-al-10-dellutile-netto">1. Impatto superiore al
+10% dell’utile netto</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PRESENTE. Peso iniziale attuale: 1.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Il sistema prende il valore
+assoluto della riga e lo confronta con il 10% del valore assoluto
+dell’utile netto dopo le imposte: |importo| &gt; 10% × |utile|.
+L’uguaglianza non attiva il flag.</p>
+<p><strong>Dati e fonte:</strong> Utile netto dopo imposte dello stesso
+periodo e importo netto correttamente normalizzato. Fonte: conto
+economico/bilancio di verifica e carta di lavoro di pianificazione.</p>
+<p><strong>Risultato atteso:</strong> Flag “Impatto sull’utile”,
+incremento del punteggio e motivazione visibile nell’export.</p>
+<p><strong>Gap e rischi:</strong> Con utile nullo o molto basso il test
+diventa eccessivamente sensibile; con perdita usa il valore assoluto.
+Occorre prevedere un benchmark alternativo o una motivazione del
+revisore.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Mantenere il peso 1
+come indicatore quantitativo, ma bloccare o qualificare il controllo
+quando l’utile non è un benchmark appropriato. Registrare fonte e
+periodo del valore inserito.</p>
+<h2 id="importi-superiori-a-10-volte-la-media">2. Importi superiori a 10
+volte la media</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PRESENTE, CON MIGLIORIA NECESSARIA. Peso iniziale attuale:
+1.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Confronta |importo della
+riga| con 10 × |valore medio registrazione|. Il valore medio è oggi
+inserito manualmente.</p>
+<p><strong>Dati e fonte:</strong> Popolazione completa del giornale,
+dopo pulizia e gestione duplicati. La media consigliata è somma degli
+importi assoluti divisa per numero di righe; non la media algebrica, che
+può annullarsi tra Dare e Avere.</p>
+<p><strong>Risultato atteso:</strong> Flag “&gt;10× media” sulle righe
+eccezionalmente grandi rispetto alla popolazione.</p>
+<p><strong>Gap e rischi:</strong> La media manuale non è riproducibile;
+inoltre una media per riga può non rappresentare il valore della
+scrittura completa e risente fortemente degli outlier.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Calcolo automatico e
+tracciato; mostrare numeratore, denominatore e metodo. Valutare anche
+media/mediana per tipo documento o conto, senza sostituire la regola
+approvata.</p>
+<h2 id="superamento-della-materialità-da-global-focus">3. Superamento
+della materialità da Global Focus</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PRESENTE PER LA PERFORMANCE MATERIALITY. Peso iniziale attuale:
+1.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Il sistema confronta
+|importo| con la performance materiality (PM). La casella “materialità
+di bilancio” è salvata ma non alimenta alcun controllo.</p>
+<p><strong>Dati e fonte:</strong> Performance materiality approvata per
+società, esercizio e perimetro. Fonte prevista: file Materiality/Global
+Focus, con verifica del valore, valuta, versione e data di
+approvazione.</p>
+<p><strong>Risultato atteso:</strong> Flag “Oltre performance
+materiality” e incremento del punteggio.</p>
+<p><strong>Gap e rischi:</strong> Non esiste importazione diretta o
+riconciliazione con Global Focus. “Materialità complessiva” e “PM” non
+devono essere confuse. La PM potrebbe variare per area o componente.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Prevedere caricamento
+del file o inserimento manuale con evidenza della fonte; richiedere
+conferma esplicita di valuta e periodo. Mantenere peso 1 salvo diversa
+metodologia approvata.</p>
+<h2 id="cifre-tonde-divisibili-per-10.000-o-100.000">4. Cifre tonde
+divisibili per 10.000 o 100.000</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PRESENTE MA CON FORMULA DIVERSA. Peso iniziale attuale: 1.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Oggi una riga è “tonda” se
+|importo| è divisibile per 10. Quindi anche 20 o 150 vengono
+segnalati.</p>
+<p><strong>Dati e fonte:</strong> Importo netto; eventuale soglia
+minima; valuta della registrazione. Se vi sono più valute, il multiplo
+deve essere interpretato nella valuta della riga o dopo conversione
+definita.</p>
+<p><strong>Risultato atteso:</strong> Distinguere almeno “multiplo di
+10.000” e “multiplo di 100.000”, mostrando quale regola è scattata.</p>
+<p><strong>Gap e rischi:</strong> Il requisito proposto non coincide con
+il codice. Non è chiaro se 100.000 debba attivare entrambi i flag o solo
+quello più significativo, né come gestire decimali/valute.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Parametri
+configurabili 10.000 e 100.000; un solo indicatore con livello massimo
+raggiunto per evitare doppio conteggio. Peso suggerito da sottoporre ad
+approvazione: 1, con soglia minima e motivazione.</p>
+<h2 id="weekend-e-festività-per-paese">5. Weekend e festività per
+Paese</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PARZIALE. Oggi due criteri distinti, peso iniziale 1
+ciascuno.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Weekend: verifica se la data
+effettiva cade nei giorni configurati. Festività: verifica se la data
+effettiva è nell’elenco inserito manualmente.</p>
+<p><strong>Dati e fonte:</strong> Paese/sede applicabile alla società,
+calendario annuale, festività nazionali e locali, chiusure aziendali.
+Per Italia, Germania, Francia e Spagna occorre gestire anche festività
+regionali/locali.</p>
+<p><strong>Risultato atteso:</strong> Flag separati “weekend” e
+“festività”, con Paese/calendario e festività che ha causato la
+selezione.</p>
+<p><strong>Gap e rischi:</strong> Non esiste libreria/calendario
+automatico. Il codice usa la data effettiva: per sapere quando l’utente
+ha operato sarebbe normalmente più pertinente la data di creazione.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Calendari versionati
+interni o libreria affidabile, con override cliente. Usare data
+creazione per attività fuori giorno lavorativo e, se utile, mantenere un
+indicatore distinto sulla data effettiva. Peso 1 ciascuno; evitare di
+contare due volte sabato che coincida con festività, salvo scelta
+esplicita.</p>
+<h2 id="registrazioni-prima-delle-0800-o-dopo-le-1800">6. Registrazioni
+prima delle 08:00 o dopo le 18:00</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PRESENTE. Peso iniziale attuale: 1.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Confronta l’ora di creazione
+con inizio e fine configurati. Gli estremi sono inclusi: 08:00 e 18:00
+non scattano; 07:59 e 18:01 scattano.</p>
+<p><strong>Dati e fonte:</strong> Ora tecnica di creazione, fuso orario,
+orario ordinario della società e indicazione di account
+batch/turnisti.</p>
+<p><strong>Risultato atteso:</strong> Flag “Fuori orario” con ora
+rilevata e fascia applicata.</p>
+<p><strong>Gap e rischi:</strong> Non esiste oggi un default
+obbligatorio 08:00–18:00; è inserito dall’utente. Mancano fuso orario,
+turni, periodi di closing e orari diversi per sede.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Proporre 08:00–18:00
+come default modificabile, mai come regola normativa. Escludere o
+classificare separatamente batch; conservare sempre la fascia utilizzata
+nel risultato.</p>
+<h2 id="retrodatazione-e-ultimi-5-giorni-lavorativi-di-chiusura">7.
+Retrodatazione e ultimi 5 giorni lavorativi di chiusura</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PARZIALE; CONTROLLO DI FINE PERIODO ASSENTE. Peso iniziale attuale:
+1. Nel modello NORDSON il backdating valeva 4.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Retrodatazione: data
+creazione − data effettiva ≥ soglia configurata. Non esiste un controllo
+sugli ultimi cinque giorni lavorativi prima della chiusura.</p>
+<p><strong>Dati e fonte:</strong> Data effettiva, data/ora creazione,
+data di chiusura (default 31/12 modificabile), calendario lavorativo
+della società, data eventuale riapertura e tipo di scrittura.</p>
+<p><strong>Risultato atteso:</strong> Due esiti distinti: A)
+“retrodatata oltre N giorni”; B) “scrittura nella finestra di closing”,
+calcolata sugli ultimi 5 giorni lavorativi rispetto alla data di
+chiusura configurata. Opportuno includere anche scritture create dopo la
+chiusura con competenza precedente.</p>
+<p><strong>Gap e rischi:</strong> La richiesta combina due rischi
+diversi. La finestra di chiusura è un sottoinsieme da esaminare per
+disposizione ISA e non dovrebbe dipendere solo da un punteggio
+aggregato.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Separare i controlli.
+Retrodatazione: peso forte da approvare (coerente con NORDSON: 4).
+Finestra closing: inclusione obbligatoria nel perimetro o lista
+dedicata, senza affidarsi al solo punteggio. Data default 31/12, sempre
+modificabile e documentata.</p>
+<h2 id="utenti-non-autorizzati-con-possibilità-di-disattivazione">8.
+Utenti non autorizzati con possibilità di disattivazione</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PARZIALE. Peso iniziale attuale: 1; nel modello NORDSON valeva
+4.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Se esiste una whitelist,
+segnala l’utente non presente. Gli utenti di sistema sono esclusi dal
+giudizio. Se lista o utente mancano, il flag è non calcolabile.</p>
+<p><strong>Dati e fonte:</strong> User ID dell’export, matrice
+ruoli/autorizzazioni, elenco account tecnici, periodo di validità degli
+accessi.</p>
+<p><strong>Risultato atteso:</strong> Modalità attiva/disattiva/non
+calcolabile, con motivazione. Se attivo, elenco degli utenti non
+autorizzati e delle relative scritture.</p>
+<p><strong>Gap e rischi:</strong> Non esiste un interruttore esplicito;
+lasciare la lista vuota non equivale metodologicamente a disattivare il
+test. Una whitelist generale non identifica utenti autorizzati ma
+inusuali per quel processo.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Aggiungere stato del
+controllo: Attivo / Non applicabile / Dato non disponibile, con
+motivazione obbligatoria. Se attivo, peso forte 4 da sottoporre ad
+approvazione. Non trasformare l’assenza dei dati in esito negativo.</p>
+<h2 id="righe-vuote-o-senza-descrizione">9. Righe vuote o senza
+descrizione</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PRESENTE PER LA DESCRIZIONE VUOTA. Peso iniziale attuale: 1; nel
+modello NORDSON valeva 4.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> La descrizione assente o
+composta solo da spazi attiva il flag. Il sistema non valuta righe
+completamente vuote, che normalmente vengono eliminate o causano
+problemi di importazione.</p>
+<p><strong>Dati e fonte:</strong> Descrizione/causale di riga;
+idealmente anche testo di testata.</p>
+<p><strong>Risultato atteso:</strong> Flag “Descrizione vuota”; lista
+delle scritture prive di spiegazione.</p>
+<p><strong>Gap e rischi:</strong> Non intercetta descrizioni scarse ma
+presenti, quali “giroconto”, “rettifica”, “varie” o “adj”. Va chiarito
+se “riga vuota” significhi riga fisica dell’export oppure causale
+vuota.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Mantenere descrizione
+vuota come rischio forte (peso 4 coerente con NORDSON, da approvare).
+Aggiungere separatamente “descrizione scarsa/generica”, con dizionario
+configurabile e revisione dei falsi positivi.</p>
+<h2 id="conto-insolito-o-raro-usato-24-volte-allanno">10. Conto insolito
+o raro usato 2–4 volte all’anno</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PRESENTE, MA LA SOGLIA VA DEFINITA. Peso opzionale attuale: non
+impostato; quindi il flag può esistere senza punti.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Conta le righe per conto
+nella popolazione caricata e segnala frequenza &lt; soglia. Con soglia 5
+intercetta 1–4 utilizzi; non 0, perché un conto mai usato non compare
+nel giornale.</p>
+<p><strong>Dati e fonte:</strong> Codice conto, popolazione dell’intero
+anno, piano dei conti e preferibilmente storico precedente.</p>
+<p><strong>Risultato atteso:</strong> Frequenza osservata, soglia
+applicata e flag conto raro.</p>
+<p><strong>Gap e rischi:</strong> “Da 2 a 4” escluderebbe i conti usati
+una sola volta, che sono potenzialmente ancora più rari. Il calcolo
+attuale conta righe, non scritture, e un caricamento trimestrale non
+rappresenta l’anno.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Definire “da 1 a 4
+utilizzi nell’intero esercizio” oppure motivare l’esclusione della
+frequenza 1. Contare scritture/documenti distinti oltre alle righe. Peso
+proposto da approvare: 4 per un segnale direttamente collegato all’ISA,
+con analisi storica quando disponibile.</p>
+<h2 id="test-di-sequenza-numerica-e-controllo-per-paginaserie">11. Test
+di sequenza numerica e controllo per pagina/serie</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>PRESENTE PER NUMERI PURAMENTE NUMERICI. Nessun punteggio: controllo
+separato.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Ordina i numeri documento
+numerici, elimina duplicati e identifica i valori mancanti. Intervalli
+oltre 10.000 mancanti vengono riepilogati senza enumerazione.</p>
+<p><strong>Dati e fonte:</strong> Numero protocollo reale, regole di
+numerazione, società, esercizio, sezionale/tipo documento. Per PDF
+bollato: numero pagina estratto e totale pagine.</p>
+<p><strong>Risultato atteso:</strong> Elenco gap per serie, più
+eventuali pagine mancanti/duplicate nel documento.</p>
+<p><strong>Gap e rischi:</strong> Le serie alfanumeriche sono escluse;
+serie diverse mescolate creano falsi gap. Il controllo pagina PDF non
+esiste. Un numero mancante può essere annullato legittimamente.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Mantenere fuori dal
+punteggio. Configurare serie e reset; richiedere evidenza per numeri
+annullati. Aggiungere controllo pagine solo per documenti con
+numerazione attendibile e distinguere completezza del file da
+completezza contabile.</p>
+<h2 id="cifre-finali-ripetute">12. Cifre finali ripetute</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>ASSENTE. Nessun peso attuale; da approvare.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Non esiste un controllo
+dedicato. La divisibilità per 10 non intercetta correttamente finali
+come 77 o 99.</p>
+<p><strong>Dati e fonte:</strong> Importo nella valuta originale e
+numero di decimali. Occorre definire se analizzare parte intera,
+centesimi o stringa normalizzata.</p>
+<p><strong>Risultato atteso:</strong> Flag e pattern rilevato, ad
+esempio ultime due cifre intere uguali (…77) o centesimi ripetuti
+(…,99). L’esempio 86.514,99 sarebbe rilevato per i centesimi 99.</p>
+<p><strong>Gap e rischi:</strong> La definizione “e così via” è troppo
+ampia: 77 può essere un importo intero o una terminazione; molti prezzi
+legittimi finiscono in ,99. Senza soglia minima si generano numerosi
+falsi positivi.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Approvare pattern
+separati: ultime 2/3 cifre intere ripetute; centesimi 00/11/22…99;
+sequenze ripetute. Applicare una soglia minima e un peso basso 1, salvo
+combinazione con altri segnali.</p>
+<h2 id="seconda-analisi-limitata-ai-dati-sospetti">13. Seconda analisi
+limitata ai dati sospetti</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>ASSENTE COME FASE AUTONOMA. Nessun punteggio aggiuntivo.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Il sistema consente di
+filtrare ed esportare le righe “da investigare”, ma non esegue un
+secondo motore analitico su tale sottoinsieme.</p>
+<p><strong>Dati e fonte:</strong> Risultati della prima fase, scrittura
+completa, documenti di supporto, esito delle verifiche e
+motivazioni.</p>
+<p><strong>Risultato atteso:</strong> Coda di casi: raggruppamento per
+scrittura, ranking del rischio, confronto con scritture simili,
+richiesta evidenze, conclusione preparer/reviewer e tracciamento degli
+override.</p>
+<p><strong>Gap e rischi:</strong> Rieseguire le stesse regole sul
+sottoinsieme non aggiunge informazione e altera le distribuzioni
+(media/frequenze). Il sottoinsieme non deve diventare la nuova
+popolazione statistica.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Realizzare un workflow
+di secondo livello, non un semplice rerun: mantenere le metriche della
+popolazione originale, arricchire le scritture selezionate e registrare
+esito finale (giustificata, errore, rettifica, escalation).</p>
+<h2 id="numero-di-conto-superiore-a-10-carattericifre">14. Numero di
+conto superiore a 10 caratteri/cifre</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>ASSENTE. Nessun peso attuale; da approvare.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Il conto è conservato come
+testo ma la lunghezza non viene validata.</p>
+<p><strong>Dati e fonte:</strong> Codice conto grezzo e specifica del
+piano dei conti/ERP. Va deciso se contare solo cifre o tutti i
+caratteri, escludendo spazi, separatori e prefissi legittimi.</p>
+<p><strong>Risultato atteso:</strong> Flag “formato conto anomalo”,
+lunghezza osservata e regola prevista per quella società.</p>
+<p><strong>Gap e rischi:</strong> Più di 10 caratteri non è
+universalmente anomalo: alcuni ERP usano segmenti, centri di costo
+concatenati o codici alfanumerici. Una regola globale produrrebbe falsi
+positivi.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Trasformarlo in
+validazione configurabile del formato conto (regex/lunghezza/lookup nel
+piano dei conti), non in regola universale. Preferire “conto inesistente
+nel piano dei conti”. Peso basso 1 o controllo di qualità dati separato,
+da approvare.</p>
+<h2 id="keyword-variabili-visura-e-soggetti-con-poteri">15. Keyword
+variabili, visura e soggetti con poteri</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Stato</strong></p>
+<p>KEYWORD PRESENTI; LIBRERIA STANDARD E OCR VISURA ASSENTI. Keyword:
+peso iniziale attuale 1; nel modello NORDSON valevano 4. OCR: nessun
+peso.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<p><strong>Comportamento attuale:</strong> Il sistema cerca nella
+descrizione parole configurate manualmente, senza distinzione
+maiuscole/minuscole. Esiste anche una lista di conti infragruppo. Non
+carica né analizza la visura.</p>
+<p><strong>Dati e fonte:</strong> Dizionario standard versionato,
+termini cliente, elenco parti correlate; visura aggiornata; nomi, codici
+fiscali, cariche e poteri; matrice degli accessi al gestionale e user
+ID.</p>
+<p><strong>Risultato atteso:</strong> Tre livelli separati: A) keyword
+di rischio nella causale; B) nominativi/cariche estratti dalla visura
+con conferma umana; C) incrocio tra persone, user ID, autorizzazioni e
+scritture. Ogni match deve mostrare origine e grado di affidabilità.</p>
+<p><strong>Gap e rischi:</strong> La visura dimostra cariche e poteri
+legali, non chi abbia accesso tecnico o chi possa materialmente
+manomettere il giornale. L’OCR può sbagliare nomi e ruoli. Parole
+generiche sulla frode producono molti falsi positivi; non serve
+necessariamente una libreria esterna.</p>
+<p><strong>Comportamento TO-BE proposto:</strong> Creare un dizionario
+interno approvato e modificabile, con categorie (rettifica, override,
+urgenza, parti correlate, closing). OCR locale della visura con
+revisione obbligatoria campo per campo. Incrociare poi con accessi IT;
+mai etichettare automaticamente una persona come sospetta. Pesi
+distinti: keyword contestuale da approvare; match persona+utente non
+deve essere conclusivo senza evidenze.</p>
+<h1 id="architettura-funzionale-proposta">3. Architettura funzionale
+proposta</h1>
+<p>Per trasformare l’MVP in prodotto finito è utile separare le
+verifiche in livelli. In questo modo i risultati restano interpretabili
+e i controlli di completezza non vengono confusi con gli indicatori di
+frode.</p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 73%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: center;"><strong>Fase</strong></th>
+<th style="text-align: center;"><strong>Contenuto</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1. Qualità e completezza input</td>
+<td style="text-align: left;">Mappatura, formati, conti validi,
+quadratura Dare/Avere, sequenza, pagine e riconciliazione al bilancio di
+verifica.</td>
+</tr>
+<tr>
+<td style="text-align: center;">2. Profilazione della popolazione</td>
+<td style="text-align: left;">Frequenze per conto/utente/tipo, valori
+medi, periodo coperto, valute, serie numeriche e completezza dei
+metadati.</td>
+</tr>
+<tr>
+<td style="text-align: center;">3. Screening di rischio</td>
+<td style="text-align: left;">Applicazione dei controlli approvati a
+righe e scritture complete, mantenendo esiti vero/falso/non
+calcolabile.</td>
+</tr>
+<tr>
+<td style="text-align: center;">4. Finestra di closing</td>
+<td style="text-align: left;">Selezione dedicata degli ultimi cinque
+giorni lavorativi e delle scritture create dopo la data di chiusura con
+competenza precedente.</td>
+</tr>
+<tr>
+<td style="text-align: center;">5. Second-level review</td>
+<td style="text-align: left;">Raggruppamento dei sospetti, richiesta
+documenti, spiegazioni, autorizzazioni e conclusioni con doppia
+revisione.</td>
+</tr>
+<tr>
+<td style="text-align: center;">6. Reporting e audit trail</td>
+<td style="text-align: left;">Parametri, fonti, versione delle regole,
+eccezioni, override, preparer/reviewer, timestamp ed export
+riproducibile.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="regola-di-scoring-raccomandata">Regola di scoring
+raccomandata</h2>
+<p>La seguente impostazione è una proposta per discussione, non una
+prescrizione normativa né una decisione già approvata:</p>
+<ul>
+<li><p>Indicatori deboli/contestuali: peso 1 (dimensione relativa, cifra
+tonda, weekend, fuori orario, cifre ripetute).</p></li>
+<li><p>Indicatori forti: peso 4 solo se sorretti da dati affidabili
+(retrodatazione significativa, utente non autorizzato, descrizione
+vuota, parte correlata/conto raro secondo metodologia).</p></li>
+<li><p>Controlli di completezza e qualità: nessun punteggio; esito
+separato bloccante o di eccezione.</p></li>
+<li><p>Scritture di closing: popolazione dedicata obbligatoria,
+indipendente dalla soglia aggregata.</p></li>
+<li><p>Non calcolabile: non assegna punti, ma deve generare
+un’avvertenza di copertura e comparire nel report.</p></li>
+</ul>
+<h2 id="dati-minimi-richiesti-al-cliente">Dati minimi richiesti al
+cliente</h2>
+<ul>
+<li><p>Libro giornale completo con ID scrittura, numero documento, data
+effettiva, data/ora creazione, utente, conto, Dare/Avere, valuta e
+descrizione.</p></li>
+<li><p>Piano dei conti e bilanci di verifica iniziale/finale.</p></li>
+<li><p>Materialità e performance materiality approvate, con valuta e
+periodo.</p></li>
+<li><p>Calendario lavorativo, Paese/sede, data di chiusura e policy di
+closing.</p></li>
+<li><p>Matrice utenti/ruoli, account tecnici e storico delle
+autorizzazioni.</p></li>
+<li><p>Elenco parti correlate, conti infragruppo, visura aggiornata e
+struttura del gruppo.</p></li>
+</ul>
+<h2 id="requisiti-di-governo">Requisiti di governo</h2>
+<ul>
+<li><p>Versionare parametri, dizionari, calendari e regole; nessuna
+soglia nascosta.</p></li>
+<li><p>Richiedere motivazione per disattivare un controllo o accettare
+un dato mancante.</p></li>
+<li><p>Conservare l’origine di ogni riga e non alterare i documenti del
+cliente.</p></li>
+<li><p>Prevedere revisione umana dell’OCR e delle corrispondenze
+nominative.</p></li>
+<li><p>Proteggere visure, nomi, user ID e dati contabili con accessi,
+retention e log coerenti con la policy dello studio.</p></li>
+</ul>
+<h1 id="priorità-di-sviluppo-proposta">4. Priorità di sviluppo
+proposta</h1>
+<table>
+<colgroup>
+<col style="width: 23%" />
+<col style="width: 76%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: center;"><strong>Priorità</strong></th>
+<th style="text-align: center;"><strong>Contenuto</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">P0 — metodologia</td>
+<td style="text-align: left;">Unità riga/scrittura; pesi; soglia;
+closing obbligatorio; definizioni di data, media e conto raro.</td>
+</tr>
+<tr>
+<td style="text-align: center;">P1 — affidabilità</td>
+<td style="text-align: left;">Media automatica; calendario per Paese;
+data chiusura; toggle utenti; cifra tonda 10k/100k; esiti non
+calcolabili.</td>
+</tr>
+<tr>
+<td style="text-align: center;">P2 — integrità</td>
+<td style="text-align: left;">Quadratura Dare/Avere, piano dei conti,
+serie numeriche/pagine, riconciliazione al bilancio di verifica.</td>
+</tr>
+<tr>
+<td style="text-align: center;">P3 — approfondimento</td>
+<td style="text-align: left;">Cifre ripetute, dizionario keyword,
+workflow sospetti, dossier e audit trail.</td>
+</tr>
+<tr>
+<td style="text-align: center;">P4 — document intelligence</td>
+<td style="text-align: left;">OCR visura, conferma umana, mapping
+persone–user ID–accessi e controlli privacy.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="criteri-di-accettazione-del-prodotto">Criteri di accettazione
+del prodotto</h2>
+<ul>
+<li><p>Ogni risultato mostra valore osservato, soglia, formula, peso,
+fonte e motivazione.</p></li>
+<li><p>La stessa popolazione e configurazione producono lo stesso
+risultato ripetibile.</p></li>
+<li><p>I controlli non eseguiti sono conteggiati e visibili.</p></li>
+<li><p>I risultati sono disponibili sia per riga sia per scrittura
+completa.</p></li>
+<li><p>La finestra di closing è sempre analizzata e
+documentata.</p></li>
+<li><p>Il revisore può concludere e il reviewer può approvare o riaprire
+il caso.</p></li>
+</ul>
+<h1 id="conclusioni-per-lapprovazione">5. Conclusioni per
+l’approvazione</h1>
+<p>Il nucleo dell’MVP è valido come strumento di screening, ma non è
+ancora sufficiente per qualificare il JET come prodotto completo e
+metodologicamente autosufficiente. Sette requisiti sono presenti in
+forma sostanziale, cinque sono parziali o diversi dalla richiesta e tre
+sono assenti come funzionalità autonome; inoltre alcune voci combinate
+richiedono una separazione concettuale.</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 99%" />
+</colgroup>
+<thead>
+<tr>
+<th><p><strong>Raccomandazione</strong></p>
+<p>Approvare prima la metodologia e il dizionario dei controlli; solo
+dopo avviare lo sviluppo. La priorità non è aggiungere il maggior numero
+possibile di flag, ma garantire che ciascun risultato sia riproducibile,
+motivato e collegato a dati verificabili.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<h2 id="delibere-suggerite">Delibere suggerite</h2>
+<ul>
+<li><p>Approvazione del perimetro dei 15 controlli, con separazione tra
+rischio, qualità dati e completezza.</p></li>
+<li><p>Approvazione dei pesi e dei controlli obbligatori indipendenti
+dal punteggio.</p></li>
+<li><p>Approvazione dei valori di default, lasciandoli modificabili e
+documentati per cliente.</p></li>
+<li><p>Nomina del responsabile metodologico e del responsabile della
+validazione tecnica.</p></li>
+<li><p>Avvio dello sviluppo secondo priorità P0–P4 e test su dati
+sintetici seguiti da validazione controllata su un caso reale.</p></li>
+</ul>
+<h1 id="fonti-e-tracciabilità">6. Fonti e tracciabilità</h1>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 66%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: center;"><strong>Fonte</strong></th>
+<th style="text-align: center;"><strong>Utilizzo nella
+relazione</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">ISA Italia 240</td>
+<td style="text-align: left;">§33(a), §A38, §A43, §A44 e §A45, come
+riportati nel documento di studio fornito.</td>
+</tr>
+<tr>
+<td style="text-align: center;">JET_libro_giornale_fondamento_normativo.pdf</td>
+<td style="text-align: left;">Documento di studio preliminare, 9
+settembre 2026, 5 pagine.</td>
+</tr>
+<tr>
+<td style="text-align: center;">00_riferimento_tecnico.md</td>
+<td style="text-align: left;">Sintesi della pipeline NORDSON/BTI,
+criteri, pesi e gap sul conto contabile.</td>
+</tr>
+<tr>
+<td style="text-align: center;">Quadra — backend/jet/models.py</td>
+<td style="text-align: left;">Contratti dati e parametri attualmente
+disponibili.</td>
+</tr>
+<tr>
+<td style="text-align: center;">Quadra — backend/jet/criteri.py</td>
+<td style="text-align: left;">Formule e calcolo effettivo dei
+flag/punteggi.</td>
+</tr>
+<tr>
+<td style="text-align: center;">Quadra — backend/jet/sequenza.py</td>
+<td style="text-align: left;">Test attuale dei protocolli numerici
+mancanti.</td>
+</tr>
+<tr>
+<td style="text-align: center;">Quadra —
+ui/src/jet/JetDashboard.tsx</td>
+<td style="text-align: left;">Caselle, pesi iniziali e soglia esposti
+oggi nell’interfaccia.</td>
+</tr>
+</tbody>
+</table>
+<p>Nota: la relazione descrive lo stato osservato del progetto alla data
+indicata. I punteggi proposti sono raccomandazioni da sottoporre ad
+approvazione professionale; l’ISA Italia 240 non prescrive valori
+numerici specifici.</p>
+</body>
+</html>

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Specifica funzionale e tecnica JET v1.0</title>
+  <style>
+
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">@page { size: A4; margin: 17mm 17mm 18mm 17mm; @bottom-center { content: "Quadra — JET AS-IS / TO-BE"; color: #6b7780; font-size: 8pt; } @bottom-right { content: counter(page); color: #6b7780; font-size: 8pt; } }
+html { font-family: Arial, Helvetica, sans-serif; color: #1f2b34; font-size: 10pt; line-height: 1.32; }
+body { margin: 0; }
+h1 { color: #235a78; font-size: 18pt; margin: 20pt 0 8pt; break-after: avoid; }
+h2 { color: #235a78; font-size: 14pt; margin: 15pt 0 6pt; break-after: avoid; }
+h3 { color: #183245; font-size: 11.5pt; margin: 10pt 0 4pt; break-after: avoid; }
+p { margin: 0 0 6pt; orphans: 3; widows: 3; break-inside: avoid; }
+ul, ol { margin: 3pt 0 8pt 20pt; padding: 0; }
+li { margin: 0 0 3pt; }
+table { border-collapse: collapse; width: 100%; margin: 7pt 0 11pt; break-inside: auto; break-after: avoid-page; font-size: 8.7pt; }
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th { background: #235a78; color: #fff; text-align: left; font-weight: 700; padding: 6pt; border: 0.6pt solid #b9c6ce; }
+td { padding: 5pt 6pt; border: 0.6pt solid #c7d0d6; vertical-align: middle; }
+blockquote { margin: 8pt 0 10pt; padding: 8pt 10pt; background: #fff4d6; border-left: 4pt solid #c18a00; }
+strong { color: #183245; }
+section:first-of-type h1:first-child { font-size: 27pt; color: #183245; margin-top: 18mm; }
+hr { border: 0; border-top: 1pt solid #9fb2be; margin: 12pt 0; }
+@media print { a { color: inherit; text-decoration: none; } }
+#fonti-e-tracciabilità { break-before: page; }
+#jet15 { break-before: page; page-break-before: always; }
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Specifica funzionale e tecnica JET v1.0</h1>
+</header>
+<h1 id="journal-entry-testing-specifica-funzionale-v1.0">Journal Entry
+Testing — specifica funzionale v1.0</h1>
+<p><strong>Dal requisito al prodotto</strong><br />
+Contratto implementativo dei 15 controlli ufficiali e dei moduli
+ispirati a Caseware<br />
+10 settembre 2026 · proposta pronta per approvazione</p>
+<blockquote>
+<p>Questa specifica non è codice. Dopo l’approvazione diventa la base
+per ticket, test automatici e collaudo. Un flag indica una scrittura da
+approfondire, non un errore o una frode.</p>
+</blockquote>
+<h2 id="regole-comuni">1. Regole comuni</h2>
+<ul>
+<li>Unità distinte: riga, scrittura/Entry ID, conto e popolazione.</li>
+<li>Stati: <strong>attivo</strong>, <strong>non calcolabile</strong>,
+<strong>non applicabile</strong>, <strong>disattivato</strong>,
+<strong>errore</strong>.</li>
+<li>“Non calcolabile” non equivale a falso e genera un warning di
+copertura.</li>
+<li>Completezza, quadratura e sequenza hanno esito separato e peso
+zero.</li>
+<li>Le scritture di closing sono sempre incluse, indipendentemente dal
+punteggio.</li>
+<li>I benchmark statistici derivano dalla popolazione originale, mai dai
+soli sospetti.</li>
+<li>Ogni risultato conserva test/versione, record, valori, formula,
+parametri, soglia, esito, peso, motivo, fonte e timestamp.</li>
+</ul>
+<p>Pipeline: <strong>importa → valida → riconcilia → profila → esegui
+test → aggrega per Entry ID → score → review → sign-off →
+export</strong>.</p>
+<h2 id="scoring-iniziale">2. Scoring iniziale</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Classe</th>
+<th>Trattamento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Indicatori deboli</td>
+<td>Peso 1: dimensione relativa, cifra tonda, weekend, fuori orario,
+cifre ripetute</td>
+</tr>
+<tr>
+<td>Indicatori forti</td>
+<td>Peso 4: festività, retrodatazione, utente non autorizzato,
+keyword/parte correlata, descrizione vuota</td>
+</tr>
+<tr>
+<td>Strutturali</td>
+<td>Peso 0: sequenza, quadratura, completezza e validità formato</td>
+</tr>
+<tr>
+<td>Closing</td>
+<td>Lista obbligatoria separata</td>
+</tr>
+</tbody>
+</table>
+<p>Soglia iniziale: totale ≥ 4. Le estensioni non presenti nello
+standard richiedono approvazione del partner.</p>
+<h2 id="specifiche-dei-15-controlli">3. Specifiche dei 15 controlli</h2>
+<h3 id="jet-01-impatto-superiore-al-10-dellutile">JET-01 — Impatto
+superiore al 10% dell’utile</h3>
+<p><strong>Unità:</strong> riga e totale Entry ID.
+<strong>Peso:</strong> 1.<br />
+<strong>Input:</strong> importo, utile netto dopo imposte, valuta,
+periodo.<br />
+<strong>Formula:</strong> soglia = valore assoluto utile × 10%; flag se
+valore assoluto importo &gt; soglia.<br />
+<strong>Regole:</strong> uguaglianza non scatta; utile e giornale devono
+avere stesso periodo/valuta. Utile nullo, perdita o benchmark
+inappropriato producono warning e richiedono benchmark alternativo
+motivato.<br />
+<strong>Output:</strong> importo, utile, percentuale, soglia e
+scostamento.<br />
+<strong>Test:</strong> utile 1.000.000; importo 100.000 = falso;
+100.000,01 = vero; utile mancante = non calcolabile.</p>
+<h3 id="jet-02-importo-superiore-a-10-la-media">JET-02 — Importo
+superiore a 10× la media</h3>
+<p><strong>Unità:</strong> riga/scrittura contro popolazione.
+<strong>Peso:</strong> 1.<br />
+<strong>Formula:</strong> media assoluta = somma valori assoluti / N;
+flag se importo &gt; 10 × media.<br />
+<strong>Regole:</strong> calcolo automatico dopo deduplica; esclusi
+totali e intestazioni; vietata la media algebrica Dare/Avere. Conservare
+numeratore, denominatore e versione della popolazione.<br />
+<strong>Estensione Caseware:</strong> test RSF separato: massimo/secondo
+massimo per conto, utente o tipo documento.</p>
+<h3 id="jet-03-performance-materiality">JET-03 — Performance
+materiality</h3>
+<p><strong>Unità:</strong> riga e scrittura. <strong>Peso:</strong>
+1.<br />
+<strong>Fonte:</strong> file Global Focus approvato.<br />
+<strong>Formula:</strong> flag se valore assoluto importo &gt; PM
+applicabile.<br />
+<strong>Metadati obbligatori:</strong> overall/PM/specifica, valuta,
+entità, periodo, versione, preparer e reviewer. Overall materiality non
+alimenta questo flag. Valori non approvati non sono utilizzabili.</p>
+<h3 id="jet-04-cifre-tonde">JET-04 — Cifre tonde</h3>
+<p><strong>Unità:</strong> riga. <strong>Peso:</strong> 1.<br />
+<strong>Parametri:</strong> multipli 10.000 e 100.000, importo minimo,
+valuta, considera/ignora decimali.<br />
+<strong>Formula:</strong> flag se importo modulo multiplo = 0. Se
+100.000 soddisfa entrambi, mostrare il livello massimo e assegnare un
+solo peso.<br />
+<strong>Test:</strong> 20 = falso; 10.000 = livello 10k; 100.000 =
+livello 100k.</p>
+<h3 id="jet-05-weekend-e-festività">JET-05 — Weekend e festività</h3>
+<p><strong>Unità:</strong> scrittura. <strong>Pesi:</strong> weekend 1;
+festività 4.<br />
+<strong>Input:</strong> data creazione, data effettiva, Paese/sede,
+calendario versionato.<br />
+<strong>Calendari:</strong> Italia, Germania, Francia e Spagna, con
+festività locali e chiusure cliente.<br />
+<strong>Regole:</strong> usare la data tecnica per l’attività
+dell’utente; mantenere eventuale flag distinto sulla data effettiva. Se
+weekend e festività coincidono, conservare entrambi i motivi ma
+applicare di default solo il peso maggiore.</p>
+<h3 id="jet-06-fuori-orario">JET-06 — Fuori orario</h3>
+<p><strong>Unità:</strong> scrittura. <strong>Peso:</strong> 1.
+<strong>Default:</strong> 08:00–18:00 configurabile.<br />
+<strong>Formula:</strong> ora &lt; inizio oppure ora &gt; fine. Gli
+estremi non scattano.<br />
+<strong>Regole:</strong> fuso orario, sede, turni e closing
+configurabili; account batch classificati separatamente. Ora mancante =
+non calcolabile.</p>
+<h3 id="jet-07a-retrodatazione-e-forward-dating">JET-07A —
+Retrodatazione e forward dating</h3>
+<p><strong>Unità:</strong> scrittura. <strong>Peso
+retrodatazione:</strong> 4.<br />
+<strong>Formula:</strong> delta = data creazione − data effettiva;
+backdated se delta ≥ soglia; forward dated se delta &lt; 0.<br />
+<strong>Output:</strong> entrambe le date, giorni calendario/lavorativi
+e tipo anomalia.</p>
+<h3 id="jet-07b-finestra-di-closing">JET-07B — Finestra di closing</h3>
+<p><strong>Esito:</strong> lista obbligatoria, non subordinata allo
+score.<br />
+<strong>Default:</strong> chiusura 31/12 modificabile; ultimi 5 giorni
+lavorativi.<br />
+<strong>Regole:</strong> selezionare data effettiva nella finestra e,
+separatamente, scritture create dopo la chiusura con competenza
+precedente.</p>
+<h3 id="jet-08-utenti-e-segregation-of-duties">JET-08 — Utenti e
+segregation of duties</h3>
+<p><strong>Unità:</strong> scrittura. <strong>Peso non
+autorizzato:</strong> 4.<br />
+<strong>Input:</strong> preparer, approver, ruoli, validità accessi e
+account tecnici.<br />
+<strong>Formula:</strong> preparer fuori whitelist valida alla data; SoD
+se preparer = approver.<br />
+<strong>Regole:</strong> controllo Attivo/Non applicabile/Dato non
+disponibile con motivazione; SoD è esito distinto.</p>
+<h3 id="jet-09-descrizione-vuota-corta-o-generica">JET-09 — Descrizione
+vuota, corta o generica</h3>
+<p><strong>Unità:</strong> riga e testata. <strong>Peso vuota:</strong>
+4.<br />
+<strong>Formule:</strong> testo normalizzato vuoto; lunghezza ≤ N; match
+con dizionario di causali generiche.<br />
+<strong>Estensione Caseware:</strong> famiglia “Dati mancanti” anche per
+ID, conto, data, ora, utente, valuta e periodo; mostrare tasso di
+completezza e bloccare sui campi critici.</p>
+<h3 id="jet-10-conto-raro">JET-10 — Conto raro</h3>
+<p><strong>Unità:</strong> conto nell’intero esercizio. <strong>Peso
+proposto:</strong> 4, da approvare.<br />
+<strong>Formula:</strong> conteggio Entry ID distinti per conto nella
+fascia 1–4.<br />
+<strong>Regole:</strong> file infrannuale = provvisorio/non calcolabile;
+mostrare anche numero righe.<br />
+<strong>Estensione Caseware:</strong> frequenza percentuale delle
+combinazioni Dare/Avere e confronto storico.</p>
+<h3 id="jet-11-sequenza-e-pagine">JET-11 — Sequenza e pagine</h3>
+<p><strong>Unità:</strong> serie documentale. <strong>Peso:</strong>
+0.<br />
+<strong>Parametri:</strong> campo, prefisso, sezionale, limiti, reset e
+annullati.<br />
+<strong>Algoritmo:</strong> normalizzare, ordinare, deduplicare,
+calcolare successori, segnalare gap; supportare pattern alfanumerici
+configurati. Gap grandi sono riepilogati.<br />
+<strong>Pagine:</strong> estrarre numero pagina, rilevare mancanti,
+duplicati e ordine errato; risultato separato dalla completezza
+contabile.</p>
+<h3 id="jet-12-pattern-numerici-ricorrenti">JET-12 — Pattern numerici
+ricorrenti</h3>
+<p><strong>Unità:</strong> riga. <strong>Peso proposto:</strong>
+1.<br />
+<strong>Parametri:</strong> pattern/N cifre, posizione, parte
+intera/decimali, importo minimo, esclusione tondi.<br />
+<strong>Regole:</strong> lavorare sulla rappresentazione decimale
+canonica. 15.777 con tre cifre finali = vero; 86.514,99 con due
+centesimi ripetuti = vero; 1.000 escluso se “ignora tondi”.</p>
+<h3 id="jet-13-second-level-review">JET-13 — Second-level review</h3>
+<p><strong>Unità:</strong> caso aggregato per Entry ID.
+<strong>Peso:</strong> nessun nuovo punto automatico.<br />
+<strong>Stati:</strong> Nuovo → Assegnato → Evidenze richieste → In
+revisione → Giustificato/Errore/Rettifica/Escalation → Approvato.<br />
+<strong>Regole:</strong> filtri AND/OR/NOT salvabili; benchmark
+invariati; dossier unico con righe, motivi, documenti, owner, cronologia
+e sign-off.</p>
+<h3 id="jet-14-validità-del-conto">JET-14 — Validità del conto</h3>
+<p><strong>Unità:</strong> conto. <strong>Peso:</strong> 0 qualità dati;
+1 solo se approvato come rischio.<br />
+<strong>Controlli distinti:</strong> lunghezza &gt;10 se applicabile,
+regex, segmenti, presenza e validità nel piano dei conti.<br />
+<strong>Regola:</strong> mai applicare globalmente “oltre 10 cifre”;
+configurare per ERP.</p>
+<div class="page">
+
+</div>
+<h3 id="jet15-keyword-visura-e-poteri">JET‑15 — Keyword, visura e
+poteri</h3>
+<p><strong>Unità:</strong> riga/scrittura e anagrafiche. <strong>Peso
+keyword forte:</strong> 4.<br />
+<strong>Keyword:</strong> liste standard, caricate o manuali; categorie;
+match esatto/parziale; case sensitivity; termine e campo trovati.<br />
+<strong>Visura:</strong> OCR locale → estrazione persone/cariche/poteri
+→ conferma umana → mapping persona-user ID → join con scritture. La
+visura prova poteri legali, non accesso tecnico.<br />
+<strong>Sicurezza:</strong> ruoli, retention, log e nessuna etichetta
+automatica di persona sospetta.</p>
+<h2 id="moduli-aggiuntivi-da-caseware">4. Moduli aggiuntivi da
+Caseware</h2>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th>ID</th>
+<th>Modulo</th>
+<th>Algoritmo</th>
+<th>Uso</th>
+<th>Priorità</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DAT-01</td>
+<td>Missing Information</td>
+<td>Vuoto/zero/lunghezza ≤ N per tipo campo</td>
+<td>Qualità e copertura</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>INT-01</td>
+<td>Out of Balance</td>
+<td>Somma per Entry ID oltre tolleranza</td>
+<td>Integrità scrittura</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>ACC-01</td>
+<td>Unusual Account Combinations</td>
+<td>Frequenza combinazione/popolazione</td>
+<td>Contropartite insolite</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>ACC-02</td>
+<td>Complex Account Combinations</td>
+<td>Conti distinti per Entry ID ≥ N</td>
+<td>Complessità</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>STA-01</td>
+<td>Relative Size Factor</td>
+<td>Massimo/secondo massimo per gruppo</td>
+<td>Outlier contestuali</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CMP-01</td>
+<td>Comparisons</td>
+<td>=, ≠, &gt;, ≥, &lt;, ≤ fra campi</td>
+<td>SoD, date, incoerenze</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>DAT-02</td>
+<td>Join</td>
+<td>Inner/left/outer/no-match</td>
+<td>Arricchimento anagrafiche</td>
+<td>P1</td>
+</tr>
+</tbody>
+</table>
+<p>Out of Balance precede lo scoring: tutte le righe dell’Entry ID con
+saldo oltre la tolleranza di valuta vengono riportate. Unusual
+Combinations usa la firma ordinata dei conti; il 3% Caseware è solo un
+punto di partenza da validare. RSF opera solo su gruppi con almeno due
+record.</p>
+<h2 id="requisiti-di-piattaforma">5. Requisiti di piattaforma</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Requisito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Catalogo</td>
+<td>Test autonomi, versionati e con dipendenze dichiarate</td>
+</tr>
+<tr>
+<td>Filtri</td>
+<td>AND/OR/NOT, tipi coerenti e anteprima conteggio</td>
+</tr>
+<tr>
+<td>Aggregazione</td>
+<td>Un dossier per Entry ID con tutti i motivi</td>
+</tr>
+<tr>
+<td>Audit trail</td>
+<td>Import, parametri, run, override, stato e sign-off</td>
+</tr>
+<tr>
+<td>Template</td>
+<td>Standard studio più override cliente motivato</td>
+</tr>
+<tr>
+<td>Export</td>
+<td>Excel/CSV e carta di lavoro con formula, fonte e conclusione</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Batch/stream; nessuna enumerazione incontrollata dei gap</td>
+</tr>
+<tr>
+<td>Sicurezza</td>
+<td>Ruoli, cifratura, retention e protezione visure/user ID</td>
+</tr>
+</tbody>
+</table>
+<h2 id="piano-di-implementazione">6. Piano di implementazione</h2>
+<ol type="1">
+<li><strong>P0 — Contratti:</strong> catalogo, unità, stati, scoring,
+qualità dati e quadratura.</li>
+<li><strong>P1 — Fondazioni:</strong> Entry ID, join, calendari,
+closing, media automatica e risultati aggregati.</li>
+<li><strong>P2 — Analisi:</strong> 15 test, combinazioni, RSF, pattern e
+comparisons.</li>
+<li><strong>P3 — Workflow:</strong> stati, evidenze, reviewer, checklist
+ed export carta di lavoro.</li>
+<li><strong>P4 — Intelligence:</strong> OCR visura e analisi
+cross-entity con privacy review.</li>
+</ol>
+<h2 id="gate-di-approvazione">7. Gate di approvazione</h2>
+<ol type="1">
+<li>Partner approva pesi, soglie e closing.</li>
+<li>Manager approva fonti, calendari, whitelist e dizionari.</li>
+<li>Ogni scheda diventa test positivo, negativo, boundary e
+missing-data.</li>
+<li>Validazione su fixture sintetiche, poi caso reale riconciliato
+manualmente.</li>
+<li>Nessun default cambia senza nuova versione.</li>
+</ol>
+<blockquote>
+<p><strong>Definizione di pronto:</strong> ogni risultato è
+riproducibile, spiegabile e collegato a una procedura; la copertura è
+visibile; reviewer diversi ottengono la stessa popolazione dalla stessa
+configurazione.</p>
+</blockquote>
+<h2 id="fonti">Fonti</h2>
+<p>Documento ufficiale JET fornito; ISA Italia 240; Global Focus/Baker
+Tilly come riportato nel documento; documentazione ufficiale Caseware:
+Analytics Hub, Customize analytic tests, Date Entries, Rounded Values,
+Missing Information, Keywords, Gaps, Relative Size Factor, Recurring
+Numeric Pattern, Comparisons, Join, Out of Balance Entries, Unusual e
+Complex Account Combinations, Define materiality e Transaction details.
+La disponibilità Caseware varia per prodotto/template.</p>
+</body>
+</html>

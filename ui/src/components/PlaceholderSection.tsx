@@ -1,9 +1,5 @@
-/**
- * PlaceholderSection — Pagina segnaposto per sezioni non ancora implementate.
- * Non deve sembrare un errore: trasmette che fa parte di un piano.
- */
-
 import { Icon } from "./Icon";
+import { PageHeader } from "../shell/PageHeader";
 
 interface PlaceholderSectionProps {
   title: string;
@@ -17,19 +13,17 @@ export function PlaceholderSection({
   description = "Questa funzionalità sarà disponibile in una prossima versione.",
 }: PlaceholderSectionProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-base">
-      <div className="mb-lg">
-        <Icon name={icon} size="xl" className="text-ink-tertiary text-[64px]" />
-      </div>
-
-      <h1 className="text-headline-md text-ink-primary mb-sm">{title}</h1>
-
-      <p className="text-body-md text-ink-secondary max-w-md">{description}</p>
-
-      <div className="mt-lg flex items-center gap-xs text-body-sm text-ink-tertiary">
-        <Icon name="schedule" size="sm" />
-        <span>In sviluppo</span>
-      </div>
+    <div className="flex flex-col gap-4 min-w-0 w-full h-full overflow-y-auto">
+      <PageHeader
+        icon={icon}
+        tags={["In arrivo"]}
+        title={title}
+        meta={<span>{description}</span>}
+      />
+      <section className="bg-surface-card rounded-lg border border-border-subtle p-8 text-center">
+        <Icon name="schedule" size="lg" className="text-ink-tertiary" />
+        <p className="mt-3 text-sm text-ink-secondary">Modulo nel piano CRM, non ancora operativo.</p>
+      </section>
     </div>
   );
 }
