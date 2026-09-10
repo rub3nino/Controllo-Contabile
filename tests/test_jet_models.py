@@ -5,6 +5,9 @@ from decimal import Decimal
 from pathlib import Path
 import sys
 
+import pytest
+from pydantic import ValidationError
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -113,3 +116,11 @@ def test_esito_accetta_flag_non_calcolabili_espliciti():
     assert esito.flag_backdated is None
     assert esito.flag_staff_non_autorizzato is None
     assert esito.flag_importo_cifra_tonda is None
+
+
+def test_parametri_rifiutano_un_codice_paese_non_supportato():
+    dati = _parametri().model_dump()
+    dati["paese"] = "XX"
+
+    with pytest.raises(ValidationError, match="Codice Paese non supportato"):
+        ParametriClienteJet.model_validate(dati)

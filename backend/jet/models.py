@@ -11,7 +11,9 @@ from __future__ import annotations
 from datetime import date, time
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from backend.jet import calendari
 
 __all__ = [
     "RigaGiornale",
@@ -80,6 +82,7 @@ class ParametriClienteJet(BaseModel):
     utile_netto_dopo_imposte: Decimal | None = None
     valore_medio_registrazione: Decimal | None = None
     soglia_importo_cifra_tonda: Decimal | None = Field(default=None, gt=0)
+    paese: str | None = None
     orario_ufficio_inizio: time | None = None
     orario_ufficio_fine: time | None = None
     giorni_weekend: list[int] | None = None
@@ -115,6 +118,16 @@ class ParametriClienteJet(BaseModel):
     punteggio_conto_infragruppo_parte_correlata: int | None = Field(
         default=None, ge=0
     )
+
+    @field_validator("paese")
+    @classmethod
+    def valida_paese(cls, valore: str | None) -> str | None:
+        if valore is not None and valore not in calendari.CODICI_PAESE:
+            raise ValueError(
+                f"Codice Paese non supportato: {valore!r}; "
+                f"valori ammessi: {', '.join(calendari.CODICI_PAESE)}"
+            )
+        return valore
 
 
 class EsitoRigaJet(BaseModel):

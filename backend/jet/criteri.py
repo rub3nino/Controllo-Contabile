@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from decimal import Decimal
 
+from backend.jet import calendari
 from backend.jet.models import EsitoRigaJet, ParametriClienteJet, RigaGiornale
 
 __all__ = [
@@ -80,14 +81,34 @@ def valuta_riga(
         if parametri.soglia_importo_cifra_tonda is not None
         else None
     )
-    flag_weekend = (
-        riga.data_effettiva.weekday() in parametri.giorni_weekend
+    weekend_effettivo = (
+        parametri.giorni_weekend
         if parametri.giorni_weekend is not None
+        else (
+            calendari.giorni_weekend(parametri.paese)
+            if parametri.paese is not None
+            else None
+        )
+    )
+    festivita_effettiva = None
+    if parametri.paese is not None:
+        anno = riga.data_effettiva.year
+        base = calendari.festivita(parametri.paese, anno, anno)
+        if not base and not parametri.festivita:
+            festivita_effettiva = None
+        else:
+            festivita_effettiva = sorted(set(base) | set(parametri.festivita or []))
+    elif parametri.festivita is not None:
+        festivita_effettiva = parametri.festivita
+
+    flag_weekend = (
+        riga.data_effettiva.weekday() in weekend_effettivo
+        if weekend_effettivo is not None
         else None
     )
     flag_festivita = (
-        riga.data_effettiva in parametri.festivita
-        if parametri.festivita is not None
+        riga.data_effettiva in festivita_effettiva
+        if festivita_effettiva is not None
         else None
     )
 
@@ -162,8 +183,6 @@ def valuta_riga(
         (flag_oltre_dieci_volte_media, parametri.punteggio_oltre_dieci_volte_media),
         (flag_sopra_performance_materiality, parametri.punteggio_sopra_performance_materiality),
         (flag_importo_cifra_tonda, parametri.punteggio_importo_cifra_tonda),
-        (flag_weekend, parametri.punteggio_weekend),
-        (flag_festivita, parametri.punteggio_festivita),
         (flag_fuori_orario, parametri.punteggio_fuori_orario),
         (flag_backdated, parametri.punteggio_backdated),
         (flag_staff_non_autorizzato, parametri.punteggio_staff_non_autorizzato),
@@ -178,6 +197,17 @@ def valuta_riga(
     punteggio_totale = sum(
         peso for flag, peso in flag_e_pesi if flag is True and peso is not None
     )
+    if flag_weekend is True and flag_festivita is True:
+        contributo_weekend_festivita = max(
+            parametri.punteggio_weekend, parametri.punteggio_festivita
+        )
+    elif flag_weekend is True:
+        contributo_weekend_festivita = parametri.punteggio_weekend
+    elif flag_festivita is True:
+        contributo_weekend_festivita = parametri.punteggio_festivita
+    else:
+        contributo_weekend_festivita = 0
+    punteggio_totale += contributo_weekend_festivita
 
     return EsitoRigaJet(
         identificativo_registrazione=riga.identificativo_registrazione,

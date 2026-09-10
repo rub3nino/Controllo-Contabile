@@ -11,6 +11,7 @@ export type JetParams = {
   utile_netto_dopo_imposte: number | null;
   valore_medio_registrazione: number | null;
   soglia_importo_cifra_tonda: number | string | null;
+  paese: string | null;
   orario_ufficio_inizio: string | null;
   orario_ufficio_fine: string | null;
   giorni_weekend: number[] | null;

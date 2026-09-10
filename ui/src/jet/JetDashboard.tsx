@@ -29,6 +29,17 @@ const inputClass =
   "w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary";
 const buttonClass =
   "inline-flex items-center justify-center gap-sm px-base py-sm rounded bg-ink-primary text-label-md text-white hover:bg-ink-primary/90 disabled:opacity-50 disabled:cursor-not-allowed";
+const PAESI = [
+  ["IT", "Italia"],
+  ["DE", "Germania"],
+  ["FR", "Francia"],
+  ["ES", "Spagna"],
+  ["IL", "Israele"],
+  ["US", "Stati Uniti"],
+  ["MT", "Malta"],
+  ["IE", "Irlanda"],
+  ["CY", "Cipro"],
+] as const;
 
 const EMPTY: JetParams = {
   materialita_bilancio: null,
@@ -36,6 +47,7 @@ const EMPTY: JetParams = {
   utile_netto_dopo_imposte: null,
   valore_medio_registrazione: null,
   soglia_importo_cifra_tonda: null,
+  paese: null,
   orario_ufficio_inizio: null,
   orario_ufficio_fine: null,
   giorni_weekend: null,
@@ -582,6 +594,25 @@ export function JetDashboard() {
                   />
                 </Field>
               </div>
+              <Field label="Paese">
+                <select
+                  value={params.paese || ""}
+                  onChange={(e) =>
+                    setParams({ ...params, paese: e.target.value || null })}
+                  className={inputClass}
+                >
+                  <option value="">Nessun Paese — configurazione manuale</option>
+                  {PAESI.map(([codice, nome]) => (
+                    <option key={codice} value={codice}>{nome}</option>
+                  ))}
+                </select>
+                {params.paese && (
+                  <p className="mt-xs text-body-sm text-ink-tertiary">
+                    Le festività inserite manualmente sono chiusure aggiuntive;
+                    i giorni weekend manuali sostituiscono il weekend nazionale.
+                  </p>
+                )}
+              </Field>
               <div className="grid md:grid-cols-2 gap-md">
                 {LISTS.map(([key, label, type]) => (
                   <ListInput

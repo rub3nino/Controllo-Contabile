@@ -202,3 +202,82 @@ def test_media_manuale_prevale_sulla_media_di_popolazione():
     )
     assert manuale.flag_oltre_dieci_volte_media is False
     assert automatica.flag_oltre_dieci_volte_media is True
+
+
+def test_paese_deriva_weekend_e_festivita_senza_liste_manuali():
+    parametri = _parametri(paese="IT", giorni_weekend=None, festivita=None)
+
+    weekend = valuta_riga(_riga(data_effettiva=date(2026, 1, 10)), parametri)
+    festivo = valuta_riga(_riga(data_effettiva=date(2026, 4, 6)), parametri)
+
+    assert weekend.flag_weekend is True
+    assert festivo.flag_festivita is True
+
+
+def test_festivita_manuali_si_aggiungono_al_calendario_del_paese():
+    parametri = _parametri(
+        paese="IT", giorni_weekend=None, festivita=[date(2026, 1, 7)]
+    )
+
+    aggiuntiva = valuta_riga(_riga(data_effettiva=date(2026, 1, 7)), parametri)
+    nazionale = valuta_riga(_riga(data_effettiva=date(2026, 4, 6)), parametri)
+
+    assert aggiuntiva.flag_festivita is True
+    assert nazionale.flag_festivita is True
+
+
+def test_weekend_manuale_sostituisce_interamente_quello_del_paese():
+    parametri = _parametri(paese="IT", giorni_weekend=[2], festivita=None)
+
+    mercoledi = valuta_riga(_riga(data_effettiva=date(2026, 1, 7)), parametri)
+    sabato = valuta_riga(_riga(data_effettiva=date(2026, 1, 10)), parametri)
+
+    assert mercoledi.flag_weekend is True
+    assert sabato.flag_weekend is False
+
+
+def test_weekend_e_festivita_sovrapposti_contano_solo_il_peso_maggiore():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 10, 4)),
+        _parametri(
+            paese="IT",
+            giorni_weekend=None,
+            festivita=None,
+            punteggio_weekend=2,
+            punteggio_festivita=4,
+        ),
+    )
+
+    assert esito.flag_weekend is True
+    assert esito.flag_festivita is True
+    assert esito.punteggio_totale == 4
+
+
+def test_senza_paese_le_liste_manuali_continuano_a_funzionare():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 1, 10)),
+        _parametri(paese=None, giorni_weekend=[5], festivita=[date(2026, 1, 10)]),
+    )
+
+    assert esito.flag_weekend is True
+    assert esito.flag_festivita is True
+
+
+def test_israele_senza_festivita_compilate_resta_non_calcolabile():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 1, 7)),
+        _parametri(paese="IL", giorni_weekend=None, festivita=None),
+    )
+
+    assert esito.flag_festivita is None
+
+
+def test_israele_usa_le_festivita_manuali_quando_presenti():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 1, 7)),
+        _parametri(
+            paese="IL", giorni_weekend=None, festivita=[date(2026, 1, 7)]
+        ),
+    )
+
+    assert esito.flag_festivita is True
