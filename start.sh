@@ -22,14 +22,19 @@ if ! "${APP_VENV}/bin/python" -c 'import paddle' >/dev/null 2>&1; then
     -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
 fi
 "${APP_VENV}/bin/python" -m pip install -q -r requirements.txt
-"${APP_VENV}/bin/python" -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 &
+export QUADRA_DEV=1
+"${APP_VENV}/bin/python" -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000 &
 API_PID=$!
 trap 'kill $API_PID 2>/dev/null || true' EXIT
 cd ui
 if [ ! -d node_modules ]; then
   npm install
 fi
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo sconosciuto)"
 echo
-echo "Controllo contabile  http://127.0.0.1:5173"
+echo "Branch          ${BRANCH}"
+echo "UI aggiornata   http://127.0.0.1:5173/     ← apri questa"
+echo "API / OpenAPI   http://127.0.0.1:8000/docs"
+echo "Non aprire http://127.0.0.1:8000/ per l’interfaccia: è una build dist, spesso vecchia."
 echo
 npm run dev

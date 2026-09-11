@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -200,6 +201,19 @@ def export_mancanti():
     return FileResponse(path, filename="mancanti.md")
 
 
+def _dev_mode() -> bool:
+    return os.getenv("QUADRA_DEV", "").strip().lower() in {"1", "true", "yes"}
+
+
 dist = Path(__file__).resolve().parents[1] / "ui" / "dist"
-if dist.is_dir():
+if dist.is_dir() and not _dev_mode():
     app.mount("/", StaticFiles(directory=dist, html=True), name="ui")
+elif _dev_mode():
+
+    @app.get("/")
+    def dev_root():
+        return {
+            "ui": "http://127.0.0.1:5173/",
+            "api": "http://127.0.0.1:8000/docs",
+            "hint": "In locale apri Vite su :5173. Questa porta è solo l’API.",
+        }

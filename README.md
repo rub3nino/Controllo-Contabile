@@ -48,7 +48,7 @@ UI: carta Notion (`code.html` / `ui/src/design/reference.html`), Inter, icone Ma
 | [http://127.0.0.1:5173/](http://127.0.0.1:5173/) | Vite, codice in `ui/src`, aggiornamento a caldo |
 | [http://127.0.0.1:8000](http://127.0.0.1:8000/) | FastAPI + copia **build** in `ui/dist` (va ricostruita con `cd ui && npm run build`) |
 
-Se l’interfaccia sembra vecchia, stai sul `:8000` con un `dist` datato, oppure la cache del browser. Hard refresh, oppure apri `:5173`.
+Se l’interfaccia sembra vecchia, stai sul `:8000` con un `dist` datato, oppure la cache del browser. Hard refresh, oppure apri `:5173`. `./start.sh` imposta `QUADRA_DEV=1`: in quel caso `:8000/` non serve l’UI, solo l’API.
 
 ### Motore (sintesi)
 
