@@ -85,6 +85,21 @@ def test_conto_frequente_non_flaggato_e_conto_raro_flaggato_con_punti():
     assert raro.da_investigare is True
 
 
+def test_conto_raro_include_la_soglia_ma_non_la_supera():
+    parametri = _parametri(
+        soglia_frequenza_insolita=10,
+        punteggio_conto_insolito_raro=4,
+    )
+
+    al_confine = valuta_riga(_riga("1", "100"), parametri, {"100": 10})
+    sopra_confine = valuta_riga(_riga("2", "200"), parametri, {"200": 11})
+
+    assert al_confine.flag_conto_insolito_raro is True
+    assert al_confine.punteggio_totale == 4
+    assert sopra_confine.flag_conto_insolito_raro is False
+    assert sopra_confine.punteggio_totale == 0
+
+
 def test_conto_assente_dal_dizionario_ha_frequenza_zero():
     esito = valuta_riga(
         _riga("1", "999"),

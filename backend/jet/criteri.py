@@ -278,7 +278,7 @@ def valuta_riga(
     else:
         frequenza_utilizzo_conto = frequenze_conto.get(riga.conto_contabile, 0)
         flag_conto_insolito_raro = (
-            frequenza_utilizzo_conto < parametri.soglia_frequenza_insolita
+            frequenza_utilizzo_conto <= parametri.soglia_frequenza_insolita
             if parametri.attivo_conto_insolito_raro
             and parametri.soglia_frequenza_insolita is not None
             else None
