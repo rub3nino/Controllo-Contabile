@@ -24,11 +24,19 @@ import {
   type JetSource,
   type ResultFilters,
 } from "./api";
+import {
+  mappingIsReady,
+  presetProva,
+  PROVA_CLIENT,
+  suggestMapping,
+} from "./presetProva";
 
 const inputClass =
   "w-full h-10 px-md rounded border border-border-subtle bg-surface text-body-md text-ink-primary outline-none focus:border-ink-secondary";
 const buttonClass =
   "inline-flex items-center justify-center gap-sm px-base py-sm rounded bg-ink-primary text-label-md text-white hover:bg-ink-primary/90 disabled:opacity-50 disabled:cursor-not-allowed";
+const ghostButtonClass =
+  "inline-flex items-center justify-center gap-sm px-base py-sm rounded border border-border-subtle text-label-md text-ink-primary hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed";
 const PAESI = [
   ["IT", "Italia"],
   ["DE", "Germania"],
@@ -80,7 +88,7 @@ const OPTIONAL_NUMBERS: [keyof JetParams, string][] = [
   ["performance_materiality", "Performance materiality"],
   ["utile_netto_dopo_imposte", "Utile netto dopo imposte"],
   ["valore_medio_registrazione", "Valore medio registrazione"],
-  ["soglia_backdating_giorni", "Soglia retrodatazione (giorni lavorativi)"],
+  ["soglia_backdating_giorni", "Soglia retrodatazione (giorni)"],
   ["finestra_chiusura_giorni_lavorativi", "Finestra di chiusura (giorni lavorativi)"],
   ["soglia_frequenza_insolita", "Soglia frequenza conto insolito"],
 ];
@@ -133,7 +141,6 @@ const FLAG_NAMES: Record<string, string> = {
   flag_festivita: "Festività",
   flag_fuori_orario: "Fuori orario",
   flag_backdated: "Retrodatata",
-  flag_forward_dating: "Anticipata",
   flag_finestra_chiusura: "Finestra di chiusura",
   flag_creata_dopo_chiusura: "Creata dopo chiusura",
   flag_staff_non_autorizzato: "Staff non autorizzato",
@@ -242,6 +249,8 @@ export function JetDashboard() {
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [provaMode, setProvaMode] = useState(false);
+  const [sourceHint, setSourceHint] = useState("");
   const refresh = async () => setPractices(await jetApi.list());
   useEffect(() => {
     refresh().catch((e) => setError(asUserError(e).title));
@@ -251,10 +260,13 @@ export function JetDashboard() {
     const x = await jetApi.sourcePreview(practiceId, source.id);
     setSelectedSource(source);
     setHeaders(x.intestazioni || []);
-    setMapping(source.mappatura || {});
+    setMapping(
+      source.mappatura || suggestMapping(x.intestazioni || []),
+    );
     setTxtInspection(x.intestazione === undefined ? null : x);
     setSelectedProfile(source.profilo_estrazione_id || x.profilo?.id || "");
     setPositions({});
+    return x;
   };
   const reloadSources = async (practiceId: string, preferredId?: string) => {
     const next = await jetApi.sources(practiceId);
@@ -271,6 +283,8 @@ export function JetDashboard() {
   };
   const choose = async (p: JetPractice) => {
     setActive(p);
+    setProvaMode(p.client === PROVA_CLIENT);
+    setSourceHint("");
     const annoPeriodo = p.period.match(/\b(20\d{2})\b/)?.[1];
     setParams(
       p.parametri || {
@@ -291,6 +305,12 @@ export function JetDashboard() {
       setSources([]);
       setHeaders([]);
     }
+  };
+  const applyPresetTo = async (practice: JetPractice) => {
+    const next = presetProva(EMPTY, practice.period);
+    setParams(next);
+    setSogliaCifraTondaCustom(false);
+    return jetApi.parameters(practice.id, next);
   };
   const run = async (action: () => Promise<JetPractice>) => {
     setBusy(true);
@@ -313,19 +333,90 @@ export function JetDashboard() {
       return p;
     });
   };
+  const createProva = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const year = String(new Date().getFullYear());
+      const created = await jetApi.create(PROVA_CLIENT, year);
+      const saved = await applyPresetTo(created);
+      setCreate({ client: "", period: "" });
+      setProvaMode(true);
+      await refresh();
+      await choose(saved);
+    } catch (e) {
+      setError(asUserError(e).title);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const fillPreset = async () => {
+    if (!active) return;
+    if (
+      active.parametri &&
+      !window.confirm("Sostituire i parametri salvati con il preset di prova?")
+    ) return;
+    await run(() => applyPresetTo(active));
+    setProvaMode(true);
+  };
   const saveParams = (e: FormEvent) => {
     e.preventDefault();
     if (active) run(() => jetApi.parameters(active.id, params));
+  };
+  const configureNewSource = async (
+    practiceId: string,
+    source: JetSource,
+    preview: Awaited<ReturnType<typeof jetApi.sourcePreview>>,
+  ) => {
+    if (source.mappatura || source.profilo_estrazione_id) return source;
+    const suggested = suggestMapping(preview.intestazioni || []);
+    if (
+      (source.formato === "xlsx" || !preview.intestazione) &&
+      mappingIsReady(suggested)
+    ) {
+      const configured = await jetApi.sourceMapping(
+        practiceId,
+        source.id,
+        suggested,
+      );
+      setSourceHint(
+        "Mappatura applicata automaticamente dalle intestazioni. Controlla e correggi se serve.",
+      );
+      return configured;
+    }
+    if (provaMode && preview.profilo?.id) {
+      const configured = await jetApi.sourceApplyProfile(
+        practiceId,
+        source.id,
+        preview.profilo.id,
+      );
+      setSourceHint(
+        `Profilo «${preview.profilo.nome}» applicato in automatico. Controlla se è quello giusto.`,
+      );
+      return configured;
+    }
+    if (Object.keys(suggested).length) {
+      setMapping(suggested);
+      setSourceHint(
+        "Intestazioni riconosciute: conferma la mappatura o correggi le colonne.",
+      );
+    }
+    return source;
   };
   const upload = async (files?: FileList | null) => {
     if (!files?.length || !active) return;
     setBusy(true);
     setError("");
+    setSourceHint("");
     try {
       const x = await jetApi.uploadFiles(active.id, Array.from(files));
       setActive(x.pratica);
       setProfileName("");
-      await reloadSources(active.id, x.files.at(-1)?.fonte.id);
+      const last = x.files.at(-1);
+      if (last) {
+        await configureNewSource(active.id, last.fonte, last);
+      }
+      await reloadSources(active.id, last?.fonte.id);
       await refresh();
     } catch (e) {
       setError(asUserError(e).title);
@@ -439,7 +530,8 @@ export function JetDashboard() {
         </h1>
         <p className="mt-sm text-body-lg text-ink-secondary">
           Crea una pratica, configura i criteri ISA 240, carica il giornale
-          Excel, TXT o PDF testuale e analizza i risultati.
+          Excel, TXT o PDF testuale e analizza i risultati. Per i test manuali
+          usa il preset di prova: restano da caricare solo i libri giornale.
         </p>
       </header>
       {error && <Callout variant="warning">{error}</Callout>}
@@ -447,7 +539,7 @@ export function JetDashboard() {
         <CardHeader>Pratiche JET</CardHeader>
         <form
           onSubmit={createPractice}
-          className="grid md:grid-cols-3 gap-md mb-lg"
+          className="grid md:grid-cols-3 gap-md mb-sm"
         >
           <Field label="Cliente">
             <input
@@ -465,10 +557,26 @@ export function JetDashboard() {
               className={inputClass}
             />
           </Field>
-          <button disabled={busy} className={`${buttonClass} self-end`}>
-            <Icon name="add" size="sm" />Crea pratica
-          </button>
+          <div className="flex flex-wrap gap-sm self-end">
+            <button disabled={busy} className={buttonClass}>
+              <Icon name="add" size="sm" />Crea pratica
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={createProva}
+              className={ghostButtonClass}
+            >
+              Crea pratica di prova
+            </button>
+          </div>
         </form>
+        <p className="text-body-sm text-ink-tertiary mb-lg">
+          La pratica di prova salva da sola Paese Italia, orario 8:00–18:00,
+          chiusura 31/12, soglie e pesi. Staff e parole chiave sono fittizi:
+          adattali al file se non vuoi che quasi ogni utente risulti non
+          autorizzato.
+        </p>
         <DataTable
           data={practices as (JetPractice & Record<string, unknown>)[]}
           getRowKey={(p) => p.id}
@@ -502,9 +610,19 @@ export function JetDashboard() {
           <Card padding="lg">
             <CardHeader
               trailing={
-                <StatusBadge variant={statusVariant(active.status)}>
-                  {active.status.replaceAll("_", " ")}
-                </StatusBadge>
+                <div className="flex items-center gap-sm">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={fillPreset}
+                    className={ghostButtonClass}
+                  >
+                    Compila preset di prova
+                  </button>
+                  <StatusBadge variant={statusVariant(active.status)}>
+                    {active.status.replaceAll("_", " ")}
+                  </StatusBadge>
+                </div>
               }
             >
               1. Parametri — {active.client}
@@ -699,6 +817,7 @@ export function JetDashboard() {
           <Card padding="lg">
             <CardHeader>2. Fonti e mappatura/profilo</CardHeader>
             <div className="space-y-md">
+              {sourceHint && <Callout variant="info">{sourceHint}</Callout>}
               <Field label="Libri giornale (.xlsx, .txt o .pdf testuale)">
                 <input
                   multiple
@@ -760,11 +879,17 @@ export function JetDashboard() {
                           const file = event.target.files?.[0];
                           if (!active || !file) return;
                           setBusy(true);
+                          setSourceHint("");
                           try {
-                            await jetApi.replaceSource(
+                            const preview = await jetApi.replaceSource(
                               active.id,
                               source.id,
                               file,
+                            );
+                            await configureNewSource(
+                              active.id,
+                              preview.fonte,
+                              preview,
                             );
                             await reloadSources(active.id, source.id);
                             const updated = (await jetApi.list()).find((item) =>
