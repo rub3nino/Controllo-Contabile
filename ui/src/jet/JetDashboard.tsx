@@ -70,10 +70,11 @@ const EMPTY: JetParams = {
   punteggio_fuori_orario: 1,
   punteggio_backdated: 4,
   punteggio_staff_non_autorizzato: 4,
-  punteggio_parte_correlata: 1,
+  punteggio_parte_correlata: 4,
   punteggio_descrizione_vuota: 4,
   punteggio_conto_insolito_raro: 4,
   punteggio_conto_infragruppo_parte_correlata: null,
+  punteggio_conto_lunghezza: null,
   attivo_profit_impact: true,
   attivo_oltre_dieci_volte_media: true,
   attivo_sopra_performance_materiality: true,
@@ -87,6 +88,7 @@ const EMPTY: JetParams = {
   attivo_descrizione_vuota: true,
   attivo_conto_insolito_raro: false,
   attivo_conto_infragruppo_parte_correlata: false,
+  attivo_conto_lunghezza: false,
   attivo_finestra_chiusura: true,
 };
 const MAP_FIELDS = [

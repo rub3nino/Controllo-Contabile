@@ -38,6 +38,7 @@ export type JetParams = {
   punteggio_descrizione_vuota: number;
   punteggio_conto_insolito_raro: number | null;
   punteggio_conto_infragruppo_parte_correlata: number | null;
+  punteggio_conto_lunghezza: number | null;
   attivo_profit_impact: boolean;
   attivo_oltre_dieci_volte_media: boolean;
   attivo_sopra_performance_materiality: boolean;
@@ -51,6 +52,7 @@ export type JetParams = {
   attivo_descrizione_vuota: boolean;
   attivo_conto_insolito_raro: boolean;
   attivo_conto_infragruppo_parte_correlata: boolean;
+  attivo_conto_lunghezza: boolean;
   attivo_finestra_chiusura: boolean;
 };
 export type JetPractice = {

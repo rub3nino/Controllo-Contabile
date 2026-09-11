@@ -140,3 +140,53 @@ def test_conto_non_infragruppo_e_lista_non_fornita_sono_distinti():
 
     assert non_presente.flag_conto_infragruppo_parte_correlata is False
     assert non_calcolabile.flag_conto_infragruppo_parte_correlata is None
+
+
+def test_conto_con_piu_di_dieci_cifre_contribuisce_al_punteggio():
+    esito = valuta_riga(
+        _riga("1", "12345678901"),
+        _parametri(attivo_conto_lunghezza=True, punteggio_conto_lunghezza=3),
+    )
+
+    assert esito.flag_conto_lunghezza is True
+    assert esito.punteggio_totale == 3
+
+
+def test_conto_con_esattamente_dieci_cifre_non_flaggato():
+    esito = valuta_riga(
+        _riga("1", "1234567890"),
+        _parametri(attivo_conto_lunghezza=True, punteggio_conto_lunghezza=3),
+    )
+
+    assert esito.flag_conto_lunghezza is False
+    assert esito.punteggio_totale == 0
+
+
+def test_conto_alfanumerico_conta_solo_le_cifre():
+    esito = valuta_riga(
+        _riga("1", "IC-1234567890123"),
+        _parametri(attivo_conto_lunghezza=True, punteggio_conto_lunghezza=2),
+    )
+
+    assert esito.flag_conto_lunghezza is True
+    assert esito.punteggio_totale == 2
+
+
+def test_conto_lunghezza_disattivato_non_calcolabile_e_senza_punti():
+    esito = valuta_riga(
+        _riga("1", "12345678901234567890"),
+        _parametri(attivo_conto_lunghezza=False, punteggio_conto_lunghezza=4),
+    )
+
+    assert esito.flag_conto_lunghezza is None
+    assert esito.punteggio_totale == 0
+
+
+def test_conto_mancante_lascia_lunghezza_non_calcolabile():
+    esito = valuta_riga(
+        _riga("1", None),
+        _parametri(attivo_conto_lunghezza=True, punteggio_conto_lunghezza=4),
+    )
+
+    assert esito.flag_conto_lunghezza is None
+    assert esito.punteggio_totale == 0

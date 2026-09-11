@@ -273,6 +273,12 @@ def valuta_riga(
             in parametri.conti_infragruppo_parte_correlata
         )
 
+    if not parametri.attivo_conto_lunghezza or riga.conto_contabile is None:
+        flag_conto_lunghezza = None
+    else:
+        cifre = sum(carattere.isdigit() for carattere in riga.conto_contabile)
+        flag_conto_lunghezza = cifre > 10
+
     flag_e_pesi = (
         (flag_profit_impact, parametri.punteggio_profit_impact),
         (flag_oltre_dieci_volte_media, parametri.punteggio_oltre_dieci_volte_media),
@@ -288,6 +294,7 @@ def valuta_riga(
             flag_conto_infragruppo_parte_correlata,
             parametri.punteggio_conto_infragruppo_parte_correlata,
         ),
+        (flag_conto_lunghezza, parametri.punteggio_conto_lunghezza),
     )
     punteggio_totale = sum(
         peso for flag, peso in flag_e_pesi if flag is True and peso is not None
@@ -347,4 +354,5 @@ def valuta_riga(
         frequenza_utilizzo_conto=frequenza_utilizzo_conto,
         flag_conto_insolito_raro=flag_conto_insolito_raro,
         flag_conto_infragruppo_parte_correlata=flag_conto_infragruppo_parte_correlata,
+        flag_conto_lunghezza=flag_conto_lunghezza,
     )
