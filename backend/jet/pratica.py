@@ -29,6 +29,10 @@ class PraticaJet(BaseModel):
     file_originale_nome: str | None = None
     mappatura: dict[str, str] | None = None
     profilo_estrazione_id: str | None = None
+    numero_pagine_pdf: int | None = Field(default=None, ge=1)
+    numeri_pagina_rilevati: list[int] | None = None
+    pagine_mancanti: list[int] | None = None
+    sequenza_pagine_completa: bool | None = None
     strategia_duplicati: StrategiaDuplicatiJet = "mantieni_tutti"
     numero_fonti: int = Field(default=0, ge=0)
     analizzato_at: str | None = None

@@ -24,7 +24,11 @@ from backend.jet.fonti import (
     ImportazioneJet,
 )
 from backend.jet.ingest import leggi_righe_xlsx, mappa_righe_giornale
-from backend.jet.ingest_pdf import estrai_righe_pdf, mappa_righe_pdf
+from backend.jet.ingest_pdf import (
+    analizza_numerazione_pdf,
+    estrai_righe_pdf,
+    mappa_righe_pdf,
+)
 from backend.jet.ingest_txt import (
     AnteprimaTxt,
     ispeziona_righe,
@@ -103,6 +107,10 @@ def _sync_pratica_fonti(
                 "file_originale_nome": latest.nome_originale,
                 "mappatura": latest.mappatura,
                 "profilo_estrazione_id": latest.profilo_estrazione_id,
+                "numero_pagine_pdf": latest.numero_pagine_pdf,
+                "numeri_pagina_rilevati": latest.numeri_pagina_rilevati,
+                "pagine_mancanti": latest.pagine_mancanti,
+                "sequenza_pagine_completa": latest.sequenza_pagine_completa,
                 "status": "file_caricato",
                 "analizzato_at": None,
                 "numero_registrazioni": 0,
@@ -115,6 +123,10 @@ def _sync_pratica_fonti(
                 "file_originale_nome": None,
                 "mappatura": None,
                 "profilo_estrazione_id": None,
+                "numero_pagine_pdf": None,
+                "numeri_pagina_rilevati": None,
+                "pagine_mancanti": None,
+                "sequenza_pagine_completa": None,
                 "status": "parametri_configurati" if pratica.parametri else "bozza",
             }
         )
@@ -228,6 +240,10 @@ def _crea_fonte(
     write_inbox_file(pratica.id, fonte.percorso_relativo, data)
     try:
         anteprima = _anteprima_fonte(fonte)
+        if fonte.formato == "pdf":
+            fonte = fonte.model_copy(
+                update=analizza_numerazione_pdf(_fonte_path(fonte))
+            )
     except (OSError, ValueError) as exc:
         raise HTTPException(
             status_code=400,
@@ -388,6 +404,10 @@ async def replace_fonte_file(
             "stato": "da_configurare",
             "mappatura": None,
             "profilo_estrazione_id": None,
+            "numero_pagine_pdf": None,
+            "numeri_pagina_rilevati": None,
+            "pagine_mancanti": None,
+            "sequenza_pagine_completa": None,
             "numero_righe": 0,
             "errore": None,
         }
@@ -407,6 +427,10 @@ async def replace_fonte_file(
             }
         )
         anteprima = _anteprima_fonte(preview_candidate)
+        if replacement.formato == "pdf":
+            replacement = replacement.model_copy(
+                update=analizza_numerazione_pdf(candidate)
+            )
         candidate.replace(target)
         if old_path != target:
             old_path.unlink(missing_ok=True)

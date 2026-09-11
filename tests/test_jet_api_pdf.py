@@ -48,6 +48,14 @@ def test_pdf_riconosce_e_applica_il_profilo_creato_dal_txt(client):
     assert caricato.status_code == 200
     assert caricato.json()["codifica"] == "pdf"
     assert caricato.json()["profilo"]["id"] == profilo_id
+    fonte = caricato.json()["fonte"]
+    assert fonte["numero_pagine_pdf"] == 1
+    assert fonte["numeri_pagina_rilevati"] is None
+    assert fonte["pagine_mancanti"] is None
+    assert fonte["sequenza_pagine_completa"] is None
+    pratica = client.get(f"/api/jet/pratiche/{pdf_id}").json()
+    assert pratica["numero_pagine_pdf"] == 1
+    assert pratica["sequenza_pagine_completa"] is None
     applicato = client.put(f"/api/jet/pratiche/{pdf_id}/profilo/{profilo_id}")
     assert applicato.status_code == 200
     assert applicato.json()["profilo_estrazione_id"] == profilo_id

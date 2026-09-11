@@ -28,6 +28,10 @@ class FonteJet(BaseModel):
     stato: StatoFonteJet = "da_configurare"
     mappatura: dict[str, str] | None = None
     profilo_estrazione_id: str | None = None
+    numero_pagine_pdf: int | None = Field(default=None, ge=1)
+    numeri_pagina_rilevati: list[int] | None = None
+    pagine_mancanti: list[int] | None = None
+    sequenza_pagine_completa: bool | None = None
     numero_righe: int = Field(default=0, ge=0)
     errore: str | None = None
     created_at: str = Field(

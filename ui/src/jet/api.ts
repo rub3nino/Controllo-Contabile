@@ -69,6 +69,10 @@ export type JetPractice = {
   mappatura: Record<string, string> | null;
   analizzato_at: string | null;
   profilo_estrazione_id: string | null;
+  numero_pagine_pdf: number | null;
+  numeri_pagina_rilevati: number[] | null;
+  pagine_mancanti: number[] | null;
+  sequenza_pagine_completa: boolean | null;
   strategia_duplicati: "mantieni_tutti" | "scarta_identiche";
   numero_fonti: number;
   numero_registrazioni: number;
@@ -87,6 +91,10 @@ export type JetSource = {
   stato: "da_configurare" | "pronta" | "esclusa" | "errore";
   mappatura: Record<string, string> | null;
   profilo_estrazione_id: string | null;
+  numero_pagine_pdf: number | null;
+  numeri_pagina_rilevati: number[] | null;
+  pagine_mancanti: number[] | null;
+  sequenza_pagine_completa: boolean | null;
   numero_righe: number;
   errore: string | null;
   created_at: string;

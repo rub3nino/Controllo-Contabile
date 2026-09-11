@@ -205,7 +205,7 @@ const CONTROLS: ControlDef[] = [
     title: "Test di sequenza numerica e controllo per pagina",
     status: "parziale",
     baker: "Fuori punteggio",
-    hint: "Completezza, non rischio: la sequenza parte con l’analisi senza peso riga. Il controllo per pagina/libro bollato non esiste.",
+    hint: "Completezza, non rischio: per i PDF il caricamento conta le pagine e verifica automaticamente l’eventuale numerazione stampata, segnalando buchi o duplicati senza punteggio. Excel e TXT saranno supportati in futuro.",
     flagKeys: [],
     available: true,
     attivoKeys: [],

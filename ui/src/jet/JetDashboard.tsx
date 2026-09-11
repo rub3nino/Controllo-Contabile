@@ -602,6 +602,20 @@ export function JetDashboard() {
                         {source.numero_righe.toLocaleString("it-IT")} righe ·
                         {" "}
                         {source.stato.replaceAll("_", " ")}
+                        {source.formato === "pdf" &&
+                          source.numero_pagine_pdf !== null
+                          ? ` · ${source.numero_pagine_pdf} pagine · ${
+                            source.sequenza_pagine_completa === null
+                              ? "numerazione non rilevabile"
+                              : source.sequenza_pagine_completa
+                              ? "numerazione completa"
+                              : `numerazione incompleta${
+                                source.pagine_mancanti?.length
+                                  ? ` (mancano: ${source.pagine_mancanti.join(", ")})`
+                                  : ""
+                              }`
+                          }`
+                          : ""}
                       </span>
                     </button>
                     <label className="flex items-center gap-xs text-body-sm">
