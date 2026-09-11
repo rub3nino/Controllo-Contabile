@@ -405,6 +405,54 @@ def test_parametro_non_configurato_resta_non_calcolabile(parametro, campo_esito)
     assert esito.punteggio_totale == 0
 
 
+def test_parte_correlata_con_soli_nominativi_visura():
+    esito = valuta_riga(
+        _riga(descrizione="Compenso a Mario Rossi"),
+        _parametri(
+            parole_chiave_parti_correlate=None,
+            nominativi_visura_camerale=["Mario Rossi"],
+        ),
+    )
+
+    assert esito.flag_parte_correlata is True
+
+
+def test_parte_correlata_somma_keyword_e_nominativi_visura():
+    esito = valuta_riga(
+        _riga(descrizione="Rimborso ad Anna Verdi"),
+        _parametri(
+            parole_chiave_parti_correlate=["infragruppo"],
+            nominativi_visura_camerale=["Anna Verdi"],
+        ),
+    )
+
+    assert esito.flag_parte_correlata is True
+
+
+def test_parte_correlata_senza_entrambe_le_liste_non_calcolabile():
+    esito = valuta_riga(
+        _riga(descrizione="Operazione ordinaria"),
+        _parametri(
+            parole_chiave_parti_correlate=None,
+            nominativi_visura_camerale=None,
+        ),
+    )
+
+    assert esito.flag_parte_correlata is None
+
+
+def test_parte_correlata_lista_visura_vuota_resta_calcolabile():
+    esito = valuta_riga(
+        _riga(descrizione="Operazione ordinaria"),
+        _parametri(
+            parole_chiave_parti_correlate=None,
+            nominativi_visura_camerale=[],
+        ),
+    )
+
+    assert esito.flag_parte_correlata is False
+
+
 def test_utente_di_sistema_rende_il_criterio_staff_non_applicabile():
     esito = valuta_riga(
         _riga(utente="BATCH_SINTETICO"),

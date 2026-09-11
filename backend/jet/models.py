@@ -101,6 +101,7 @@ class ParametriClienteJet(BaseModel):
         ),
     )
     parole_chiave_parti_correlate: list[str] | None = None
+    nominativi_visura_camerale: list[str] | None = None
     soglia_frequenza_insolita: int | None = Field(default=None, ge=0)
     conti_infragruppo_parte_correlata: list[str] | None = None
     soglia_da_investigare: int = Field(ge=0)

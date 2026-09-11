@@ -58,6 +58,7 @@ const EMPTY: JetParams = {
   staff_autorizzato: null,
   utenti_di_sistema: null,
   parole_chiave_parti_correlate: null,
+  nominativi_visura_camerale: null,
   soglia_frequenza_insolita: 10,
   conti_infragruppo_parte_correlata: null,
   soglia_da_investigare: 4,

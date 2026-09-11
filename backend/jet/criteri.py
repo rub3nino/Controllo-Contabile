@@ -260,14 +260,20 @@ def valuta_riga(
         flag_staff_non_autorizzato = riga.utente not in parametri.staff_autorizzato
 
     descrizione = (riga.descrizione or "").strip()
+    termini_parte_correlata = list(parametri.parole_chiave_parti_correlate or []) + list(
+        parametri.nominativi_visura_camerale or []
+    )
     flag_parte_correlata = (
         any(
-            parola.strip().casefold() in descrizione.casefold()
-            for parola in parametri.parole_chiave_parti_correlate
-            if parola.strip()
+            termine.strip().casefold() in descrizione.casefold()
+            for termine in termini_parte_correlata
+            if termine.strip()
         )
         if parametri.attivo_parte_correlata
-        and parametri.parole_chiave_parti_correlate is not None
+        and (
+            parametri.parole_chiave_parti_correlate is not None
+            or parametri.nominativi_visura_camerale is not None
+        )
         else None
     )
     flag_descrizione_vuota = parametri.attivo_descrizione_vuota and not descrizione

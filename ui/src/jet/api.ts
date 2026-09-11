@@ -22,6 +22,7 @@ export type JetParams = {
   staff_autorizzato: string[] | null;
   utenti_di_sistema: string[] | null;
   parole_chiave_parti_correlate: string[] | null;
+  nominativi_visura_camerale: string[] | null;
   soglia_frequenza_insolita: number | null;
   conti_infragruppo_parte_correlata: string[] | null;
   soglia_da_investigare: number;

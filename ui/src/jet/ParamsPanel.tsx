@@ -249,7 +249,7 @@ const CONTROLS: ControlDef[] = [
     title: "Parole chiave di frode e OCR della visura",
     status: "parziale",
     baker: "Related party / keyword match",
-    hint: "Le keyword in descrizione sono il criterio «parte correlata» e hanno un peso. L’OCR della visura non esiste: resta fuori punteggio.",
+    hint: "Le keyword in descrizione e i nominativi dalla visura camerale (inseriti manualmente) confluiscono nello stesso criterio «parte correlata» e nello stesso peso. Nessun OCR: i nominativi vanno inseriti a mano.",
     flagKeys: ["flag_parte_correlata", "flag_conto_infragruppo_parte_correlata"],
     available: true,
     attivoKeys: ["attivo_parte_correlata"],
@@ -351,10 +351,10 @@ const SCOPO_CONTROLLI: Record<
   flag_parte_correlata: {
     obiettivo: "Individuare scritture la cui descrizione richiama parti correlate o infragruppo.",
     rischio: "Le operazioni con parti correlate sono un'area a rischio intrinseco elevato (ISA 240).",
-    campi: "Descrizione/causale della riga; elenco di parole chiave configurate.",
-    regola: "La descrizione contiene per intero una delle parole chiave (corrispondenza esatta).",
-    limitazioni: "Non calcolabile senza elenco di parole chiave configurato.",
-    eccezione: "La descrizione richiama esplicitamente una parte correlata nota.",
+    campi: "Descrizione/causale della riga; elenco di parole chiave configurate; elenco di nominativi da visura camerale inseriti manualmente.",
+    regola: "La descrizione contiene, come sottostringa case-insensitive, una delle parole chiave o uno dei nominativi da visura camerale configurati.",
+    limitazioni: "Non calcolabile solo se né l'elenco di parole chiave né l'elenco di nominativi da visura camerale sono configurati (entrambi assenti).",
+    eccezione: "La descrizione richiama esplicitamente una parola chiave o un nominativo da visura camerale configurato.",
   },
   flag_descrizione_vuota: {
     obiettivo: "Individuare scritture senza descrizione o causale.",
@@ -489,10 +489,12 @@ function paramSummary(control: ControlDef, p: JetParams, on: boolean) {
   }
   if (control.id === "11") return "Sequenza numerica, senza punteggio";
   if (control.id === "15") {
-    const keys = p.parole_chiave_parti_correlate?.length || 0;
+    const terms =
+      (p.parole_chiave_parti_correlate?.length || 0) +
+      (p.nominativi_visura_camerale?.length || 0);
     const accounts = p.conti_infragruppo_parte_correlata?.length || 0;
-    return keys || accounts
-      ? `${keys} keyword · ${accounts} conti`
+    return terms || accounts
+      ? `${terms} termini · ${accounts} conti`
       : "Keyword / conti vuoti";
   }
   return "—";
@@ -1153,6 +1155,16 @@ function ControlFields({
               parole_chiave_parti_correlate: v as string[] | null,
             })}
         />
+        <ListInput
+          label="Nominativi da visura camerale (manuale, stesso peso delle keyword)"
+          type="text"
+          values={params.nominativi_visura_camerale}
+          onChange={(v) =>
+            setParams({
+              ...params,
+              nominativi_visura_camerale: v as string[] | null,
+            })}
+        />
         <div className="grid md:grid-cols-[1fr_auto] gap-md items-end">
           <ListInput
             label="Conti infragruppo / parti correlate (estensione, entra nel punteggio)"
@@ -1190,7 +1202,7 @@ function ControlFields({
           </div>
         </div>
         <p className="text-body-sm text-ink-tertiary">
-          OCR della visura: assente, cella peso «—». Non è un quindicesimo peso.
+          Nominativi da visura camerale: inserimento manuale, nessun OCR. Confluiscono nel peso «Keyword» sopra, non è un peso separato.
         </p>
       </div>
     );
