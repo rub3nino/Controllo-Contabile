@@ -34,6 +34,7 @@ function normalizeHeader(value: string): string {
  */
 const FIELD_ALIASES: [string, string[]][] = [
   ["identificativo_registrazione", [
+    "riga",
     "riga n",
     "transaction id",
     "transactionid",
@@ -55,6 +56,7 @@ const FIELD_ALIASES: [string, string[]][] = [
     "data registrazione",
     "posting date",
     "data reg",
+    "data",
   ]],
   ["data_creazione", [
     "data creazione",
@@ -74,6 +76,7 @@ const FIELD_ALIASES: [string, string[]][] = [
     "account",
     "gl account",
     "conto contabile",
+    "conto",
   ]],
   ["importo_netto", [
     "importo netto",
@@ -81,11 +84,13 @@ const FIELD_ALIASES: [string, string[]][] = [
     "netto",
   ]],
   ["importo_dare", [
+    "entrate",
     "importo dare",
     "dare",
     "debit",
   ]],
   ["importo_avere", [
+    "uscite",
     "importo avere",
     "avere",
     "credit",
@@ -133,32 +138,23 @@ export function mappingIsReady(mapping: Record<string, string>): boolean {
   );
 }
 
-/** Parametri fittizi, solo interfaccia: il motore resta senza default nascosti. */
+/** Parametri tarati sul CSV di prova (Data/Descrizione/Conto/Entrate/Uscite). */
 export function presetProva(base: JetParams, _period: string): JetParams {
   return {
     ...base,
-    materialita_bilancio: 100000,
-    performance_materiality: 70000,
-    utile_netto_dopo_imposte: 500000,
+    materialita_bilancio: 25000,
+    performance_materiality: 15000,
+    utile_netto_dopo_imposte: 100000,
     valore_medio_registrazione: null,
     soglia_importo_cifra_tonda: 10000,
     paese: "IT",
-    orario_ufficio_inizio: "08:00",
-    orario_ufficio_fine: "18:00",
+    orario_ufficio_inizio: null,
+    orario_ufficio_fine: null,
     giorni_weekend: null,
-    soglia_backdating_giorni: 1,
+    soglia_backdating_giorni: null,
     festivita: null,
-    staff_autorizzato: [
-      "USR_A",
-      "USR_B",
-      "USR_C",
-      "USR_D",
-      "USR_E",
-      "USR_F",
-      "USR_G",
-      "AUTORIZZATO",
-    ],
-    utenti_di_sistema: ["BATCHJOB", "BANKBATCH", "SYSTEM", "BATCH"],
+    staff_autorizzato: null,
+    utenti_di_sistema: null,
     parole_chiave_parti_correlate: [
       "infragruppo",
       "parte correlata",
@@ -170,6 +166,17 @@ export function presetProva(base: JetParams, _period: string): JetParams {
     ],
     soglia_frequenza_insolita: 10,
     conti_infragruppo_parte_correlata: null,
+    punteggio_profit_impact: 1,
+    punteggio_oltre_dieci_volte_media: 1,
+    punteggio_sopra_performance_materiality: 1,
+    punteggio_importo_cifra_tonda: 1,
+    punteggio_weekend: 1,
+    punteggio_festivita: 4,
+    punteggio_fuori_orario: 0,
+    punteggio_backdated: 0,
+    punteggio_staff_non_autorizzato: 0,
+    punteggio_parte_correlata: 1,
+    punteggio_descrizione_vuota: 4,
     punteggio_conto_insolito_raro: 4,
   };
 }

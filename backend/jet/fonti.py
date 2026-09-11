@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from backend.jet.models import RigaGiornale
 
-FormatoFonteJet = Literal["xlsx", "txt", "pdf"]
+FormatoFonteJet = Literal["xlsx", "csv", "txt", "pdf"]
 StatoFonteJet = Literal["da_configurare", "pronta", "esclusa", "errore"]
 StrategiaDuplicatiJet = Literal["mantieni_tutti", "scarta_identiche"]
 StatoImportazioneJet = Literal["completata", "errore"]

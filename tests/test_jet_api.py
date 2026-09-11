@@ -126,3 +126,49 @@ def test_media_effettiva_rispetta_override_manuale(client):
     assert Decimal(
         analyzed.json()["valore_medio_registrazione_effettivo"]
     ) == Decimal("123.45")
+
+
+CSV_PROVA = ROOT / "fixtures" / "jet" / "libro_giornale_prova.csv"
+MAPPATURA_CSV_PROVA = {
+    "identificativo_registrazione": "Riga",
+    "data_effettiva": "Data",
+    "descrizione": "Descrizione",
+    "conto_contabile": "Conto",
+    "importo_dare": "Entrate",
+    "importo_avere": "Uscite",
+}
+
+
+def test_csv_prova_upload_mappatura_e_analisi(client):
+    pid = client.post(
+        "/api/jet/pratiche", json={"client": "Prova JET", "period": "2026"}
+    ).json()["id"]
+    configurazione = params()
+    configurazione.update(
+        {
+            "paese": "IT",
+            "performance_materiality": 15000,
+            "utile_netto_dopo_imposte": 100000,
+            "soglia_importo_cifra_tonda": 10000,
+        }
+    )
+    client.put(f"/api/jet/pratiche/{pid}/parametri", json=configurazione)
+    with CSV_PROVA.open("rb") as fh:
+        uploaded = client.post(
+            f"/api/jet/pratiche/{pid}/files",
+            files=[("files", (CSV_PROVA.name, fh, "text/csv"))],
+        )
+    assert uploaded.status_code == 200, uploaded.text
+    payload = uploaded.json()["files"][0]
+    assert "Riga" in payload["intestazioni"]
+    assert "Entrate" in payload["intestazioni"]
+    fonte_id = payload["fonte"]["id"]
+    mapped = client.put(
+        f"/api/jet/pratiche/{pid}/fonti/{fonte_id}/mappatura",
+        json={"mappatura": MAPPATURA_CSV_PROVA},
+    )
+    assert mapped.status_code == 200, mapped.text
+    analyzed = client.post(f"/api/jet/pratiche/{pid}/analizza")
+    assert analyzed.status_code == 200, analyzed.text
+    assert analyzed.json()["numero_registrazioni"] == 500
+    assert analyzed.json()["numero_da_investigare"] >= 1

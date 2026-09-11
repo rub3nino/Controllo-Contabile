@@ -59,7 +59,7 @@ export type JetSource = {
   pratica_id: string;
   nome_originale: string;
   percorso_relativo: string;
-  formato: "xlsx" | "txt" | "pdf";
+  formato: "xlsx" | "csv" | "txt" | "pdf";
   sha256: string;
   dimensione_byte: number;
   attiva: boolean;

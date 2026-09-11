@@ -48,7 +48,7 @@ export const FIELD_GUIDES: Record<MapField, FieldGuide> = {
       "Chiave della riga nel JET, non il protocollo fiscale. Serve a riconoscere la stessa scrittura nei risultati e nell’export. Non va confuso con il numero documento.",
     cosaInserire:
       "Un valore presente su ogni movimento: id riga, TransactionId, oppure un pezzo stabile della riga se il file non ha un id.",
-    excel: "Riga N., TransactionId, ID movimento. Non usare il numero fattura se è spesso vuoto.",
+    excel: "Riga, Riga N., TransactionId. Su CSV senza id Quadra aggiunge la colonna Riga.",
     stampa:
       "Intervallo di caratteri dell’id. Se manca, usa un tratto non vuoto (es. data + sottoconto). Non i primi 10 caratteri a caso.",
     seManca: "Senza questo campo il profilo o la mappatura non si possono salvare.",
@@ -72,7 +72,7 @@ export const FIELD_GUIDES: Record<MapField, FieldGuide> = {
       "Data a cui la scrittura si riferisce in contabilità (competenza/registrazione). Non è l’istante in cui è stato battuto Invio.",
     cosaInserire:
       "La data del movimento. Non la data di stampa in testata né la data di chiusura di bilancio.",
-    excel: "Data Reg., EffectiveDate, Data registrazione.",
+    excel: "Data, Data Reg., EffectiveDate, Data registrazione.",
     stampa:
       "«Data Reg.» all’inizio della riga movimento (es. 0–10 per 02/03/2026). Non l’intestazione di pagina.",
     seManca: "Obbligatoria: senza data effettiva la riga non è una scrittura JET valida.",
@@ -108,7 +108,7 @@ export const FIELD_GUIDES: Record<MapField, FieldGuide> = {
       "Codice di mastro/sottoconto. Non è la descrizione e non è l’etichetta del tipo documento SAP.",
     cosaInserire:
       "Il codice vero. Se ci sono più colonne «conto», scegli i codici di piano dei conti (su Nordson: Conto n., non Conto contabile).",
-    excel: "Conto n., Account, Codice conto, Sottoconto.",
+    excel: "Conto, Conto n., Account, Codice conto, Sottoconto.",
     stampa: "«Sottoconto» (es. 22020012).",
     seManca: "Conto raro e infragruppo restano non calcolabili.",
     criteri: "flag_conto_insolito_raro, flag_conto_infragruppo_parte_correlata.",
@@ -130,7 +130,7 @@ export const FIELD_GUIDES: Record<MapField, FieldGuide> = {
     significato:
       "Colonna Dare. Se mappi Dare e/o Avere, il netto diventa Dare − Avere; vuoto = zero in quella sottrazione.",
     cosaInserire: "Solo i numeri in Dare (accetta 1.625,00).",
-    excel: "Importo Dare, Dare, Debit.",
+    excel: "Entrate, Importo Dare, Dare, Debit. Nel CSV di prova Entrate è il Dare.",
     stampa: "Fascia «Dare» a destra, prima di Avere.",
     seManca: "Se mappi solo Avere, Dare vale zero.",
     criteri: "Stessi criteri di importo, tramite il netto ricalcolato.",
@@ -140,7 +140,7 @@ export const FIELD_GUIDES: Record<MapField, FieldGuide> = {
     obbligo: "importo",
     significato: "Colonna Avere. Stessa regola di Dare nel netto Dare − Avere.",
     cosaInserire: "Solo i numeri in Avere. Vuoto = zero.",
-    excel: "Importo Avere, Avere, Credit.",
+    excel: "Uscite, Importo Avere, Avere, Credit. Nel CSV di prova Uscite è l’Avere.",
     stampa: "Ultima fascia numerica a destra («Avere»).",
     seManca: "Opzionale se esiste Dare o l’importo netto.",
     criteri: "Stessi criteri di importo, tramite il netto ricalcolato.",

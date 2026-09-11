@@ -244,7 +244,8 @@ export function JetDashboard() {
     if (source.mappatura || source.profilo_estrazione_id) return source;
     const suggested = suggestMapping(preview.intestazioni || []);
     if (
-      (source.formato === "xlsx" || !preview.intestazione) &&
+      (source.formato === "xlsx" || source.formato === "csv" ||
+        !preview.intestazione) &&
       mappingIsReady(suggested)
     ) {
       const configured = await jetApi.sourceMapping(
@@ -469,9 +470,9 @@ export function JetDashboard() {
               </div>
             </form>
             <p className="mt-3 text-xs text-[#9b9a97] leading-5">
-              La pratica di prova salva da sola Paese Italia, orario 8:00–18:00,
-              soglie e parole chiave. Staff e utenti sono fittizi: adattali al
-              file se non vuoi che quasi ogni utente risulti non autorizzato.
+              La pratica di prova è tarata sul CSV Data/Descrizione/Conto/Entrate/Uscite:
+              Italia, PM 15.000, utile 100.000. Non ci sono utente né orario in quel
+              file: staff, orario e retrodatazione restano spenti.
             </p>
           </JetSection>
         )}

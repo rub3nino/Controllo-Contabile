@@ -6,6 +6,7 @@ semplici dizionari e non conosce né Excel né il cliente che li ha prodotti.
 
 from __future__ import annotations
 
+import csv
 from collections.abc import Iterable, Mapping
 from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation
@@ -19,6 +20,8 @@ from backend.jet.models import RigaGiornale
 __all__ = [
     "data_o_none",
     "decimale_o_none",
+    "leggi_righe_csv",
+    "leggi_righe_tabellari",
     "leggi_righe_xlsx",
     "mappa_righe_giornale",
     "ora_o_none",
@@ -174,3 +177,57 @@ def leggi_righe_xlsx(
         return righe
     finally:
         workbook.close()
+
+
+_ID_INTESTAZIONI = {
+    "riga",
+    "riga n",
+    "riga n.",
+    "transaction id",
+    "transactionid",
+    "id registrazione",
+    "identificativo registrazione",
+    "id",
+}
+
+
+def _assicura_colonna_riga(righe: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Se manca un identificativo, aggiunge ``Riga`` 1-based per la mappatura JET."""
+    if not righe:
+        return righe
+    chiavi = {
+        str(chiave).strip().lower().replace(".", "")
+        for chiave in righe[0]
+    }
+    if chiavi & _ID_INTESTAZIONI:
+        return righe
+    return [{"Riga": str(indice), **riga} for indice, riga in enumerate(righe, start=1)]
+
+
+def leggi_righe_csv(percorso: str | Path) -> list[dict[str, Any]]:
+    """Legge un CSV in dizionari, senza applicare mapping JET.
+
+    Accetta UTF-8 con o senza BOM. Se non c'è una colonna identificativo,
+    aggiunge ``Riga`` (numero riga dati, da 1).
+    """
+    with Path(percorso).open(newline="", encoding="utf-8-sig") as handle:
+        lettore = csv.reader(handle)
+        grezze = list(lettore)
+    if not grezze:
+        return []
+    intestazioni = _intestazioni_univoche(grezze[0])
+    righe: list[dict[str, Any]] = []
+    for valori in grezze[1:]:
+        if not any(not _vuoto(valore) for valore in valori):
+            continue
+        padded = list(valori) + [""] * max(0, len(intestazioni) - len(valori))
+        righe.append(dict(zip(intestazioni, padded[: len(intestazioni)])))
+    return _assicura_colonna_riga(righe)
+
+
+def leggi_righe_tabellari(percorso: str | Path) -> list[dict[str, Any]]:
+    """Excel o CSV, stesso contratto di dizionari per la mappatura."""
+    suffix = Path(percorso).suffix.lower()
+    if suffix == ".csv":
+        return leggi_righe_csv(percorso)
+    return leggi_righe_xlsx(percorso)

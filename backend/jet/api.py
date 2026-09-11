@@ -23,7 +23,10 @@ from backend.jet.fonti import (
     FonteJet,
     ImportazioneJet,
 )
-from backend.jet.ingest import leggi_righe_xlsx, mappa_righe_giornale
+from backend.jet.ingest import (
+    leggi_righe_tabellari,
+    mappa_righe_giornale,
+)
 from backend.jet.ingest_pdf import estrai_righe_pdf, mappa_righe_pdf
 from backend.jet.ingest_txt import (
     AnteprimaTxt,
@@ -48,6 +51,8 @@ from backend.workspace import output_dir, storage_root, write_inbox_file
 
 router = APIRouter(prefix="/api/jet", tags=["jet"])
 FORMATI_PROFILABILI = {".txt", ".pdf"}
+FORMATI_TABELLARI = {".xlsx", ".csv"}
+FORMATI_ACCETTATI = FORMATI_TABELLARI | FORMATI_PROFILABILI
 
 
 def _store() -> JetStore:
@@ -145,20 +150,20 @@ def _raw_rows(pratica: PraticaJet) -> list[dict]:
                 status_code=400, detail=f"File {formato} non leggibile: {exc}"
             ) from exc
     try:
-        return leggi_righe_xlsx(_file_path(pratica))
+        return leggi_righe_tabellari(_file_path(pratica))
     except (OSError, ValueError, KeyError) as exc:
         raise HTTPException(
-            status_code=400, detail=f"File Excel non leggibile: {exc}"
+            status_code=400, detail=f"File tabellare non leggibile: {exc}"
         ) from exc
 
 
 def _anteprima_fonte(fonte: FonteJet) -> dict:
     path = _fonte_path(fonte)
-    if fonte.formato == "xlsx":
-        rows = leggi_righe_xlsx(path)
+    if fonte.formato in {"xlsx", "csv"}:
+        rows = leggi_righe_tabellari(path)
         headers = list(rows[0]) if rows else []
         if not headers:
-            raise ValueError("Il file Excel non contiene intestazioni e righe dati")
+            raise ValueError("Il file non contiene intestazioni e righe dati")
         return {"intestazioni": headers}
     if fonte.formato == "pdf":
         anteprima = ispeziona_righe(estrai_righe_pdf(path), origine="pdf")
@@ -178,10 +183,10 @@ def _anteprima_fonte(fonte: FonteJet) -> dict:
 
 def _righe_fonte(fonte: FonteJet) -> list[RigaGiornale]:
     path = _fonte_path(fonte)
-    if fonte.formato == "xlsx":
+    if fonte.formato in {"xlsx", "csv"}:
         if fonte.mappatura is None:
-            raise ValueError("Configura prima la mappatura Excel della fonte")
-        return mappa_righe_giornale(leggi_righe_xlsx(path), fonte.mappatura)
+            raise ValueError("Configura prima la mappatura colonne della fonte")
+        return mappa_righe_giornale(leggi_righe_tabellari(path), fonte.mappatura)
     if fonte.profilo_estrazione_id is None:
         raise ValueError(
             f"Applica prima un profilo di estrazione {fonte.formato.upper()}"
@@ -212,9 +217,10 @@ def _crea_fonte(
     pratica: PraticaJet, filename: str, data: bytes
 ) -> tuple[FonteJet, dict]:
     suffix = Path(filename).suffix.lower()
-    if suffix not in {".xlsx", ".txt", ".pdf"}:
+    if suffix not in FORMATI_ACCETTATI:
         raise HTTPException(
-            status_code=400, detail="Sono accettati solo file .xlsx, .txt o .pdf"
+            status_code=400,
+            detail="Sono accettati solo file .xlsx, .csv, .txt o .pdf",
         )
     fonte = FonteJet(
         pratica_id=pratica.id,
@@ -372,9 +378,10 @@ async def replace_fonte_file(
     fonte = _fonte_or_404(pratica_id, fonte_id)
     filename = Path(file.filename or fonte.nome_originale).name
     suffix = Path(filename).suffix.lower()
-    if suffix not in {".xlsx", ".txt", ".pdf"}:
+    if suffix not in FORMATI_ACCETTATI:
         raise HTTPException(
-            status_code=400, detail="Sono accettati solo file .xlsx, .txt o .pdf"
+            status_code=400,
+            detail="Sono accettati solo file .xlsx, .csv, .txt o .pdf",
         )
     data = await file.read()
     old_path = _fonte_path(fonte)
@@ -516,9 +523,11 @@ def _valida_mappatura_excel(headers: set[str], mappatura: dict[str, str]) -> Non
 def put_mappatura_fonte(pratica_id: str, fonte_id: str, body: MappaturaJet):
     pratica = _pratica_or_404(pratica_id)
     fonte = _fonte_or_404(pratica_id, fonte_id)
-    if fonte.formato != "xlsx":
-        raise HTTPException(status_code=400, detail="La fonte non è un file Excel")
-    rows = leggi_righe_xlsx(_fonte_path(fonte))
+    if fonte.formato not in {"xlsx", "csv"}:
+        raise HTTPException(
+            status_code=400, detail="La fonte non è un file Excel o CSV"
+        )
+    rows = leggi_righe_tabellari(_fonte_path(fonte))
     _valida_mappatura_excel(set(rows[0]) if rows else set(), body.mappatura)
     fonte = _stage_fonte(
         fonte.model_copy(

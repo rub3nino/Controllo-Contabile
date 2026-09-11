@@ -89,3 +89,35 @@ def test_mapper_funzione_senza_passare_da_file():
     assert righe[0].importo_netto == Decimal("-10.50")
     assert righe[0].numero_documento is None
     assert righe[0].conto_contabile is None
+
+
+CSV_PROVA = ROOT / "fixtures" / "jet" / "libro_giornale_prova.csv"
+MAPPATURA_CSV_PROVA = {
+    "identificativo_registrazione": "Riga",
+    "data_effettiva": "Data",
+    "descrizione": "Descrizione",
+    "conto_contabile": "Conto",
+    "importo_dare": "Entrate",
+    "importo_avere": "Uscite",
+}
+
+
+def test_csv_prova_aggiunge_riga_e_mappa_entrate_uscite():
+    from backend.jet.ingest import leggi_righe_csv, mappa_righe_giornale
+
+    grezze = leggi_righe_csv(CSV_PROVA)
+    assert grezze[0]["Riga"] == "1"
+    assert grezze[0]["Data"] == "2026-02-03"
+    assert grezze[0]["Conto"] == "40000"
+    assert grezze[0]["Entrate"] == "13527"
+    assert grezze[0]["Uscite"] == ""
+
+    righe = mappa_righe_giornale(grezze, MAPPATURA_CSV_PROVA)
+    assert len(righe) == 500
+    assert righe[0].identificativo_registrazione == "1"
+    assert righe[0].data_effettiva == date(2026, 2, 3)
+    assert righe[0].conto_contabile == "40000"
+    assert righe[0].importo_netto == Decimal("13527")
+    assert righe[0].descrizione == "RABEN ITALY SRL"
+    assert righe[0].utente is None
+    assert all(r.importo_netto > 0 for r in righe)

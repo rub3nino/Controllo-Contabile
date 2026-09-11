@@ -78,7 +78,7 @@ export function SourcePanel({
     <JetSection
       icon="upload_file"
       title="Sorgente libro giornale"
-      hint=".xlsx, .txt o .pdf testuale"
+      hint=".xlsx, .csv, .txt o .pdf testuale"
       accent="orange"
       trailing={
         sources.length > 0 ? (
@@ -87,7 +87,7 @@ export function SourcePanel({
               ref={fileRef}
               multiple
               type="file"
-              accept=".xlsx,.txt,.pdf"
+              accept=".xlsx,.csv,.txt,.pdf"
               className="sr-only"
               onChange={(e) => {
                 takeFiles(e.target.files);
@@ -182,7 +182,7 @@ export function SourcePanel({
                             <input
                               className="sr-only"
                               type="file"
-                              accept=".xlsx,.txt,.pdf"
+                              accept=".xlsx,.csv,.txt,.pdf"
                               onChange={(event) => {
                                 const file = event.target.files?.[0];
                                 if (file) onReplace(source, file);
@@ -292,7 +292,7 @@ function DropZone({
         ref={ref}
         multiple
         type="file"
-        accept=".xlsx,.txt,.pdf"
+        accept=".xlsx,.csv,.txt,.pdf"
         className="sr-only"
         onChange={(e) => {
           if (e.target.files) onPick(e.target.files);
@@ -322,7 +322,7 @@ function DropZone({
           Carica libro giornale
         </span>
         <span className="block mt-1 text-xs text-[#9b9a97]">
-          Trascina qui oppure clicca · .xlsx, .txt, .pdf testuale
+          Trascina qui oppure clicca · .xlsx, .csv, .txt, .pdf testuale
         </span>
       </button>
     </div>
