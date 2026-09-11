@@ -27,6 +27,8 @@ import {
 import {
   mappingIsReady,
   presetProva,
+  PROFILO_PROVA_NOME,
+  PROFILO_PROVA_POSIZIONI,
   PROVA_CLIENT,
   suggestMapping,
 } from "./presetProva";
@@ -358,6 +360,24 @@ export function JetDashboard() {
     ) return;
     await run(() => applyPresetTo(active));
     setProvaMode(true);
+  };
+  const fillProfiloProva = () => {
+    const giaCompilato =
+      profileName.trim() !== "" ||
+      Object.values(positions).some((x) => x.start !== "" || x.end !== "");
+    if (
+      giaCompilato &&
+      !window.confirm("Sostituire nome e posizioni già inseriti con i valori di prova?")
+    ) return;
+    setProfileName(PROFILO_PROVA_NOME);
+    setPositions(
+      Object.fromEntries(
+        Object.entries(PROFILO_PROVA_POSIZIONI).map(([field, [start, end]]) => [
+          field,
+          { start: String(start), end: String(end) },
+        ]),
+      ),
+    );
   };
   const saveParams = (e: FormEvent) => {
     e.preventDefault();
@@ -1036,9 +1056,19 @@ export function JetDashboard() {
                     </button>
                   </div>
                   <div className="border-t border-border-muted pt-lg">
-                    <h4 className="mb-md text-label-md text-ink-primary">
-                      Crea un nuovo profilo
-                    </h4>
+                    <div className="flex flex-wrap items-center justify-between gap-sm mb-md">
+                      <h4 className="text-label-md text-ink-primary">
+                        Crea un nuovo profilo
+                      </h4>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={fillProfiloProva}
+                        className={ghostButtonClass}
+                      >
+                        Compila posizioni di prova
+                      </button>
+                    </div>
                     <Field label="Nome profilo">
                       <input
                         value={profileName}

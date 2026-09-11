@@ -3,6 +3,22 @@ import type { JetParams } from "./api";
 /** Cliente usato dalla pratica di prova, riconoscibile in elenco. */
 export const PROVA_CLIENT = "Prova JET";
 
+export const PROFILO_PROVA_NOME = "Profilo di prova";
+
+export const PROFILO_PROVA_POSIZIONI: Record<string, [number, number]> = {
+  identificativo_registrazione: [0, 10],
+  numero_documento: [10, 20],
+  data_effettiva: [20, 30],
+  data_creazione: [30, 40],
+  ora_creazione: [40, 46],
+  conto_contabile: [46, 56],
+  importo_netto: [56, 72],
+  importo_dare: [72, 88],
+  importo_avere: [88, 104],
+  descrizione: [104, 144],
+  utente: [144, 154],
+};
+
 function normalizeHeader(value: string): string {
   return value
     .toLowerCase()
