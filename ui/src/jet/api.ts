@@ -38,6 +38,20 @@ export type JetParams = {
   punteggio_descrizione_vuota: number;
   punteggio_conto_insolito_raro: number | null;
   punteggio_conto_infragruppo_parte_correlata: number | null;
+  attivo_profit_impact: boolean;
+  attivo_oltre_dieci_volte_media: boolean;
+  attivo_sopra_performance_materiality: boolean;
+  attivo_importo_cifra_tonda: boolean;
+  attivo_weekend: boolean;
+  attivo_festivita: boolean;
+  attivo_fuori_orario: boolean;
+  attivo_backdated: boolean;
+  attivo_staff_non_autorizzato: boolean;
+  attivo_parte_correlata: boolean;
+  attivo_descrizione_vuota: boolean;
+  attivo_conto_insolito_raro: boolean;
+  attivo_conto_infragruppo_parte_correlata: boolean;
+  attivo_finestra_chiusura: boolean;
 };
 export type JetPractice = {
   id: string;
