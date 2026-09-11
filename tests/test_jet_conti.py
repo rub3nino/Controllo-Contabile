@@ -42,6 +42,8 @@ def _parametri(**modifiche) -> ParametriClienteJet:
         staff_autorizzato=["AUTORIZZATO"],
         parole_chiave_parti_correlate=[],
         soglia_da_investigare=4,
+        attivo_conto_insolito_raro=True,
+        attivo_conto_infragruppo_parte_correlata=True,
         punteggio_profit_impact=1,
         punteggio_oltre_dieci_volte_media=1,
         punteggio_sopra_performance_materiality=1,

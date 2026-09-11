@@ -105,6 +105,21 @@ class ParametriClienteJet(BaseModel):
     conti_infragruppo_parte_correlata: list[str] | None = None
     soglia_da_investigare: int = Field(ge=0)
 
+    attivo_profit_impact: bool = True
+    attivo_oltre_dieci_volte_media: bool = True
+    attivo_sopra_performance_materiality: bool = True
+    attivo_importo_cifra_tonda: bool = True
+    attivo_weekend: bool = True
+    attivo_festivita: bool = True
+    attivo_fuori_orario: bool = True
+    attivo_backdated: bool = True
+    attivo_staff_non_autorizzato: bool = True
+    attivo_parte_correlata: bool = True
+    attivo_descrizione_vuota: bool = True
+    attivo_conto_insolito_raro: bool = False
+    attivo_conto_infragruppo_parte_correlata: bool = False
+    attivo_finestra_chiusura: bool = True
+
     punteggio_profit_impact: int = Field(ge=0)
     punteggio_oltre_dieci_volte_media: int = Field(ge=0)
     punteggio_sopra_performance_materiality: int = Field(ge=0)
@@ -164,6 +179,7 @@ class EsitoRigaJet(BaseModel):
     flag_descrizione_vuota: bool
     punteggio_totale: int = Field(ge=0)
     da_investigare: bool
+    soglia_da_investigare_effettiva: int = Field(ge=0)
 
     frequenza_utilizzo_conto: int | None = Field(default=None, ge=0)
     flag_conto_insolito_raro: bool | None = None

@@ -19,6 +19,7 @@ def _pair(i: int):
         flag_fuori_orario=None, flag_backdated=None, flag_staff_non_autorizzato=None,
         flag_parte_correlata=None, flag_descrizione_vuota=False,
         punteggio_totale=i % 11, da_investigare=i % 3 == 0,
+        soglia_da_investigare_effettiva=4,
     )
     return riga, esito
 

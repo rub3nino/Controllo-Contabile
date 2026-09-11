@@ -58,7 +58,8 @@ def valuta_riga(
 
     flag_profit_impact = (
         importo > Decimal("0.10") * abs(parametri.utile_netto_dopo_imposte)
-        if parametri.utile_netto_dopo_imposte is not None
+        if parametri.attivo_profit_impact
+        and parametri.utile_netto_dopo_imposte is not None
         else None
     )
     media_registrazione = (
@@ -68,17 +69,20 @@ def valuta_riga(
     )
     flag_oltre_dieci_volte_media = (
         importo > Decimal(10) * abs(media_registrazione)
-        if media_registrazione is not None
+        if parametri.attivo_oltre_dieci_volte_media
+        and media_registrazione is not None
         else None
     )
     flag_sopra_performance_materiality = (
         importo > abs(parametri.performance_materiality)
-        if parametri.performance_materiality is not None
+        if parametri.attivo_sopra_performance_materiality
+        and parametri.performance_materiality is not None
         else None
     )
     flag_importo_cifra_tonda = (
         importo % parametri.soglia_importo_cifra_tonda == 0
-        if parametri.soglia_importo_cifra_tonda is not None
+        if parametri.attivo_importo_cifra_tonda
+        and parametri.soglia_importo_cifra_tonda is not None
         else None
     )
     weekend_effettivo = (
@@ -103,12 +107,12 @@ def valuta_riga(
 
     flag_weekend = (
         riga.data_effettiva.weekday() in weekend_effettivo
-        if weekend_effettivo is not None
+        if parametri.attivo_weekend and weekend_effettivo is not None
         else None
     )
     flag_festivita = (
         riga.data_effettiva in festivita_effettiva
-        if festivita_effettiva is not None
+        if parametri.attivo_festivita and festivita_effettiva is not None
         else None
     )
 
@@ -148,7 +152,8 @@ def valuta_riga(
             )
 
     if (
-        riga.ora_creazione is None
+        not parametri.attivo_fuori_orario
+        or riga.ora_creazione is None
         or parametri.orario_ufficio_inizio is None
         or parametri.orario_ufficio_fine is None
     ):
@@ -160,7 +165,11 @@ def valuta_riga(
             <= parametri.orario_ufficio_fine
         )
 
-    if riga.data_creazione is None or parametri.soglia_backdating_giorni is None:
+    if (
+        not parametri.attivo_backdated
+        or riga.data_creazione is None
+        or parametri.soglia_backdating_giorni is None
+    ):
         flag_backdated = None
         flag_forward_dating = None
         metodo_calcolo_backdating = None
@@ -181,7 +190,8 @@ def valuta_riga(
         flag_forward_dating = False
 
     if (
-        parametri.data_chiusura is None
+        not parametri.attivo_finestra_chiusura
+        or parametri.data_chiusura is None
         or parametri.finestra_chiusura_giorni_lavorativi is None
         or parametri.paese is None
     ):
@@ -201,7 +211,11 @@ def valuta_riga(
             scarto_chiusura < parametri.finestra_chiusura_giorni_lavorativi
         )
 
-    if riga.data_creazione is None or parametri.data_chiusura is None:
+    if (
+        not parametri.attivo_finestra_chiusura
+        or riga.data_creazione is None
+        or parametri.data_chiusura is None
+    ):
         flag_creata_dopo_chiusura = None
     else:
         flag_creata_dopo_chiusura = (
@@ -210,7 +224,8 @@ def valuta_riga(
         )
 
     if (
-        parametri.staff_autorizzato is None
+        not parametri.attivo_staff_non_autorizzato
+        or parametri.staff_autorizzato is None
         or riga.utente is None
         or (
             parametri.utenti_di_sistema is not None
@@ -228,10 +243,11 @@ def valuta_riga(
             for parola in parametri.parole_chiave_parti_correlate
             if parola.strip()
         )
-        if parametri.parole_chiave_parti_correlate is not None
+        if parametri.attivo_parte_correlata
+        and parametri.parole_chiave_parti_correlate is not None
         else None
     )
-    flag_descrizione_vuota = not descrizione
+    flag_descrizione_vuota = parametri.attivo_descrizione_vuota and not descrizione
 
     if frequenze_conto is None or riga.conto_contabile is None:
         frequenza_utilizzo_conto = None
@@ -240,12 +256,14 @@ def valuta_riga(
         frequenza_utilizzo_conto = frequenze_conto.get(riga.conto_contabile, 0)
         flag_conto_insolito_raro = (
             frequenza_utilizzo_conto < parametri.soglia_frequenza_insolita
-            if parametri.soglia_frequenza_insolita is not None
+            if parametri.attivo_conto_insolito_raro
+            and parametri.soglia_frequenza_insolita is not None
             else None
         )
 
     if (
-        parametri.conti_infragruppo_parte_correlata is None
+        not parametri.attivo_conto_infragruppo_parte_correlata
+        or parametri.conti_infragruppo_parte_correlata is None
         or riga.conto_contabile is None
     ):
         flag_conto_infragruppo_parte_correlata = None
@@ -286,6 +304,26 @@ def valuta_riga(
         contributo_weekend_festivita = 0
     punteggio_totale += contributo_weekend_festivita
 
+    criteri_standard_attivi = sum([
+        parametri.attivo_profit_impact,
+        parametri.attivo_oltre_dieci_volte_media,
+        parametri.attivo_sopra_performance_materiality,
+        parametri.attivo_importo_cifra_tonda,
+        parametri.attivo_weekend,
+        parametri.attivo_festivita,
+        parametri.attivo_fuori_orario,
+        parametri.attivo_backdated,
+        parametri.attivo_staff_non_autorizzato,
+        parametri.attivo_parte_correlata,
+        parametri.attivo_descrizione_vuota,
+    ])
+    if 1 <= criteri_standard_attivi < 8:
+        soglia_effettiva = round(
+            parametri.soglia_da_investigare * criteri_standard_attivi / 11
+        )
+    else:
+        soglia_effettiva = parametri.soglia_da_investigare
+
     return EsitoRigaJet(
         identificativo_registrazione=riga.identificativo_registrazione,
         flag_profit_impact=flag_profit_impact,
@@ -304,7 +342,8 @@ def valuta_riga(
         flag_parte_correlata=flag_parte_correlata,
         flag_descrizione_vuota=flag_descrizione_vuota,
         punteggio_totale=punteggio_totale,
-        da_investigare=punteggio_totale >= parametri.soglia_da_investigare,
+        da_investigare=punteggio_totale >= soglia_effettiva,
+        soglia_da_investigare_effettiva=soglia_effettiva,
         frequenza_utilizzo_conto=frequenza_utilizzo_conto,
         flag_conto_insolito_raro=flag_conto_insolito_raro,
         flag_conto_infragruppo_parte_correlata=flag_conto_infragruppo_parte_correlata,

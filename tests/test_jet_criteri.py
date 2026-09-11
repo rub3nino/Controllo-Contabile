@@ -480,3 +480,120 @@ def test_israele_usa_le_festivita_manuali_quando_presenti():
     )
 
     assert esito.flag_festivita is True
+
+
+def test_profit_impact_disattivato_resta_none_e_non_da_punti():
+    esito = valuta_riga(
+        _riga(importo_netto=Decimal("100.01")),
+        _parametri(
+            attivo_profit_impact=False,
+            valore_medio_registrazione=Decimal("100"),
+            punteggio_profit_impact=999,
+        ),
+    )
+    assert esito.flag_profit_impact is None
+    assert esito.punteggio_totale == 0
+
+
+def test_gruppo_backdating_disattivato_annulla_flag_metodo_e_punteggio():
+    esito = valuta_riga(
+        _riga(data_creazione=date(2026, 3, 9)),
+        _parametri(attivo_backdated=False, punteggio_backdated=999),
+    )
+    assert esito.flag_backdated is None
+    assert esito.flag_forward_dating is None
+    assert esito.metodo_calcolo_backdating is None
+    assert esito.punteggio_totale == 0
+
+
+def test_gruppo_finestra_chiusura_disattivato_annulla_entrambi_i_flag():
+    esito = valuta_riga(
+        _riga(data_effettiva=date(2026, 12, 31), data_creazione=date(2027, 1, 2)),
+        _parametri(
+            attivo_finestra_chiusura=False,
+            paese="IT",
+            data_chiusura=date(2026, 12, 31),
+            finestra_chiusura_giorni_lavorativi=5,
+            soglia_backdating_giorni=None,
+        ),
+    )
+    assert esito.flag_finestra_chiusura is None
+    assert esito.flag_creata_dopo_chiusura is None
+    assert esito.punteggio_totale == 0
+
+
+def test_descrizione_vuota_disattivata_resta_false_e_non_da_punti():
+    esito = valuta_riga(
+        _riga(descrizione=""),
+        _parametri(attivo_descrizione_vuota=False, punteggio_descrizione_vuota=999),
+    )
+    assert esito.flag_descrizione_vuota is False
+    assert esito.punteggio_totale == 0
+
+
+def test_conto_insolito_disattivato_anche_con_soglia_resta_none():
+    esito = valuta_riga(
+        _riga(),
+        _parametri(soglia_frequenza_insolita=10),
+        frequenze_conto={"100100": 1},
+    )
+    assert esito.flag_conto_insolito_raro is None
+
+
+def test_quattro_criteri_attivi_riproporzionano_soglia_e_verdetto():
+    quattro_attivi = _parametri(
+        soglia_da_investigare=4,
+        valore_medio_registrazione=Decimal("100"),
+        attivo_oltre_dieci_volte_media=False,
+        attivo_sopra_performance_materiality=False,
+        attivo_importo_cifra_tonda=False,
+        attivo_festivita=False,
+        attivo_backdated=False,
+        attivo_parte_correlata=False,
+        attivo_descrizione_vuota=False,
+    )
+    ridotta = valuta_riga(_riga(importo_netto=Decimal("100.01")), quattro_attivi)
+    completa = valuta_riga(
+        _riga(importo_netto=Decimal("100.01")),
+        _parametri(soglia_da_investigare=4, valore_medio_registrazione=Decimal("100")),
+    )
+    assert ridotta.punteggio_totale == 1
+    assert ridotta.soglia_da_investigare_effettiva == round(4 * 4 / 11) == 1
+    assert ridotta.da_investigare is True
+    assert completa.punteggio_totale == 1
+    assert completa.soglia_da_investigare_effettiva == 4
+    assert completa.da_investigare is False
+
+
+@pytest.mark.parametrize(("numero_attivi", "soglia_attesa"), [(7, 3), (8, 4)])
+def test_confine_sette_otto_criteri_attivi(numero_attivi, soglia_attesa):
+    campi = [
+        "attivo_profit_impact", "attivo_oltre_dieci_volte_media",
+        "attivo_sopra_performance_materiality", "attivo_importo_cifra_tonda",
+        "attivo_weekend", "attivo_festivita", "attivo_fuori_orario",
+        "attivo_backdated", "attivo_staff_non_autorizzato",
+        "attivo_parte_correlata", "attivo_descrizione_vuota",
+    ]
+    stato = {campo: indice < numero_attivi for indice, campo in enumerate(campi)}
+    esito = valuta_riga(_riga(), _parametri(soglia_da_investigare=4, **stato))
+    assert esito.soglia_da_investigare_effettiva == soglia_attesa
+
+
+def test_zero_criteri_standard_attivi_conserva_soglia_e_non_investiga():
+    campi = {
+        campo: False
+        for campo in (
+            "attivo_profit_impact", "attivo_oltre_dieci_volte_media",
+            "attivo_sopra_performance_materiality", "attivo_importo_cifra_tonda",
+            "attivo_weekend", "attivo_festivita", "attivo_fuori_orario",
+            "attivo_backdated", "attivo_staff_non_autorizzato",
+            "attivo_parte_correlata", "attivo_descrizione_vuota",
+        )
+    }
+    esito = valuta_riga(
+        _riga(descrizione=""),
+        _parametri(soglia_da_investigare=4, **campi),
+    )
+    assert esito.punteggio_totale == 0
+    assert esito.soglia_da_investigare_effettiva == 4
+    assert esito.da_investigare is False

@@ -70,6 +70,7 @@ def test_tutti_i_modelli_si_istanziano_con_dati_sintetici():
         flag_descrizione_vuota=False,
         punteggio_totale=1,
         da_investigare=False,
+        soglia_da_investigare_effettiva=5,
         frequenza_utilizzo_conto=18,
         flag_conto_insolito_raro=False,
         flag_conto_infragruppo_parte_correlata=False,
@@ -110,6 +111,7 @@ def test_esito_accetta_flag_non_calcolabili_espliciti():
         flag_descrizione_vuota=False,
         punteggio_totale=0,
         da_investigare=False,
+        soglia_da_investigare_effettiva=5,
     )
 
     assert esito.flag_fuori_orario is None
@@ -124,3 +126,27 @@ def test_parametri_rifiutano_un_codice_paese_non_supportato():
 
     with pytest.raises(ValidationError, match="Codice Paese non supportato"):
         ParametriClienteJet.model_validate(dati)
+
+
+def test_interruttori_hanno_default_compatibili_con_le_pratiche_esistenti():
+    parametri = _parametri()
+
+    assert parametri.attivo_conto_insolito_raro is False
+    assert parametri.attivo_conto_infragruppo_parte_correlata is False
+    assert parametri.attivo_finestra_chiusura is True
+    assert all(
+        getattr(parametri, campo) is True
+        for campo in (
+            "attivo_profit_impact",
+            "attivo_oltre_dieci_volte_media",
+            "attivo_sopra_performance_materiality",
+            "attivo_importo_cifra_tonda",
+            "attivo_weekend",
+            "attivo_festivita",
+            "attivo_fuori_orario",
+            "attivo_backdated",
+            "attivo_staff_non_autorizzato",
+            "attivo_parte_correlata",
+            "attivo_descrizione_vuota",
+        )
+    )
