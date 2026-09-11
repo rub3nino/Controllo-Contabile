@@ -24,6 +24,7 @@ import {
   type JetSource,
   type ResultFilters,
 } from "./api";
+import { ParamsPanel } from "./ParamsPanel";
 import {
   mappingIsReady,
   presetProva,
@@ -39,17 +40,6 @@ const buttonClass =
   "inline-flex items-center justify-center gap-sm px-base py-sm rounded bg-ink-primary text-label-md text-white hover:bg-ink-primary/90 disabled:opacity-50 disabled:cursor-not-allowed";
 const ghostButtonClass =
   "inline-flex items-center justify-center gap-sm px-base py-sm rounded border border-border-subtle text-label-md text-ink-primary hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed";
-const PAESI = [
-  ["IT", "Italia"],
-  ["DE", "Germania"],
-  ["FR", "Francia"],
-  ["ES", "Spagna"],
-  ["IL", "Israele"],
-  ["US", "Stati Uniti"],
-  ["MT", "Malta"],
-  ["IE", "Irlanda"],
-  ["CY", "Cipro"],
-] as const;
 
 const EMPTY: JetParams = {
   materialita_bilancio: null,
@@ -58,8 +48,8 @@ const EMPTY: JetParams = {
   valore_medio_registrazione: null,
   soglia_importo_cifra_tonda: null,
   paese: null,
-  orario_ufficio_inizio: null,
-  orario_ufficio_fine: null,
+  orario_ufficio_inizio: "08:00",
+  orario_ufficio_fine: "18:00",
   giorni_weekend: null,
   soglia_backdating_giorni: null,
   data_chiusura: null,
@@ -99,51 +89,6 @@ const EMPTY: JetParams = {
   attivo_conto_infragruppo_parte_correlata: false,
   attivo_finestra_chiusura: true,
 };
-const OPTIONAL_NUMBERS: [keyof JetParams, string][] = [
-  ["materialita_bilancio", "Materialità di bilancio"],
-  ["performance_materiality", "Performance materiality"],
-  ["utile_netto_dopo_imposte", "Utile netto dopo imposte"],
-  ["valore_medio_registrazione", "Valore medio registrazione"],
-  ["soglia_backdating_giorni", "Soglia retrodatazione (giorni)"],
-  ["finestra_chiusura_giorni_lavorativi", "Finestra di chiusura (giorni lavorativi)"],
-  ["soglia_frequenza_insolita", "Soglia frequenza conto insolito"],
-];
-const WEIGHTS: [keyof JetParams, string, boolean?][] = [
-  ["punteggio_profit_impact", "Impatto sull’utile"],
-  ["punteggio_oltre_dieci_volte_media", "Oltre 10× media"],
-  ["punteggio_sopra_performance_materiality", "Oltre performance materiality"],
-  ["punteggio_importo_cifra_tonda", "Cifra tonda"],
-  ["punteggio_weekend", "Weekend"],
-  ["punteggio_festivita", "Festività"],
-  ["punteggio_fuori_orario", "Fuori orario"],
-  ["punteggio_backdated", "Retrodatata"],
-  ["punteggio_staff_non_autorizzato", "Staff non autorizzato"],
-  ["punteggio_parte_correlata", "Parte correlata"],
-  ["punteggio_descrizione_vuota", "Descrizione vuota"],
-  ["punteggio_conto_insolito_raro", "Conto insolito/raro", true],
-  ["punteggio_conto_infragruppo_parte_correlata", "Conto infragruppo", true],
-];
-const PESI_PROPOSTI = new Set<keyof JetParams>([
-  "punteggio_backdated",
-  "punteggio_festivita",
-  "punteggio_staff_non_autorizzato",
-  "punteggio_descrizione_vuota",
-  "punteggio_parte_correlata",
-  "punteggio_conto_insolito_raro",
-  "punteggio_conto_infragruppo_parte_correlata",
-]);
-const LISTS: [keyof JetParams, string, "text" | "date" | "number"][] = [
-  ["giorni_weekend", "Giorni weekend (0=lunedì, 6=domenica)", "number"],
-  ["festivita", "Festività", "date"],
-  ["staff_autorizzato", "Staff autorizzato", "text"],
-  ["utenti_di_sistema", "Utenti di sistema", "text"],
-  ["parole_chiave_parti_correlate", "Parole chiave parti correlate", "text"],
-  [
-    "conti_infragruppo_parte_correlata",
-    "Conti infragruppo / parti correlate",
-    "text",
-  ],
-];
 const MAP_FIELDS = [
   "identificativo_registrazione",
   "numero_documento",
@@ -157,132 +102,6 @@ const MAP_FIELDS = [
   "descrizione",
   "utente",
 ];
-const SCOPO_CONTROLLI: Record<
-  string,
-  { obiettivo: string; rischio: string; campi: string; regola: string; limitazioni: string; eccezione: string }
-> = {
-  flag_profit_impact: {
-    obiettivo: "Individuare scritture il cui importo pesa in modo rilevante sull'utile netto.",
-    rischio: "Gestione del risultato (earnings management) tramite scritture di importo elevato.",
-    campi: "Importo netto della riga; utile netto dopo imposte del cliente.",
-    regola: "Importo assoluto > 10% dell'utile netto dopo imposte (valore assoluto).",
-    limitazioni: "Non calcolabile se l'utile netto dopo imposte non è stato inserito.",
-    eccezione: "La scrittura, da sola, sposterebbe il risultato riportato di oltre il 10% se errata.",
-  },
-  flag_oltre_dieci_volte_media: {
-    obiettivo: "Individuare importi anomali rispetto alla dimensione tipica delle registrazioni.",
-    rischio: "Scritture anomale per importo, spesso indice di errore o intervento fuori dal flusso ordinario.",
-    campi: "Importo netto della riga; media assoluta delle registrazioni (manuale o calcolata sulla popolazione).",
-    regola: "Importo assoluto > 10 volte la media assoluta delle registrazioni.",
-    limitazioni: "La media, se automatica, esclude gli zeri ed è 'non disponibile' (mai zero) su popolazione vuota o tutta a zero.",
-    eccezione: "L'importo è un multiplo estremo rispetto al resto della popolazione caricata.",
-  },
-  flag_sopra_performance_materiality: {
-    obiettivo: "Segnalare le scritture che superano da sole la performance materiality dell'incarico.",
-    rischio: "Un singolo errore in quella scrittura potrebbe essere materiale per il bilancio.",
-    campi: "Importo netto della riga; performance materiality del cliente.",
-    regola: "Importo assoluto > performance materiality.",
-    limitazioni: "Oggi la performance materiality si inserisce a mano; l'import dal file Global Focus non è collegato.",
-    eccezione: "L'importo della scrittura, da solo, supera già la soglia di materialità operativa.",
-  },
-  flag_importo_cifra_tonda: {
-    obiettivo: "Individuare importi 'tondi' non giustificati.",
-    rischio: "Scritture stimate o inserite senza un giustificativo con importo puntuale.",
-    campi: "Importo netto della riga; soglia di arrotondamento configurata.",
-    regola: "Importo divisibile esattamente per la soglia configurata.",
-    limitazioni: "Senza soglia impostata, non calcolabile — nessun default nel motore.",
-    eccezione: "L'importo è un multiplo esatto della soglia scelta.",
-  },
-  flag_weekend: {
-    obiettivo: "Individuare scritture contabilizzate in un giorno non lavorativo standard.",
-    rischio: "Registrazioni fuori dal normale flusso operativo.",
-    campi: "Data effettiva; giorni di weekend (dal Paese selezionato, o impostati a mano — il manuale sostituisce interamente quello del Paese).",
-    regola: "Il giorno della settimana della data effettiva è un giorno di weekend configurato.",
-    limitazioni: "Non calcolabile senza Paese né lista manuale di giorni weekend.",
-    eccezione: "La scrittura risulta contabilizzata in un giorno tipicamente non lavorativo.",
-  },
-  flag_festivita: {
-    obiettivo: "Individuare scritture contabilizzate in un giorno festivo.",
-    rischio: "Attività contabile fuori dal flusso operativo standard.",
-    campi: "Data effettiva; calendario festività del Paese, più eventuali festività manuali (si sommano, non sostituiscono).",
-    regola: "La data effettiva coincide con una festività del calendario effettivo.",
-    limitazioni: "Non calcolabile se il Paese è impostato ma il calendario per quell'anno non è compilato e non ci sono festività manuali. Weekend e festività sullo stesso giorno contano solo il peso maggiore, non la somma.",
-    eccezione: "La scrittura risulta contabilizzata in un giorno festivo.",
-  },
-  flag_fuori_orario: {
-    obiettivo: "Individuare scritture create fuori dall'orario di lavoro dichiarato.",
-    rischio: "Attività contabile in orari insoliti, potenzialmente fuori dalla supervisione normale.",
-    campi: "Ora di creazione; orario d'ufficio inizio/fine (precompilato 8:00–18:00, sempre modificabile).",
-    regola: "L'ora di creazione cade fuori dall'intervallo configurato.",
-    limitazioni: "Non calcolabile senza ora di creazione nel file o senza orario configurato.",
-    eccezione: "La scrittura è stata creata fuori dall'orario di lavoro dichiarato.",
-  },
-  flag_backdated: {
-    obiettivo: "Individuare scritture registrate un numero significativo di giorni lavorativi dopo la data a cui si riferiscono.",
-    rischio: "Ritardo anomalo nella contabilizzazione, possibile scrittura preparata a posteriori.",
-    campi: "Data effettiva e data di creazione; soglia in giorni lavorativi (default 1); calendario del Paese, se impostato.",
-    regola: "Scarto in giorni lavorativi ≥ soglia. Senza Paese, o senza calendario disponibile per gli anni coinvolti, si usano i giorni di calendario — il metodo usato è registrato riga per riga.",
-    limitazioni: "Se la creazione precede la data effettiva non è retrodatazione ma 'anticipo' (vedi sotto).",
-    eccezione: "La scrittura è stata registrata con un ritardo anomalo.",
-  },
-  flag_forward_dating: {
-    obiettivo: "Segnalare, a titolo informativo, le scritture create prima della data a cui si riferiscono.",
-    rischio: "Pattern meno tipico della retrodatazione, utile da poter isolare in revisione.",
-    campi: "Data effettiva e data di creazione della riga.",
-    regola: "Data di creazione antecedente alla data effettiva.",
-    limitazioni: "Non contribuisce mai al punteggio: è informativo per costruzione, non un peso a zero.",
-    eccezione: "La scrittura risulta creata prima della data a cui si riferisce.",
-  },
-  flag_staff_non_autorizzato: {
-    obiettivo: "Individuare scritture inserite da un utente non nell'elenco staff autorizzato.",
-    rischio: "Intervento contabile da personale non abilitato per quel cliente.",
-    campi: "Utente della riga; elenco staff autorizzato; elenco utenti di sistema (esclusi dal test).",
-    regola: "L'utente non è nello staff autorizzato e non è un utente di sistema.",
-    limitazioni: "Non calcolabile senza elenco staff configurato o senza utente riportato dal file.",
-    eccezione: "La scrittura è stata inserita da qualcuno non autorizzato per questa pratica.",
-  },
-  flag_parte_correlata: {
-    obiettivo: "Individuare scritture la cui descrizione richiama parti correlate o infragruppo.",
-    rischio: "Le operazioni con parti correlate sono un'area a rischio intrinseco elevato (ISA 240).",
-    campi: "Descrizione/causale della riga; elenco di parole chiave configurate.",
-    regola: "La descrizione contiene per intero una delle parole chiave (corrispondenza esatta).",
-    limitazioni: "Non calcolabile senza elenco di parole chiave configurato.",
-    eccezione: "La descrizione richiama esplicitamente una parte correlata nota.",
-  },
-  flag_descrizione_vuota: {
-    obiettivo: "Individuare scritture senza descrizione o causale.",
-    rischio: "Assenza di motivazione documentale, requisito minimo di tracciabilità.",
-    campi: "Descrizione/causale della riga.",
-    regola: "La descrizione, tolti gli spazi, è vuota.",
-    limitazioni: "A differenza degli altri, non è mai 'non calcolabile': è sempre verificabile.",
-    eccezione: "La scrittura non riporta alcuna motivazione testuale.",
-  },
-  flag_conto_insolito_raro: {
-    obiettivo: "Individuare scritture su conti usati raramente nell'anno.",
-    rischio: "Un conto usato poche volte può nascondere un'operazione fuori standard.",
-    campi: "Conto contabile; frequenza di utilizzo nella popolazione; soglia di frequenza insolita.",
-    regola: "Il conto è usato meno volte della soglia configurata nell'intera popolazione caricata.",
-    limitazioni: "Estensione non ancora approvata dal partner (peso proposto); disattivata di default anche a peso/soglia già precompilati.",
-    eccezione: "Il conto è tra i meno utilizzati dell'intera popolazione.",
-  },
-  flag_conto_infragruppo_parte_correlata: {
-    obiettivo: "Individuare scritture su conti esplicitamente classificati come infragruppo o parte correlata.",
-    rischio: "Le operazioni infragruppo/parti correlate sono un'area a rischio intrinseco elevato (ISA 240).",
-    campi: "Conto contabile della riga; elenco dei conti classificati come infragruppo/parte correlata.",
-    regola: "Il conto della riga è nell'elenco configurato.",
-    limitazioni: "Estensione non ancora approvata dal partner; disattivata di default; non calcolabile senza elenco configurato.",
-    eccezione: "La scrittura è su un conto classificato come infragruppo o parte correlata.",
-  },
-  flag_finestra_chiusura: {
-    obiettivo: "Isolare le scritture negli ultimi giorni lavorativi prima della chiusura, e quelle registrate dopo la chiusura con competenza nel periodo già chiuso.",
-    rischio: "Le rettifiche last-minute e le scritture fuori tempo massimo sono l'area classica delle manipolazioni di fine periodo (ISA 240 §A44).",
-    campi: "Data effettiva e di creazione; data di chiusura (default 31/12 dell'anno della pratica); finestra in giorni lavorativi (default 5); calendario del Paese, obbligatorio.",
-    regola: "Finestra: la data effettiva cade negli ultimi N giorni lavorativi fino alla chiusura inclusa. Creata dopo chiusura: creazione successiva alla chiusura, competenza nel periodo chiuso.",
-    limitazioni: "Due liste obbligatorie separate, non subordinate al punteggio. Richiede sempre il Paese: nessun metodo alternativo a giorni di calendario per questo controllo.",
-    eccezione: "La scrittura cade nella finestra critica di chiusura, o è stata registrata a periodo già chiuso.",
-  },
-};
-
 const FLAG_NAMES: Record<string, string> = {
   flag_profit_impact: "Impatto utile",
   flag_oltre_dieci_volte_media: ">10× media",
@@ -300,24 +119,6 @@ const FLAG_NAMES: Record<string, string> = {
   flag_conto_insolito_raro: "Conto raro",
   flag_conto_infragruppo_parte_correlata: "Infragruppo",
 };
-
-function ScopeDetails({ flagKey }: { flagKey: string }) {
-  const scope = SCOPO_CONTROLLI[flagKey];
-  if (!scope) return null;
-  return (
-    <details className="mt-xs text-body-sm text-ink-secondary">
-      <summary className="cursor-pointer">ℹ️ Scopo del controllo</summary>
-      <div className="mt-xs space-y-xs border-l border-border-subtle pl-sm">
-        <p><strong>Obiettivo:</strong> {scope.obiettivo}</p>
-        <p><strong>Rischio:</strong> {scope.rischio}</p>
-        <p><strong>Campi:</strong> {scope.campi}</p>
-        <p><strong>Regola:</strong> {scope.regola}</p>
-        <p><strong>Limitazioni:</strong> {scope.limitazioni}</p>
-        <p><strong>Eccezione:</strong> {scope.eccezione}</p>
-      </div>
-    </details>
-  );
-}
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -337,66 +138,11 @@ function statusVariant(status: JetPractice["status"]) {
     : "info";
 }
 
-function ListInput(
-  { label, values, type, onChange }: {
-    label: string;
-    values: (string | number)[] | null;
-    type: string;
-    onChange: (x: (string | number)[] | null) => void;
-  },
-) {
-  const [draft, setDraft] = useState("");
-  const add = () => {
-    if (!draft.trim()) return;
-    const value = type === "number" ? Number(draft) : draft.trim();
-    onChange([...(values || []), value]);
-    setDraft("");
-  };
-  return (
-    <Field label={label}>
-      <div className="flex gap-sm">
-        <input
-          type={type}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          className={inputClass}
-        />
-        <button
-          type="button"
-          onClick={add}
-          className="px-md rounded border border-border-subtle"
-        >
-          Aggiungi
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-xs mt-xs">
-        {values?.map((v, i) => (
-          <button
-            type="button"
-            key={`${v}-${i}`}
-            onClick={() => {
-              const next = values.filter((_, x) => x !== i);
-              onChange(next.length ? next : null);
-            }}
-            className="px-sm py-xxs rounded bg-tint-gray-bg text-label-sm text-tint-gray-text"
-          >
-            {v} ×
-          </button>
-        ))}
-        {values === null && (
-          <span className="text-body-sm text-ink-tertiary">Non impostato</span>
-        )}
-      </div>
-    </Field>
-  );
-}
-
 export function JetDashboard() {
   const [practices, setPractices] = useState<JetPractice[]>([]);
   const [active, setActive] = useState<JetPractice | null>(null);
   const [create, setCreate] = useState({ client: "", period: "" });
   const [params, setParams] = useState<JetParams>(EMPTY);
-  const [sogliaCifraTondaCustom, setSogliaCifraTondaCustom] = useState(false);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [sources, setSources] = useState<JetSource[]>([]);
@@ -461,11 +207,6 @@ export function JetDashboard() {
         data_chiusura: `${annoPeriodo || new Date().getFullYear()}-12-31`,
       },
     );
-    const soglia = p.parametri?.soglia_importo_cifra_tonda;
-    setSogliaCifraTondaCustom(
-      soglia !== null && soglia !== undefined &&
-        ![10000, 100000, 1000000].includes(Number(soglia)),
-    );
     setResults([]);
     setError("");
     try {
@@ -478,7 +219,6 @@ export function JetDashboard() {
   const applyPresetTo = async (practice: JetPractice) => {
     const next = presetProva(EMPTY, practice.period);
     setParams(next);
-    setSogliaCifraTondaCustom(false);
     return jetApi.parameters(practice.id, next);
   };
   const run = async (action: () => Promise<JetPractice>) => {
@@ -546,8 +286,7 @@ export function JetDashboard() {
       ),
     );
   };
-  const saveParams = (e: FormEvent) => {
-    e.preventDefault();
+  const saveParams = () => {
     if (active) run(() => jetApi.parameters(active.id, params));
   };
   const configureNewSource = async (
@@ -814,239 +553,13 @@ export function JetDashboard() {
             >
               1. Parametri — {active.client}
             </CardHeader>
-            <form onSubmit={saveParams} className="space-y-lg">
-              <div className="grid md:grid-cols-3 gap-md">
-                {OPTIONAL_NUMBERS.map(([key, label]) => (
-                  <Field key={key} label={label}>
-                    <input
-                      type="number"
-                      step="any"
-                      value={(params[key] as number | null) ?? ""}
-                      placeholder="Non impostato"
-                      onChange={(e) =>
-                        setParams({
-                          ...params,
-                          [key]: e.target.value === ""
-                            ? null
-                            : Number(e.target.value),
-                        })}
-                      className={inputClass}
-                    />
-                  </Field>
-                ))}
-                <Field label="Soglia importo a cifra tonda">
-                  <div className="space-y-sm">
-                    <select
-                      value={
-                        sogliaCifraTondaCustom
-                          ? "custom"
-                          : params.soglia_importo_cifra_tonda === null
-                          ? ""
-                          : String(Number(params.soglia_importo_cifra_tonda))
-                      }
-                      onChange={(e) => {
-                        if (e.target.value === "custom") {
-                          setSogliaCifraTondaCustom(true);
-                          setParams({
-                            ...params,
-                            soglia_importo_cifra_tonda: null,
-                          });
-                          return;
-                        }
-                        setSogliaCifraTondaCustom(false);
-                        setParams({
-                          ...params,
-                          soglia_importo_cifra_tonda: Number(e.target.value),
-                        });
-                      }}
-                      className={inputClass}
-                    >
-                      <option value="" disabled>Seleziona una soglia</option>
-                      <option value="10000">10.000</option>
-                      <option value="100000">100.000</option>
-                      <option value="1000000">1.000.000</option>
-                      <option value="custom">Personalizzato</option>
-                    </select>
-                    {sogliaCifraTondaCustom && (
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={params.soglia_importo_cifra_tonda ?? ""}
-                        placeholder="Inserisci una soglia maggiore di zero"
-                        onChange={(e) =>
-                          setParams({
-                            ...params,
-                            soglia_importo_cifra_tonda: e.target.value === ""
-                              ? null
-                              : Number(e.target.value),
-                          })}
-                        className={inputClass}
-                      />
-                    )}
-                  </div>
-                </Field>
-                <Field label="Orario ufficio — inizio">
-                  <input
-                    type="time"
-                    value={params.orario_ufficio_inizio || ""}
-                    onChange={(e) =>
-                      setParams({
-                        ...params,
-                        orario_ufficio_inizio: e.target.value || null,
-                      })}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Data di chiusura">
-                  <input
-                    type="date"
-                    value={params.data_chiusura || ""}
-                    onChange={(e) =>
-                      setParams({
-                        ...params,
-                        data_chiusura: e.target.value || null,
-                      })}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Finestra di chiusura — attiva">
-                  <label className="flex items-center gap-xs text-body-sm text-ink-secondary">
-                    <input
-                      type="checkbox"
-                      checked={params.attivo_finestra_chiusura}
-                      onChange={(e) =>
-                        setParams({
-                          ...params,
-                          attivo_finestra_chiusura: e.target.checked,
-                        })}
-                    />
-                    Attivo
-                  </label>
-                  <ScopeDetails flagKey="flag_finestra_chiusura" />
-                </Field>
-                <Field label="Orario ufficio — fine">
-                  <input
-                    type="time"
-                    value={params.orario_ufficio_fine || ""}
-                    onChange={(e) =>
-                      setParams({
-                        ...params,
-                        orario_ufficio_fine: e.target.value || null,
-                      })}
-                    className={inputClass}
-                  />
-                </Field>
-              </div>
-              <Field label="Paese">
-                <select
-                  value={params.paese || ""}
-                  onChange={(e) =>
-                    setParams({ ...params, paese: e.target.value || null })}
-                  className={inputClass}
-                >
-                  <option value="">Nessun Paese — configurazione manuale</option>
-                  {PAESI.map(([codice, nome]) => (
-                    <option key={codice} value={codice}>{nome}</option>
-                  ))}
-                </select>
-                {params.paese && (
-                  <p className="mt-xs text-body-sm text-ink-tertiary">
-                    Le festività inserite manualmente sono chiusure aggiuntive;
-                    i giorni weekend manuali sostituiscono il weekend nazionale.
-                  </p>
-                )}
-              </Field>
-              <div className="grid md:grid-cols-2 gap-md">
-                {LISTS.map(([key, label, type]) => (
-                  <ListInput
-                    key={key}
-                    label={label}
-                    type={type}
-                    values={params[key] as (string | number)[] | null}
-                    onChange={(v) => setParams({ ...params, [key]: v })}
-                  />
-                ))}
-              </div>
-              <div>
-                <h4 className="text-label-md text-ink-primary mb-md">
-                  Pesi dei criteri e soglia
-                </h4>
-                <div className="text-body-sm text-ink-secondary border border-border-subtle rounded p-sm mb-md">
-                  <strong>Attivo</strong>: il criterio è acceso e i dati necessari sono presenti.{" "}
-                  <strong>Disattivato</strong>: hai spento tu il criterio con l'interruttore.{" "}
-                  <strong>Non applicabile</strong>: il criterio è acceso ma mancano i parametri di configurazione
-                  (es. nessuna soglia impostata).{" "}
-                  <strong>Non calcolabile</strong>: il criterio è acceso e configurato, ma per una specifica riga
-                  mancano i dati richiesti (es. nessuna ora di creazione su quella scrittura).
-                </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-md">
-                  {WEIGHTS.map(([key, label, optional]) => {
-                    const attivoKey = key.replace(
-                      "punteggio_",
-                      "attivo_",
-                    ) as keyof JetParams;
-                    const flagKey = key.replace("punteggio_", "flag_");
-                    return (
-                      <Field
-                        key={key}
-                        label={`${label}${optional ? " (opzionale)" : ""} — ${
-                          PESI_PROPOSTI.has(key)
-                            ? "peso proposto"
-                            : "peso approvato dal partner"
-                        }`}
-                      >
-                        <label className="flex items-center gap-xs mb-xs text-body-sm text-ink-secondary">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(params[attivoKey])}
-                            onChange={(e) =>
-                              setParams({
-                                ...params,
-                                [attivoKey]: e.target.checked,
-                              })}
-                          />
-                          Attivo
-                        </label>
-                        <input
-                          required={!optional}
-                          min="0"
-                          type="number"
-                          value={(params[key] as number | null) ?? ""}
-                          placeholder="Non impostato"
-                          onChange={(e) =>
-                            setParams({
-                              ...params,
-                              [key]: e.target.value === "" && optional
-                                ? null
-                                : Number(e.target.value),
-                            })}
-                          className={inputClass}
-                        />
-                        <ScopeDetails flagKey={flagKey} />
-                      </Field>
-                    );
-                  })}
-                  <Field label="Soglia da investigare">
-                    <input
-                      required
-                      min="0"
-                      type="number"
-                      value={params.soglia_da_investigare}
-                      onChange={(e) =>
-                        setParams({
-                          ...params,
-                          soglia_da_investigare: Number(e.target.value),
-                        })}
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-              </div>
-              <button disabled={busy} className={buttonClass}>
-                Salva tutti i parametri
-              </button>
-            </form>
+            <ParamsPanel
+              key={active.id}
+              params={params}
+              setParams={setParams}
+              busy={busy}
+              onSave={saveParams}
+            />
           </Card>
           <Card padding="lg">
             <CardHeader>2. Fonti e mappatura/profilo</CardHeader>
