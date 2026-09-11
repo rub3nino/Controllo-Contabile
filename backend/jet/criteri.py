@@ -42,6 +42,29 @@ def calcola_media_assoluta_registrazioni(
     return sum(valori) / Decimal(len(valori))
 
 
+def _cifre_finali_ripetute(importo: Decimal) -> bool:
+    """True se le ultime 3+ cifre sono uguali, esclusi gli zeri e i ",99" isolati.
+
+    Gli zeri finali sono esclusi perché già coperti dal criterio "cifra tonda".
+    Quando i centesimi sono ",99" (prezzo di listino tipico), il conteggio
+    ignora i centesimi e considera solo la parte intera: 19,99 non scatta per
+    coincidenza, mentre 999,99 conserva la ripetizione reale ed estesa.
+    """
+    cifre = f"{abs(importo):.2f}".replace(".", "")
+    intero, centesimi = cifre[:-2], cifre[-2:]
+    cifre_confronto = (intero or "0") if centesimi == "99" else cifre
+
+    ultima = cifre_confronto[-1]
+    if ultima == "0":
+        return False
+    lunghezza = 0
+    for carattere in reversed(cifre_confronto):
+        if carattere != ultima:
+            break
+        lunghezza += 1
+    return lunghezza >= 3
+
+
 def valuta_riga(
     riga: RigaGiornale,
     parametri: ParametriClienteJet,
@@ -279,6 +302,12 @@ def valuta_riga(
         cifre = sum(carattere.isdigit() for carattere in riga.conto_contabile)
         flag_conto_lunghezza = cifre > 10
 
+    flag_cifre_ripetute = (
+        _cifre_finali_ripetute(riga.importo_netto)
+        if parametri.attivo_cifre_ripetute
+        else None
+    )
+
     flag_e_pesi = (
         (flag_profit_impact, parametri.punteggio_profit_impact),
         (flag_oltre_dieci_volte_media, parametri.punteggio_oltre_dieci_volte_media),
@@ -295,6 +324,7 @@ def valuta_riga(
             parametri.punteggio_conto_infragruppo_parte_correlata,
         ),
         (flag_conto_lunghezza, parametri.punteggio_conto_lunghezza),
+        (flag_cifre_ripetute, parametri.punteggio_cifre_ripetute),
     )
     punteggio_totale = sum(
         peso for flag, peso in flag_e_pesi if flag is True and peso is not None
@@ -355,4 +385,5 @@ def valuta_riga(
         flag_conto_insolito_raro=flag_conto_insolito_raro,
         flag_conto_infragruppo_parte_correlata=flag_conto_infragruppo_parte_correlata,
         flag_conto_lunghezza=flag_conto_lunghezza,
+        flag_cifre_ripetute=flag_cifre_ripetute,
     )

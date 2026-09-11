@@ -75,6 +75,7 @@ const EMPTY: JetParams = {
   punteggio_conto_insolito_raro: 4,
   punteggio_conto_infragruppo_parte_correlata: null,
   punteggio_conto_lunghezza: null,
+  punteggio_cifre_ripetute: null,
   attivo_profit_impact: true,
   attivo_oltre_dieci_volte_media: true,
   attivo_sopra_performance_materiality: true,
@@ -89,6 +90,7 @@ const EMPTY: JetParams = {
   attivo_conto_insolito_raro: false,
   attivo_conto_infragruppo_parte_correlata: false,
   attivo_conto_lunghezza: false,
+  attivo_cifre_ripetute: false,
   attivo_finestra_chiusura: true,
 };
 const MAP_FIELDS = [

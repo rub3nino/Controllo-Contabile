@@ -119,6 +119,7 @@ class ParametriClienteJet(BaseModel):
     attivo_conto_insolito_raro: bool = False
     attivo_conto_infragruppo_parte_correlata: bool = False
     attivo_conto_lunghezza: bool = False
+    attivo_cifre_ripetute: bool = False
     attivo_finestra_chiusura: bool = True
 
     punteggio_profit_impact: int = Field(ge=0)
@@ -137,6 +138,7 @@ class ParametriClienteJet(BaseModel):
         default=None, ge=0
     )
     punteggio_conto_lunghezza: int | None = Field(default=None, ge=0)
+    punteggio_cifre_ripetute: int | None = Field(default=None, ge=0)
 
     @field_validator("paese")
     @classmethod
@@ -187,6 +189,7 @@ class EsitoRigaJet(BaseModel):
     flag_conto_insolito_raro: bool | None = None
     flag_conto_infragruppo_parte_correlata: bool | None = None
     flag_conto_lunghezza: bool | None = None
+    flag_cifre_ripetute: bool | None = None
 
 
 class EsitoSequenzaJet(BaseModel):

@@ -60,6 +60,24 @@ def _riga(**modifiche) -> RigaGiornale:
     return RigaGiornale(**dati)
 
 
+def _parametri_cifre_ripetute(**modifiche) -> ParametriClienteJet:
+    disattivati = {
+        "attivo_profit_impact": False,
+        "attivo_oltre_dieci_volte_media": False,
+        "attivo_sopra_performance_materiality": False,
+        "attivo_importo_cifra_tonda": False,
+        "attivo_weekend": False,
+        "attivo_festivita": False,
+        "attivo_fuori_orario": False,
+        "attivo_backdated": False,
+        "attivo_staff_non_autorizzato": False,
+        "attivo_parte_correlata": False,
+        "attivo_descrizione_vuota": False,
+    }
+    disattivati.update(modifiche)
+    return _parametri(**disattivati)
+
+
 @pytest.mark.parametrize(
     ("campo", "riga_vera", "riga_falsa"),
     [
@@ -79,6 +97,53 @@ def _riga(**modifiche) -> RigaGiornale:
 def test_ogni_criterio_ha_un_caso_vero_e_falso(campo, riga_vera, riga_falsa):
     assert getattr(valuta_riga(_riga(**riga_vera), _parametri()), campo) is True
     assert getattr(valuta_riga(_riga(**riga_falsa), _parametri()), campo) is False
+
+
+def test_cifre_finali_ripetute_contribuiscono_al_punteggio():
+    esito = valuta_riga(
+        _riga(importo_netto=Decimal("12345.55")),
+        _parametri_cifre_ripetute(
+            attivo_cifre_ripetute=True,
+            punteggio_cifre_ripetute=3,
+        ),
+    )
+
+    assert esito.flag_cifre_ripetute is True
+    assert esito.punteggio_totale == 3
+
+
+@pytest.mark.parametrize(
+    ("importo", "atteso"),
+    [
+        (Decimal("1000.00"), False),
+        (Decimal("19.99"), False),
+        (Decimal("999.99"), True),
+    ],
+)
+def test_cifre_finali_ripetute_esclusioni(importo, atteso):
+    esito = valuta_riga(
+        _riga(importo_netto=importo),
+        _parametri_cifre_ripetute(
+            attivo_cifre_ripetute=True,
+            punteggio_cifre_ripetute=2,
+        ),
+    )
+
+    assert esito.flag_cifre_ripetute is atteso
+    assert esito.punteggio_totale == (2 if atteso else 0)
+
+
+def test_cifre_finali_ripetute_disattivate_non_calcolabili_e_senza_punti():
+    esito = valuta_riga(
+        _riga(importo_netto=Decimal("12345.55")),
+        _parametri_cifre_ripetute(
+            attivo_cifre_ripetute=False,
+            punteggio_cifre_ripetute=4,
+        ),
+    )
+
+    assert esito.flag_cifre_ripetute is None
+    assert esito.punteggio_totale == 0
 
 
 def test_flag_non_calcolabili_restano_none_e_non_danno_punti():
