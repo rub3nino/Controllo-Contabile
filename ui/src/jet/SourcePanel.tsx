@@ -1,9 +1,9 @@
 /**
- * Sorgente libro giornale: carica, conferma profilo o mappatura.
- * Un percorso alla volta — profilo esistente XOR nuove posizioni.
+ * Sorgente libro giornale: carica e sceglie la fonte.
+ * Mappatura e profilo si aprono nel pannello a destra.
  */
 
-import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { useRef, useState, type DragEvent } from "react";
 import { Icon, StatusBadge, Switch } from "../components";
 import {
   JetSection,
@@ -11,42 +11,9 @@ import {
   jetInputClass,
   jetPrimaryClass,
 } from "./NotionChrome";
-import type {
-  ExtractionProfile,
-  FileInspection,
-  JetPractice,
-  JetSource,
-} from "./api";
+import type { JetPractice, JetSource } from "./api";
 
 const inputClass = jetInputClass;
-
-export const MAP_FIELDS = [
-  "identificativo_registrazione",
-  "numero_documento",
-  "data_effettiva",
-  "data_creazione",
-  "ora_creazione",
-  "conto_contabile",
-  "importo_netto",
-  "importo_dare",
-  "importo_avere",
-  "descrizione",
-  "utente",
-] as const;
-
-const FIELD_LABELS: Record<string, string> = {
-  identificativo_registrazione: "Identificativo",
-  numero_documento: "N. documento",
-  data_effettiva: "Data effettiva",
-  data_creazione: "Data creazione",
-  ora_creazione: "Ora creazione",
-  conto_contabile: "Conto",
-  importo_netto: "Importo netto",
-  importo_dare: "Dare",
-  importo_avere: "Avere",
-  descrizione: "Descrizione",
-  utente: "Utente",
-};
 
 function sourceStatus(stato: JetSource["stato"]): {
   variant: "success" | "warning" | "error" | "neutral" | "info";
@@ -58,109 +25,41 @@ function sourceStatus(stato: JetSource["stato"]): {
   return { variant: "warning", label: "Da configurare" };
 }
 
-function ModeTab({
-  active,
-  onClick,
-  children,
-  disabled,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`px-2.5 py-1 min-h-8 text-xs rounded-md transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-        active
-          ? "bg-white text-[#2f3437] shadow-xs font-medium"
-          : "text-[#787774] hover:text-[#2f3437]"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 export function SourcePanel({
   practice,
   sources,
   selectedSource,
   busy,
-  headers,
-  mapping,
-  setMapping,
-  profiles,
-  txtInspection,
-  selectedProfile,
-  setSelectedProfile,
-  profileName,
-  setProfileName,
-  positions,
-  setPositions,
-  setHighlightField,
-  highlightedHeader,
   onUpload,
   onSelectSource,
   onToggleActive,
   onReplace,
   onDelete,
   onDuplicates,
-  onConfirmMapping,
-  onApplyProfile,
-  onCreateProfile,
+  onOpenMapping,
 }: {
   practice: JetPractice;
   sources: JetSource[];
   selectedSource: JetSource | null;
   busy: boolean;
-  headers: string[];
-  mapping: Record<string, string>;
-  setMapping: (next: Record<string, string>) => void;
-  profiles: ExtractionProfile[];
-  txtInspection: Omit<FileInspection, "pratica"> | null;
-  selectedProfile: string;
-  setSelectedProfile: (id: string) => void;
-  profileName: string;
-  setProfileName: (name: string) => void;
-  positions: Record<string, { start: string; end: string }>;
-  setPositions: (next: Record<string, { start: string; end: string }>) => void;
-  setHighlightField: (field: string) => void;
-  highlightedHeader: ReactNode;
   onUpload: (files: FileList | File[]) => void;
   onSelectSource: (source: JetSource) => void;
   onToggleActive: (source: JetSource, attiva: boolean) => void;
   onReplace: (source: JetSource, file: File) => void;
   onDelete: (source: JetSource) => void;
   onDuplicates: (value: JetPractice["strategia_duplicati"]) => void;
-  onConfirmMapping: () => void;
-  onApplyProfile: () => void;
-  onCreateProfile: () => void;
+  onOpenMapping: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [creating, setCreating] = useState(profiles.length === 0);
-  const [editing, setEditing] = useState(false);
   const [dragging, setDragging] = useState(false);
-
-  useEffect(() => {
-    setCreating(profiles.length === 0);
-    setEditing(false);
-  }, [selectedSource?.id, profiles.length]);
 
   const isProfileFile =
     selectedSource?.formato === "txt" || selectedSource?.formato === "pdf";
+  const mappedCount = Object.keys(selectedSource?.mappatura || {}).length;
   const needsConfig =
     selectedSource &&
     selectedSource.attiva &&
-    (selectedSource.stato !== "pronta" || editing);
-  const mappedCount = MAP_FIELDS.filter((f) => mapping[f]).length;
-  const appliedProfile =
-    profiles.find((p) => p.id === selectedSource?.profilo_estrazione_id) ||
-    txtInspection?.profilo ||
-    null;
+    selectedSource.stato !== "pronta";
 
   const takeFiles = (list: FileList | File[] | null | undefined) => {
     if (!list || (list instanceof FileList ? list.length === 0 : list.length === 0)) {
@@ -326,239 +225,38 @@ export function SourcePanel({
             </div>
           )}
 
-          {selectedSource && selectedSource.stato === "pronta" && !editing && (
+          {selectedSource && selectedSource.stato === "pronta" && (
             <div className="px-4 py-3 border-t border-[#e9e8e4] bg-[#f4faf5] flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-[#137333]">
                 {isProfileFile
-                  ? `Pronto${appliedProfile ? ` · profilo «${appliedProfile.nome}»` : ""}.`
+                  ? "Pronto · profilo applicato."
                   : `Pronto · ${mappedCount} colonne mappate.`}
               </p>
               <button
                 type="button"
                 className={jetGhostClass}
-                onClick={() => setEditing(true)}
+                onClick={onOpenMapping}
               >
-                Modifica configurazione
+                {isProfileFile ? "Modifica profilo" : "Modifica mappatura"}
               </button>
             </div>
           )}
 
-          {needsConfig && isProfileFile && txtInspection && (
-            <div className="px-4 py-4 border-t border-[#e9e8e4] space-y-4">
-              <details open className="group">
-                <summary className="text-xs text-[#787774] cursor-pointer list-none flex items-center gap-1.5 [&::-webkit-details-marker]:hidden">
-                  <Icon
-                    name="expand_more"
-                    size="sm"
-                    className="transition-transform group-open:rotate-180"
-                  />
-                  Anteprima · {txtInspection.codifica}
-                </summary>
-                <pre className="mt-2 max-h-28 overflow-auto rounded-md bg-[#f7f6f3] p-3 font-mono text-[11px] leading-5 text-[#37352f]">
-                  <code>
-                    {highlightedHeader}
-                    {txtInspection.righe_esempio?.map((line, index) => (
-                      <span key={index}>
-                        {"\n"}
-                        {line}
-                      </span>
-                    ))}
-                  </code>
-                </pre>
-              </details>
-
-              {txtInspection.profilo && !creating && (
-                <p className="text-xs text-[#787774]">
-                  Riconosciuto:{" "}
-                  <strong className="text-[#37352f] font-medium">
-                    {txtInspection.profilo.nome}
-                  </strong>
-                </p>
-              )}
-
-              {profiles.length > 0 && (
-                <div
-                  className="inline-flex p-0.5 rounded-md bg-[#f1f1ef] gap-0.5"
-                  role="tablist"
-                  aria-label="Come mappare il file"
-                >
-                  <ModeTab active={!creating} onClick={() => setCreating(false)}>
-                    Usa profilo
-                  </ModeTab>
-                  <ModeTab active={creating} onClick={() => setCreating(true)}>
-                    Nuovo profilo
-                  </ModeTab>
-                </div>
-              )}
-
-              {!creating && profiles.length > 0 ? (
-                <div className="flex flex-wrap items-end gap-2">
-                  <label className="block min-w-[220px] flex-1">
-                    <span className="block mb-1 text-xs text-[#787774]">
-                      Profilo di estrazione
-                    </span>
-                    <select
-                      value={selectedProfile}
-                      onChange={(e) => setSelectedProfile(e.target.value)}
-                      className={inputClass}
-                    >
-                      <option value="">Scegli un profilo</option>
-                      {profiles.map((profile) => (
-                        <option key={profile.id} value={profile.id}>
-                          {profile.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    disabled={busy || !selectedProfile}
-                    onClick={onApplyProfile}
-                    className={jetPrimaryClass}
-                  >
-                    Conferma profilo
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {profiles.length === 0 && (
-                    <p className="text-xs text-[#787774]">
-                      Nessun profilo in archivio. Definisci le posizioni una volta,
-                      poi lo riusi sui prossimi file.
-                    </p>
-                  )}
-                  <div className="flex flex-wrap items-end gap-2">
-                    <label className="block min-w-[220px] flex-1 max-w-sm">
-                      <span className="block mb-1 text-xs text-[#787774]">
-                        Nome profilo
-                      </span>
-                      <input
-                        value={profileName}
-                        onChange={(e) => setProfileName(e.target.value)}
-                        className={inputClass}
-                        placeholder="Es. Giornale Zucchetti 2026"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      disabled={busy || !profileName.trim()}
-                      onClick={onCreateProfile}
-                      className={jetPrimaryClass}
-                    >
-                      Salva e applica
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-[#9b9a97]">
-                    Inizio e fine sono posizioni carattere sulla riga. Il focus
-                    evidenzia l’intervallo nell’anteprima.
-                  </p>
-                  <div className="overflow-x-auto rounded-md border border-[#e9e8e4]">
-                    <table className="w-full border-collapse text-left text-xs notion-table">
-                      <thead>
-                        <tr className="bg-[#f7f6f3] text-[#787774] font-medium">
-                          <th className="py-2 px-3">Campo</th>
-                          <th className="py-2 px-3 w-28">Inizio</th>
-                          <th className="py-2 px-3 w-28">Fine (esclusa)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {MAP_FIELDS.map((field) => (
-                          <tr key={field}>
-                            <td className="py-2 px-3 text-[#37352f]">
-                              {FIELD_LABELS[field]}
-                            </td>
-                            <td className="py-1.5 px-3">
-                              <input
-                                aria-label={`${FIELD_LABELS[field]} inizio`}
-                                type="number"
-                                min="0"
-                                value={positions[field]?.start || ""}
-                                onFocus={() => setHighlightField(field)}
-                                onChange={(e) =>
-                                  setPositions({
-                                    ...positions,
-                                    [field]: {
-                                      start: e.target.value,
-                                      end: positions[field]?.end || "",
-                                    },
-                                  })}
-                                className={`${inputClass} h-8`}
-                              />
-                            </td>
-                            <td className="py-1.5 px-3">
-                              <input
-                                aria-label={`${FIELD_LABELS[field]} fine`}
-                                type="number"
-                                min="1"
-                                value={positions[field]?.end || ""}
-                                onFocus={() => setHighlightField(field)}
-                                onChange={(e) =>
-                                  setPositions({
-                                    ...positions,
-                                    [field]: {
-                                      start: positions[field]?.start || "",
-                                      end: e.target.value,
-                                    },
-                                  })}
-                                className={`${inputClass} h-8`}
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {needsConfig && !isProfileFile && headers.length > 0 && (
-            <div className="px-4 py-4 border-t border-[#e9e8e4] space-y-3">
-              <p className="text-xs text-[#787774]">
-                Abbina le colonne del file ai campi JET.
+          {needsConfig && (
+            <div className="px-4 py-3 border-t border-[#e9e8e4] bg-[#fffcf5] flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-[#9f6b00]">
+                {selectedSource.stato === "errore"
+                  ? selectedSource.errore || "Fonte in errore: ricontrolla la mappatura."
+                  : isProfileFile
+                  ? "Manca il profilo di estrazione. Aprilo a destra e usa la i su ogni campo."
+                  : "Manca la mappatura colonne. Aprila a destra e usa la i su ogni campo."}
               </p>
-              <div className="overflow-x-auto rounded-md border border-[#e9e8e4]">
-                <table className="w-full border-collapse text-left text-xs notion-table">
-                  <thead>
-                    <tr className="bg-[#f7f6f3] text-[#787774] font-medium">
-                      <th className="py-2 px-3">Campo JET</th>
-                      <th className="py-2 px-3">Colonna nel file</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MAP_FIELDS.map((field) => (
-                      <tr key={field}>
-                        <td className="py-2 px-3">{FIELD_LABELS[field]}</td>
-                        <td className="py-1.5 px-3">
-                          <select
-                            value={mapping[field] || ""}
-                            onChange={(e) => {
-                              const next = { ...mapping };
-                              if (e.target.value) next[field] = e.target.value;
-                              else delete next[field];
-                              setMapping(next);
-                            }}
-                            className={`${inputClass} h-8`}
-                          >
-                            <option value="">Non mappato</option>
-                            {headers.map((h) => (
-                              <option key={h}>{h}</option>
-                            ))}
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
               <button
                 type="button"
-                disabled={busy}
-                onClick={onConfirmMapping}
                 className={jetPrimaryClass}
+                onClick={onOpenMapping}
               >
-                Conferma mappatura
+                {isProfileFile ? "Apri profilo" : "Apri mappatura"}
               </button>
             </div>
           )}

@@ -26,6 +26,15 @@ import {
   jetPrimaryClass,
 } from "./NotionChrome";
 import { SourcePanel } from "./SourcePanel";
+import { JetMappingDrawer } from "./JetMappingDrawer";
+import {
+  mappingIsReady,
+  presetProva,
+  PROFILO_PROVA_NOME,
+  PROFILO_PROVA_POSIZIONI,
+  PROVA_CLIENT,
+  suggestMapping,
+} from "./presetProva";
 import {
   type ExtractionProfile,
   type FileInspection,
@@ -102,6 +111,9 @@ export function JetDashboard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [provaMode, setProvaMode] = useState(false);
+  const [sourceHint, setSourceHint] = useState("");
+  const [mapPanelOpen, setMapPanelOpen] = useState(false);
   const refresh = async () => setPractices(await jetApi.list());
   useEffect(() => {
     refresh().catch((e) => setError(asUserError(e).title));
@@ -111,10 +123,11 @@ export function JetDashboard() {
     const x = await jetApi.sourcePreview(practiceId, source.id);
     setSelectedSource(source);
     setHeaders(x.intestazioni || []);
-    setMapping(source.mappatura || {});
+    setMapping(source.mappatura || suggestMapping(x.intestazioni || []));
     setTxtInspection(x.intestazione === undefined ? null : x);
     setSelectedProfile(source.profilo_estrazione_id || x.profilo?.id || "");
     setPositions({});
+    return x;
   };
   const reloadSources = async (practiceId: string, preferredId?: string) => {
     const next = await jetApi.sources(practiceId);
@@ -132,6 +145,9 @@ export function JetDashboard() {
   const choose = async (p: JetPractice) => {
     setActive(p);
     setShowCreate(false);
+    setProvaMode(p.client === PROVA_CLIENT);
+    setSourceHint("");
+    setMapPanelOpen(false);
     setParams(p.parametri || EMPTY_JET_PARAMS);
     setResults([]);
     setError("");
@@ -141,6 +157,11 @@ export function JetDashboard() {
       setSources([]);
       setHeaders([]);
     }
+  };
+  const applyPresetTo = async (practice: JetPractice) => {
+    const next = presetProva(EMPTY_JET_PARAMS, practice.period);
+    setParams(next);
+    return jetApi.parameters(practice.id, next);
   };
   const run = async (action: () => Promise<JetPractice>) => {
     setBusy(true);
@@ -165,19 +186,112 @@ export function JetDashboard() {
       return p;
     });
   };
+  const createProva = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const year = String(new Date().getFullYear());
+      const created = await jetApi.create(PROVA_CLIENT, year);
+      const saved = await applyPresetTo(created);
+      setCreate({ client: "", period: "" });
+      setShowCreate(false);
+      setProvaMode(true);
+      await refresh();
+      await choose(saved);
+    } catch (e) {
+      setError(asUserError(e).title);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const fillPreset = async () => {
+    if (!active) return;
+    if (
+      active.parametri &&
+      !window.confirm("Sostituire i parametri salvati con il preset di prova?")
+    ) return;
+    await run(() => applyPresetTo(active));
+    setProvaMode(true);
+  };
+  const fillProfiloProva = () => {
+    const giaCompilato =
+      profileName.trim() !== "" ||
+      Object.values(positions).some((x) => x.start !== "" || x.end !== "");
+    if (
+      giaCompilato &&
+      !window.confirm(
+        "Sostituire nome e posizioni già inseriti con i valori di prova?",
+      )
+    ) return;
+    setProfileName(PROFILO_PROVA_NOME);
+    setPositions(
+      Object.fromEntries(
+        Object.entries(PROFILO_PROVA_POSIZIONI).map(([field, [start, end]]) => [
+          field,
+          { start: String(start), end: String(end) },
+        ]),
+      ),
+    );
+  };
   const saveParams = () => {
     if (active) run(() => jetApi.parameters(active.id, params));
+  };
+  const configureNewSource = async (
+    practiceId: string,
+    source: JetSource,
+    preview: Awaited<ReturnType<typeof jetApi.sourcePreview>>,
+  ) => {
+    if (source.mappatura || source.profilo_estrazione_id) return source;
+    const suggested = suggestMapping(preview.intestazioni || []);
+    if (
+      (source.formato === "xlsx" || !preview.intestazione) &&
+      mappingIsReady(suggested)
+    ) {
+      const configured = await jetApi.sourceMapping(
+        practiceId,
+        source.id,
+        suggested,
+      );
+      setSourceHint(
+        "Mappatura applicata automaticamente dalle intestazioni. Controlla e correggi se serve.",
+      );
+      return configured;
+    }
+    if (provaMode && preview.profilo?.id) {
+      const configured = await jetApi.sourceApplyProfile(
+        practiceId,
+        source.id,
+        preview.profilo.id,
+      );
+      setSourceHint(
+        `Profilo «${preview.profilo.nome}» applicato in automatico. Controlla se è quello giusto.`,
+      );
+      return configured;
+    }
+    if (Object.keys(suggested).length) {
+      setMapping(suggested);
+      setSourceHint(
+        "Intestazioni riconosciute: conferma la mappatura o correggi le colonne.",
+      );
+    }
+    return source;
   };
   const upload = async (files?: FileList | File[] | null) => {
     if (!files?.length || !active) return;
     setBusy(true);
     setError("");
+    setSourceHint("");
     try {
       const x = await jetApi.uploadFiles(active.id, Array.from(files));
       setActive(x.pratica);
       setProfileName("");
-      await reloadSources(active.id, x.files.at(-1)?.fonte.id);
+      const last = x.files.at(-1);
+      if (last) {
+        await configureNewSource(active.id, last.fonte, last);
+      }
+      await reloadSources(active.id, last?.fonte.id);
       await refresh();
+      setMapPanelOpen(true);
     } catch (e) {
       setError(asUserError(e).title);
     } finally {
@@ -192,7 +306,7 @@ export function JetDashboard() {
     await refresh();
   };
   const applyProfile = async () => {
-    if (!active || !selectedSource || !selectedProfile) return;
+    if (!active || !selectedSource || !selectedProfile) return false;
     setBusy(true);
     setError("");
     try {
@@ -203,14 +317,16 @@ export function JetDashboard() {
           selectedProfile,
         ),
       );
+      return true;
     } catch (e) {
       setError(asUserError(e).title);
+      return false;
     } finally {
       setBusy(false);
     }
   };
   const createProfile = async () => {
-    if (!active || !selectedSource) return;
+    if (!active || !selectedSource) return false;
     const parsed = Object.fromEntries(
       Object.entries(positions).filter(([, x]) =>
         x.start !== "" && x.end !== ""
@@ -230,8 +346,10 @@ export function JetDashboard() {
         ),
       );
       setProfiles(await jetApi.profiles());
+      return true;
     } catch (e) {
       setError(asUserError(e).title);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -261,6 +379,8 @@ export function JetDashboard() {
       ) => label),
     [],
   );
+  const isProfileFile = selectedSource?.formato === "txt" ||
+    selectedSource?.formato === "pdf";
   const allActiveSourcesReady = sources.some((x) => x.attiva) &&
     sources.filter((x) => x.attiva).every((x) => x.stato === "pronta");
   const highlightedHeader = useMemo(() => {
@@ -272,7 +392,7 @@ export function JetDashboard() {
     return (
       <>
         {text.slice(0, start)}
-        <mark className="bg-status-yellow-bg text-status-yellow-text">
+        <mark className="bg-[#fef7e0] text-[#9f6b00]">
           {text.slice(start, end)}
         </mark>
         {text.slice(end)}
@@ -304,9 +424,14 @@ export function JetDashboard() {
             </span>
           }
           toolbar={
-            <ToolButton icon="add" onClick={() => setShowCreate((v) => !v)}>
-              {showCreate ? "Chiudi form" : "Nuova pratica"}
-            </ToolButton>
+            <>
+              <ToolButton icon="add" onClick={() => setShowCreate((v) => !v)}>
+                {showCreate ? "Chiudi form" : "Nuova pratica"}
+              </ToolButton>
+              <ToolButton icon="science" onClick={() => void createProva()}>
+                Crea pratica di prova
+              </ToolButton>
+            </>
           }
         />
         {error && <Callout variant="warning">{error}</Callout>}
@@ -329,10 +454,25 @@ export function JetDashboard() {
                   className={inputClass}
                 />
               </Field>
-              <button disabled={busy} className={`${buttonClass} self-end`}>
-                <Icon name="add" size="sm" />Crea pratica
-              </button>
+              <div className="flex flex-wrap gap-2 self-end">
+                <button disabled={busy} className={buttonClass}>
+                  <Icon name="add" size="sm" />Crea pratica
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void createProva()}
+                  className={jetGhostClass}
+                >
+                  Crea pratica di prova
+                </button>
+              </div>
             </form>
+            <p className="mt-3 text-xs text-[#9b9a97] leading-5">
+              La pratica di prova salva da sola Paese Italia, orario 8:00–18:00,
+              soglie e parole chiave. Staff e utenti sono fittizi: adattali al
+              file se non vuoi che quasi ogni utente risulti non autorizzato.
+            </p>
           </JetSection>
         )}
         <JetSection
@@ -410,9 +550,14 @@ export function JetDashboard() {
           </>
         }
         toolbar={
-          <GhostButton icon="arrow_back" onClick={() => setActive(null)}>
-            Pratiche
-          </GhostButton>
+          <>
+            <GhostButton icon="arrow_back" onClick={() => setActive(null)}>
+              Pratiche
+            </GhostButton>
+            <GhostButton icon="science" onClick={() => void fillPreset()}>
+              Compila preset di prova
+            </GhostButton>
+          </>
         }
         primaryAction={
           <PrimaryButton
@@ -441,6 +586,7 @@ export function JetDashboard() {
         }
       />
       {error && <Callout variant="warning">{error}</Callout>}
+      {sourceHint && <Callout variant="info">{sourceHint}</Callout>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <JetMetric
           icon="table_rows"
@@ -480,21 +626,10 @@ export function JetDashboard() {
         sources={sources}
         selectedSource={selectedSource}
         busy={busy}
-        headers={headers}
-        mapping={mapping}
-        setMapping={setMapping}
-        profiles={profiles}
-        txtInspection={txtInspection}
-        selectedProfile={selectedProfile}
-        setSelectedProfile={setSelectedProfile}
-        profileName={profileName}
-        setProfileName={setProfileName}
-        positions={positions}
-        setPositions={setPositions}
-        setHighlightField={setHighlightField}
-        highlightedHeader={highlightedHeader}
         onUpload={upload}
-        onSelectSource={(source) => void loadSource(active.id, source)}
+        onSelectSource={(source) => {
+          void loadSource(active.id, source).then(() => setMapPanelOpen(true));
+        }}
         onToggleActive={async (source, attiva) => {
           await refreshConfiguredSource(
             await jetApi.configureSource(active.id, source.id, attiva),
@@ -502,11 +637,14 @@ export function JetDashboard() {
         }}
         onReplace={async (source, file) => {
           setBusy(true);
+          setSourceHint("");
           try {
-            await jetApi.replaceSource(active.id, source.id, file);
+            const preview = await jetApi.replaceSource(active.id, source.id, file);
+            await configureNewSource(active.id, preview.fonte, preview);
             await reloadSources(active.id, source.id);
             const updated = (await jetApi.list()).find((item) => item.id === active.id);
             if (updated) setActive(updated);
+            setMapPanelOpen(true);
           } catch (cause) {
             setError(asUserError(cause).title);
           } finally {
@@ -519,25 +657,12 @@ export function JetDashboard() {
           await reloadSources(active.id);
           const updated = (await jetApi.list()).find((item) => item.id === active.id);
           if (updated) setActive(updated);
+          setMapPanelOpen(false);
         }}
         onDuplicates={(value) =>
           run(() => jetApi.duplicates(active.id, value))
         }
-        onConfirmMapping={async () => {
-          if (!selectedSource) return;
-          setBusy(true);
-          try {
-            await refreshConfiguredSource(
-              await jetApi.sourceMapping(active.id, selectedSource.id, mapping),
-            );
-          } catch (cause) {
-            setError(asUserError(cause).title);
-          } finally {
-            setBusy(false);
-          }
-        }}
-        onApplyProfile={applyProfile}
-        onCreateProfile={createProfile}
+        onOpenMapping={() => setMapPanelOpen(true)}
       />
       <ParamsPanel
         client={active.client}
@@ -724,6 +849,52 @@ export function JetDashboard() {
               </div>
             </JetSection>
           )}
+      <JetMappingDrawer
+        open={mapPanelOpen}
+        onClose={() => setMapPanelOpen(false)}
+        busy={busy}
+        source={selectedSource}
+        isProfileFile={isProfileFile}
+        headers={headers}
+        mapping={mapping}
+        onMappingChange={setMapping}
+        onConfirmMapping={async () => {
+          if (!active || !selectedSource) return;
+          setBusy(true);
+          try {
+            await refreshConfiguredSource(
+              await jetApi.sourceMapping(
+                active.id,
+                selectedSource.id,
+                mapping,
+              ),
+            );
+            setMapPanelOpen(false);
+          } catch (cause) {
+            setError(asUserError(cause).title);
+          } finally {
+            setBusy(false);
+          }
+        }}
+        txtInspection={txtInspection}
+        highlightedHeader={highlightedHeader}
+        profiles={profiles}
+        selectedProfile={selectedProfile}
+        onSelectedProfile={setSelectedProfile}
+        onApplyProfile={async () => {
+          if (await applyProfile()) setMapPanelOpen(false);
+        }}
+        profileName={profileName}
+        onProfileName={setProfileName}
+        positions={positions}
+        onPositions={setPositions}
+        highlightField={highlightField}
+        onHighlightField={setHighlightField}
+        onCreateProfile={async () => {
+          if (await createProfile()) setMapPanelOpen(false);
+        }}
+        onFillProva={fillProfiloProva}
+      />
     </div>
   );
 }
